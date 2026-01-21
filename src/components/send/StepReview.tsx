@@ -75,7 +75,7 @@ export default function StepReview({
           Vérifier et envoyer
         </h1>
         <p className="text-gray-500">
-          Vérifiez les détails avant d'envoyer le document
+          Vérifiez les détails avant d&apos;envoyer le document
         </p>
       </motion.div>
 
@@ -191,7 +191,7 @@ export default function StepReview({
             className="w-5 h-5 rounded border-gray-300 text-[#08CF65] focus:ring-[#08CF65]"
           />
           <div>
-            <p className="font-medium text-gray-900">M'envoyer une copie</p>
+            <p className="font-medium text-gray-900">M&apos;envoyer une copie</p>
             <p className="text-sm text-gray-500">Recevoir une copie du document signé par email</p>
           </div>
         </label>
