@@ -51,10 +51,14 @@ export async function GET(
       key = decodeURIComponent(url.pathname)
       key = key.startsWith('/') ? key.slice(1) : key
       
-      // Remove bucket name if present at start
-      const bucketName = process.env.R2_BUCKET_NAME || 'drime-sign'
+      // Remove bucket name if present at start (try both with and without hyphen)
+      const bucketName = process.env.R2_BUCKET_NAME || 'drimesign'
       if (key.startsWith(bucketName + '/')) {
         key = key.slice(bucketName.length + 1)
+      }
+      // Also try with hyphen variant
+      if (key.startsWith('drime-sign/')) {
+        key = key.slice('drime-sign/'.length)
       }
     } catch {
       key = decodeURIComponent(envelope.pdfUrl)
@@ -64,7 +68,7 @@ export async function GET(
     console.log('[PDF URL] Extracted key:', key)
 
     const client = getS3Client()
-    const bucket = process.env.R2_BUCKET_NAME || 'drime-sign'
+    const bucket = process.env.R2_BUCKET_NAME || 'drimesign'
     
     const command = new GetObjectCommand({
       Bucket: bucket,

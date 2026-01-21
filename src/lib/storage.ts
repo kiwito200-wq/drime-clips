@@ -11,7 +11,7 @@ const s3Client = new S3Client({
   },
 })
 
-const BUCKET = process.env.R2_BUCKET_NAME || 'drime-sign'
+const BUCKET = process.env.R2_BUCKET_NAME || 'drimesign'
 
 export async function uploadPdf(
   buffer: Buffer,
