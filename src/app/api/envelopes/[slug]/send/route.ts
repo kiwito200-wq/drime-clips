@@ -58,11 +58,13 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'At least one field is required' }, { status: 400 })
     }
 
-    // Parse request body for optional message
+    // Parse request body for optional message and isSelfSign flag
     let message: string | undefined
+    let clientSelfSign = false
     try {
       const body = await request.json()
       message = body.message
+      clientSelfSign = body.isSelfSign === true
     } catch {
       // No body provided, that's fine
     }
@@ -130,8 +132,10 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     // Check if this is self-signing only
-    const isSelfSignOnly = envelope.signers.length === 1 && 
+    // Use client flag OR check if single signer matches user email
+    const emailMatch = envelope.signers.length === 1 && 
       envelope.signers[0].email.toLowerCase() === user.email.toLowerCase()
+    const isSelfSignOnly = clientSelfSign || emailMatch || envelope.signers.length === 1
 
     return NextResponse.json({ 
       success: true,

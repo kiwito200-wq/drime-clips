@@ -308,17 +308,20 @@ function SendPageContent() {
   }, [document.slug, fields, signers])
 
   // Envoyer
-  const sendDocument = useCallback(async (message?: string) => {
+  const sendDocument = useCallback(async (message?: string, forceAutoSign?: boolean) => {
     if (!document.slug) return
     
     setIsLoading(true)
     try {
       await saveFields()
       
+      // Determine if this is auto-sign (single signer)
+      const isAutoSign = forceAutoSign || signers.length === 1
+      
       const res = await fetch(`/api/envelopes/${document.slug}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, isSelfSign: isAutoSign }),
         credentials: 'include',
       })
       
@@ -341,7 +344,7 @@ function SendPageContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [document.slug, saveFields, router])
+  }, [document.slug, saveFields, router, signers.length])
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -465,7 +468,7 @@ function SendPageContent() {
                     const isAutoSign = signers.length === 1
                     if (isAutoSign) {
                       // Auto-sign: send directly and redirect to signing page
-                      await sendDocument()
+                      await sendDocument(undefined, true)
                     } else {
                       // Multiple signers: go to review step
                       setCurrentStep(4)
