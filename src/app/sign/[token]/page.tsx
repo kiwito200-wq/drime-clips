@@ -245,7 +245,7 @@ export default function SignPage() {
           </motion.div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Signature complète !</h1>
           <p className="text-gray-500 mb-6">
-            Merci d'avoir signé <strong>"{data?.envelope.name}"</strong>.
+            Merci d&apos;avoir signé <strong>&ldquo;{data?.envelope.name}&rdquo;</strong>.
             <br />Vous recevrez une copie par email une fois que tous les signataires auront signé.
           </p>
           <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
