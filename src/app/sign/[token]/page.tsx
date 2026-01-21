@@ -91,18 +91,17 @@ export default function SignPage() {
       const signerData = await res.json()
       setData(signerData)
       
-      // Initialize field values
+      // Initialize field values (only pre-fill name and email, NOT date)
       const initialValues: Record<string, string> = {}
       signerData.fields.forEach((field: FieldData) => {
         if (field.value) {
           initialValues[field.id] = field.value
-        } else if (field.type === 'date') {
-          initialValues[field.id] = new Date().toLocaleDateString('fr-FR')
         } else if (field.type === 'name' && signerData.name) {
           initialValues[field.id] = signerData.name
         } else if (field.type === 'email') {
           initialValues[field.id] = signerData.email
         }
+        // Date fields are NOT auto-filled - user must choose
       })
       setFieldValues(initialValues)
       
@@ -466,74 +465,7 @@ export default function SignPage() {
           )}
         </div>
 
-        {/* Right sidebar - Field list */}
-        <div className="w-80 bg-white border-l overflow-y-auto hidden lg:block">
-          <div className="p-4 border-b">
-            <h2 className="font-semibold text-gray-900">Champs à remplir</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              {unfilledCount > 0 ? `${unfilledCount} champ${unfilledCount > 1 ? 's' : ''} restant${unfilledCount > 1 ? 's' : ''}` : 'Tous les champs sont remplis !'}
-            </p>
-          </div>
-          
-          <div className="p-4 space-y-3">
-            {data?.fields.map((field, index) => {
-              const value = fieldValues[field.id]
-              const isFilled = value && value.trim() !== ''
-              
-              return (
-                <button
-                  key={field.id}
-                  onClick={() => {
-                    setCurrentPage(field.page)
-                    setSelectedFieldId(field.id)
-                    if (field.type === 'signature' || field.type === 'initials') {
-                      handleSignField(field.id)
-                    }
-                    // Scroll to field
-                    setTimeout(() => {
-                      const fieldElement = document.querySelector(`[data-field-id="${field.id}"]`)
-                      if (fieldElement) {
-                        fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                      }
-                    }, 300)
-                  }}
-                  className={`w-full p-3 rounded-xl border text-left transition-all ${
-                    isFilled 
-                      ? 'border-green-200 bg-green-50' 
-                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        isFilled ? 'bg-green-100' : 'bg-gray-100'
-                      }`}>
-                        {isFilled ? (
-                          <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <span className="text-sm font-medium text-gray-500">{index + 1}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">
-                          {field.label || getFieldLabel(field.type)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Page {field.page + 1} {field.required && '• Requis'}
-                        </p>
-                      </div>
-                    </div>
-                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        {/* Sidebar removed - cleaner signing experience */}
       </div>
 
       {/* Signature Pad Modal */}

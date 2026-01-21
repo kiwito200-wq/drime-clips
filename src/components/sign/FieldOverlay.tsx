@@ -113,16 +113,18 @@ function FieldItem({
   // Handle click for signing
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (isSignMode && !isFilled) {
-      // For checkboxes, toggle directly without opening signature pad
+    if (isSignMode) {
+      // For checkboxes, ALWAYS allow toggle (check/uncheck) like DocuSeal
       if (field.type === 'checkbox') {
-        onUpdate({ value: !field.value ? 'true' : '' })
-      } else if (field.type === 'signature' || field.type === 'initials') {
-        // Only open signature pad for signature/initials fields
-        onSign()
-      } else {
-        // For text fields, date, etc., select the field to enable editing
-        onSelect()
+        onUpdate({ value: field.value === 'true' ? '' : 'true' })
+      } else if (!isFilled) {
+        if (field.type === 'signature' || field.type === 'initials') {
+          // Only open signature pad for signature/initials fields
+          onSign()
+        } else {
+          // For text fields, date, etc., select the field to enable editing
+          onSelect()
+        }
       }
     } else if (!isPreviewMode && !isSignMode) {
       onSelect()

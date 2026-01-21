@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Schibsted_Grotesk } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'] })
+const schibsted = Schibsted_Grotesk({ 
+  subsets: ['latin'],
+  variable: '--font-schibsted',
+})
 
 export const metadata: Metadata = {
   title: 'Drime Sign - Electronic Signatures',
@@ -16,7 +19,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={schibsted.className}>{children}</body>
     </html>
   )
 }
