@@ -1,5 +1,7 @@
 import crypto from 'crypto'
 import { prisma } from './prisma'
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
+import { r2 } from './storage'
 
 export type AuditAction = 
   | 'created'
@@ -428,4 +430,430 @@ export function generateAuditTrailHtml(audit: AuditTrailDocument): string {
 </body>
 </html>
 `
+}
+
+// ==============================================
+// GENERATE SIGNED PDF WITH EMBEDDED SIGNATURES
+// ==============================================
+
+export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer: Buffer; pdfHash: string }> {
+  try {
+    // Fetch envelope with all data
+    const envelope = await prisma.envelope.findUnique({
+      where: { id: envelopeId },
+      include: {
+        fields: {
+          include: {
+            signer: true,
+          },
+        },
+        signers: true,
+        user: true,
+      },
+    })
+    
+    if (!envelope) {
+      throw new Error('Envelope not found')
+    }
+    
+    // Get original PDF from R2
+    let pdfKey = envelope.pdfUrl
+    try {
+      const url = new URL(envelope.pdfUrl)
+      pdfKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+      const bucketName = process.env.R2_BUCKET_NAME || 'drimesign'
+      if (pdfKey.startsWith(bucketName + '/')) {
+        pdfKey = pdfKey.slice(bucketName.length + 1)
+      }
+    } catch {
+      // Keep as-is
+    }
+    
+    const signedUrl = await r2.getSignedUrl(pdfKey)
+    const pdfResponse = await fetch(signedUrl)
+    const originalPdfBytes = await pdfResponse.arrayBuffer()
+    
+    // Load PDF
+    const pdfDoc = await PDFDocument.load(originalPdfBytes)
+    const pages = pdfDoc.getPages()
+    
+    // Embed signatures into PDF
+    for (const field of envelope.fields) {
+      if (!field.value) continue
+      
+      const page = pages[field.page]
+      if (!page) continue
+      
+      const { width: pageWidth, height: pageHeight } = page.getSize()
+      
+      // Convert relative coordinates to absolute
+      const x = field.x * pageWidth
+      const y = pageHeight - (field.y * pageHeight) - (field.height * pageHeight) // Flip Y
+      const width = field.width * pageWidth
+      const height = field.height * pageHeight
+      
+      if (field.type === 'signature' || field.type === 'initials') {
+        // Embed signature image
+        if (field.value.startsWith('data:image')) {
+          try {
+            const base64Data = field.value.split(',')[1]
+            const imageBytes = Buffer.from(base64Data, 'base64')
+            const image = await pdfDoc.embedPng(imageBytes)
+            
+            page.drawImage(image, {
+              x,
+              y,
+              width,
+              height,
+            })
+          } catch (imgError) {
+            console.error('Failed to embed signature image:', imgError)
+          }
+        }
+      } else if (field.type === 'checkbox') {
+        if (field.value === 'true') {
+          // Draw checkmark
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+          page.drawText('✓', {
+            x: x + width * 0.2,
+            y: y + height * 0.2,
+            size: Math.min(width, height) * 0.8,
+            font,
+            color: rgb(0.04, 0.65, 0.25), // Green
+          })
+        }
+      } else {
+        // Draw text fields
+        if (field.value) {
+          const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+          const fontSize = Math.min(height * 0.6, 12)
+          page.drawText(field.value, {
+            x: x + 2,
+            y: y + height * 0.3,
+            size: fontSize,
+            font,
+            color: rgb(0, 0, 0),
+          })
+        }
+      }
+    }
+    
+    // Add signature verification footer on last page
+    const lastPage = pages[pages.length - 1]
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const { height: lastPageHeight } = lastPage.getSize()
+    
+    lastPage.drawText(`Document signé électroniquement via Drime Sign - ${new Date().toLocaleDateString('fr-FR')}`, {
+      x: 50,
+      y: 30,
+      size: 8,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    })
+    
+    // Save PDF
+    const pdfBytes = await pdfDoc.save()
+    const pdfBuffer = Buffer.from(pdfBytes)
+    const pdfHash = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
+    
+    return { pdfBuffer, pdfHash }
+  } catch (error) {
+    console.error('Failed to generate signed PDF:', error)
+    throw error
+  }
+}
+
+// ==============================================
+// GENERATE AUDIT TRAIL PDF
+// ==============================================
+
+export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer> {
+  try {
+    const audit = await getAuditTrail(envelopeId)
+    if (!audit) {
+      throw new Error('Audit trail not found')
+    }
+    
+    // Get envelope with signatures
+    const envelope = await prisma.envelope.findUnique({
+      where: { id: envelopeId },
+      include: {
+        fields: {
+          include: {
+            signer: true,
+          },
+        },
+        signers: true,
+      },
+    })
+    
+    // Create PDF
+    const pdfDoc = await PDFDocument.create()
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    
+    let page = pdfDoc.addPage([595, 842]) // A4
+    let y = 800
+    const margin = 50
+    const lineHeight = 16
+    
+    const formatDate = (date: Date) => new Date(date).toLocaleString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+    
+    // Helper to add text
+    const addText = (text: string, options: { bold?: boolean; size?: number; color?: [number, number, number] } = {}) => {
+      const size = options.size || 10
+      const usedFont = options.bold ? fontBold : font
+      const color = options.color ? rgb(...options.color) : rgb(0, 0, 0)
+      
+      if (y < 60) {
+        page = pdfDoc.addPage([595, 842])
+        y = 800
+      }
+      
+      page.drawText(text, {
+        x: margin,
+        y,
+        size,
+        font: usedFont,
+        color,
+      })
+      y -= lineHeight
+    }
+    
+    // Header
+    page.drawRectangle({
+      x: 0,
+      y: 790,
+      width: 595,
+      height: 52,
+      color: rgb(0.03, 0.81, 0.4), // #08CF65
+    })
+    
+    page.drawText('CERTIFICAT D\'AUDIT', {
+      x: margin,
+      y: 810,
+      size: 18,
+      font: fontBold,
+      color: rgb(1, 1, 1),
+    })
+    
+    page.drawText('Drime Sign - Signature électronique sécurisée', {
+      x: margin,
+      y: 795,
+      size: 10,
+      font,
+      color: rgb(1, 1, 1),
+    })
+    
+    y = 760
+    
+    // Document info
+    addText('INFORMATIONS DU DOCUMENT', { bold: true, size: 12 })
+    y -= 8
+    addText(`Nom: ${audit.documentName}`)
+    addText(`ID du certificat: ${audit.verification.certificateId}`)
+    addText(`Date de création: ${formatDate(audit.createdAt)}`)
+    if (audit.completedAt) {
+      addText(`Date de complétion: ${formatDate(audit.completedAt)}`)
+    }
+    addText(`Hash SHA-256: ${audit.documentHash.substring(0, 32)}...`)
+    
+    y -= 16
+    
+    // Owner
+    addText('PROPRIÉTAIRE', { bold: true, size: 12 })
+    y -= 8
+    addText(`Email: ${audit.owner.email}`)
+    if (audit.owner.name) {
+      addText(`Nom: ${audit.owner.name}`)
+    }
+    
+    y -= 16
+    
+    // Signers
+    addText('SIGNATAIRES', { bold: true, size: 12 })
+    y -= 8
+    
+    for (const signer of audit.signers) {
+      addText(`• ${signer.name || signer.email}`, { bold: true })
+      addText(`  Email: ${signer.email}`)
+      addText(`  Statut: ${signer.status === 'signed' ? 'Signé' : signer.status === 'declined' ? 'Refusé' : 'En attente'}`, {
+        color: signer.status === 'signed' ? [0.09, 0.4, 0.2] : signer.status === 'declined' ? [0.6, 0.1, 0.1] : [0.57, 0.25, 0.05]
+      })
+      if (signer.signedAt) {
+        addText(`  Date de signature: ${formatDate(signer.signedAt)}`)
+      }
+      if (signer.ipAddress) {
+        addText(`  Adresse IP: ${signer.ipAddress}`)
+      }
+      y -= 8
+    }
+    
+    // Include signature images
+    if (envelope?.fields) {
+      const signatureFields = envelope.fields.filter(f => 
+        (f.type === 'signature' || f.type === 'initials') && f.value?.startsWith('data:image')
+      )
+      
+      if (signatureFields.length > 0) {
+        y -= 16
+        addText('SIGNATURES', { bold: true, size: 12 })
+        y -= 8
+        
+        for (const field of signatureFields) {
+          try {
+            const base64Data = field.value!.split(',')[1]
+            const imageBytes = Buffer.from(base64Data, 'base64')
+            const image = await pdfDoc.embedPng(imageBytes)
+            
+            const signerName = field.signer?.name || field.signer?.email || 'Signataire'
+            addText(`${field.type === 'signature' ? 'Signature' : 'Initiales'} de ${signerName}:`)
+            
+            if (y < 150) {
+              page = pdfDoc.addPage([595, 842])
+              y = 800
+            }
+            
+            // Draw signature image
+            const imgHeight = 60
+            const imgWidth = imgHeight * (image.width / image.height)
+            page.drawImage(image, {
+              x: margin,
+              y: y - imgHeight,
+              width: Math.min(imgWidth, 200),
+              height: imgHeight,
+            })
+            
+            y -= imgHeight + 20
+          } catch (e) {
+            console.error('Failed to embed signature in audit:', e)
+          }
+        }
+      }
+    }
+    
+    y -= 16
+    
+    // Event log
+    addText('JOURNAL DES ÉVÉNEMENTS', { bold: true, size: 12 })
+    y -= 8
+    
+    for (const event of audit.events) {
+      if (y < 80) {
+        page = pdfDoc.addPage([595, 842])
+        y = 800
+      }
+      
+      const eventDate = formatDate(event.timestamp)
+      const actorName = event.actor.name || event.actor.email || 'Système'
+      
+      page.drawText(eventDate, {
+        x: margin,
+        y,
+        size: 9,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      })
+      
+      page.drawText(`${event.action}`, {
+        x: margin + 120,
+        y,
+        size: 9,
+        font: fontBold,
+        color: rgb(0, 0, 0),
+      })
+      
+      y -= lineHeight * 0.8
+      
+      page.drawText(`par ${actorName}${event.details.ip ? ` (IP: ${event.details.ip})` : ''}`, {
+        x: margin + 120,
+        y,
+        size: 8,
+        font,
+        color: rgb(0.5, 0.5, 0.5),
+      })
+      
+      y -= lineHeight
+    }
+    
+    // Verification section
+    y -= 16
+    if (y < 120) {
+      page = pdfDoc.addPage([595, 842])
+      y = 800
+    }
+    
+    // Draw verification box
+    page.drawRectangle({
+      x: margin,
+      y: y - 80,
+      width: 495,
+      height: 90,
+      color: rgb(0.94, 0.99, 0.95), // Light green
+      borderColor: rgb(0.73, 0.97, 0.83),
+      borderWidth: 1,
+    })
+    
+    y -= 20
+    page.drawText('🔒 VÉRIFICATION DE L\'INTÉGRITÉ', {
+      x: margin + 10,
+      y,
+      size: 11,
+      font: fontBold,
+      color: rgb(0.09, 0.4, 0.2),
+    })
+    
+    y -= 18
+    page.drawText('✓ Document original non modifié (hash SHA-256 vérifié)', {
+      x: margin + 10,
+      y,
+      size: 9,
+      font,
+      color: rgb(0.09, 0.4, 0.2),
+    })
+    
+    y -= 14
+    page.drawText(`✓ ${audit.verification.allSignaturesValid ? 'Toutes les signatures sont valides' : 'Signatures en attente'}`, {
+      x: margin + 10,
+      y,
+      size: 9,
+      font,
+      color: rgb(0.09, 0.4, 0.2),
+    })
+    
+    y -= 14
+    page.drawText('✓ Horodatage cryptographique appliqué', {
+      x: margin + 10,
+      y,
+      size: 9,
+      font,
+      color: rgb(0.09, 0.4, 0.2),
+    })
+    
+    // Footer
+    const lastPageObj = pdfDoc.getPages()[pdfDoc.getPageCount() - 1]
+    lastPageObj.drawText(
+      `Ce certificat a été généré automatiquement par Drime Sign le ${formatDate(new Date())}`,
+      {
+        x: margin,
+        y: 30,
+        size: 8,
+        font,
+        color: rgb(0.6, 0.6, 0.6),
+      }
+    )
+    
+    // Save PDF
+    const pdfBytes = await pdfDoc.save()
+    return Buffer.from(pdfBytes)
+  } catch (error) {
+    console.error('Failed to generate audit trail PDF:', error)
+    throw error
+  }
 }

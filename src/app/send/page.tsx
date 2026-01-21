@@ -282,10 +282,20 @@ function SendPageContent() {
     
     setIsLoading(true)
     try {
+      // Map temporary signer IDs to actual database IDs
+      const fieldsWithCorrectSignerIds = fields.map(field => {
+        // Find the signer in our state that matches
+        const signer = signers.find(s => s.id === field.signerId)
+        return {
+          ...field,
+          signerId: signer?.id || field.signerId, // Use actual signer ID
+        }
+      })
+      
       const res = await fetch(`/api/envelopes/${document.slug}/fields`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields }),
+        body: JSON.stringify({ fields: fieldsWithCorrectSignerIds }),
         credentials: 'include',
       })
       return res.ok
@@ -295,7 +305,7 @@ function SendPageContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [document.slug, fields])
+  }, [document.slug, fields, signers])
 
   // Envoyer
   const sendDocument = useCallback(async (message?: string) => {

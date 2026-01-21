@@ -25,6 +25,10 @@ export interface CompletedEmailData {
   completedAt: Date
   downloadLink?: string
   auditTrailLink?: string
+  attachments?: {
+    signedPdf?: Buffer
+    auditTrailPdf?: Buffer
+  }
 }
 
 export interface ReminderEmailData {
@@ -128,15 +132,33 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
 // DOCUMENT COMPLETED EMAIL
 // ==============================================
 export async function sendCompletedEmail(data: CompletedEmailData) {
-  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink } = data
+  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments } = data
   
   const greeting = signerName ? `Bonjour ${signerName},` : 'Bonjour,'
+
+  // Build attachments array for Resend
+  const emailAttachments: { filename: string; content: Buffer }[] = []
+  
+  if (attachments?.signedPdf) {
+    emailAttachments.push({
+      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}_signe.pdf`,
+      content: attachments.signedPdf,
+    })
+  }
+  
+  if (attachments?.auditTrailPdf) {
+    emailAttachments.push({
+      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}_certificat_audit.pdf`,
+      content: attachments.auditTrailPdf,
+    })
+  }
 
   try {
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: `✅ "${documentName}" a été signé`,
+      attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       html: `
 <!DOCTYPE html>
 <html>

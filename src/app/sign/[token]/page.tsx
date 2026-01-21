@@ -227,25 +227,37 @@ export default function SignPage() {
     }
   }, [updateFieldValue, internalFields])
 
+  // Check if a field is filled (handles different field types)
+  const isFieldFilled = useCallback((fieldId: string, fieldType: string): boolean => {
+    const value = fieldValues[fieldId]
+    if (!value) return false
+    
+    // For checkbox, check if value is 'true'
+    if (fieldType === 'checkbox') {
+      return value === 'true'
+    }
+    
+    // For other fields, check if value is not empty
+    return value.trim() !== ''
+  }, [fieldValues])
+
   // Check if all required fields are filled
   const allRequiredFieldsFilled = useCallback(() => {
     if (!data) return false
     return data.fields.every(field => {
       if (!field.required) return true
-      const value = fieldValues[field.id]
-      return value && value.trim() !== ''
+      return isFieldFilled(field.id, field.type)
     })
-  }, [data, fieldValues])
+  }, [data, isFieldFilled])
 
   // Get unfilled required fields
   const unfilledRequiredFields = useCallback(() => {
     if (!data) return []
     return data.fields.filter(field => {
       if (!field.required) return false
-      const value = fieldValues[field.id]
-      return !value || value.trim() === ''
+      return !isFieldFilled(field.id, field.type)
     })
-  }, [data, fieldValues])
+  }, [data, isFieldFilled])
 
   // Complete signing
   async function handleComplete() {
