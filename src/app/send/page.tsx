@@ -38,21 +38,15 @@ export interface DocumentData {
 }
 
 const STEPS = [
-  { id: 1, name: 'Sélectionner des documents', icon: 'document' },
-  { id: 2, name: 'Ajouter des signataires', icon: 'users' },
-  { id: 3, name: 'Positionner les champs', icon: 'fields' },
-  { id: 4, name: 'Vérifier et envoyer', icon: 'check' },
+  { id: 1, label: 'Document' },
+  { id: 2, label: 'Signataires' },
+  { id: 3, label: 'Champs' },
+  { id: 4, label: 'Envoyer' },
 ]
 
 const SIGNER_COLORS = [
-  '#EF4444', // Red
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Amber
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#F97316', // Orange
+  '#EF4444', '#3B82F6', '#10B981', '#F59E0B', 
+  '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
 ]
 
 function SendPageContent() {
@@ -70,9 +64,8 @@ function SendPageContent() {
   const [signers, setSigners] = useState<Signer[]>([])
   const [fields, setFields] = useState<SignField[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [isSelfSign, setIsSelfSign] = useState(false)
 
-  // Vérifier si on a un slug existant (document déjà uploadé)
+  // Vérifier si on a un slug existant
   useEffect(() => {
     const slug = searchParams.get('slug')
     if (slug) {
@@ -94,8 +87,7 @@ function SendPageContent() {
           envelopeId: envelope.id,
           slug: envelope.slug,
         })
-        // Charger les signataires existants
-        if (envelope.signers && envelope.signers.length > 0) {
+        if (envelope.signers?.length > 0) {
           setSigners(envelope.signers.map((s: any) => ({
             id: s.id,
             name: s.name || '',
@@ -103,8 +95,7 @@ function SendPageContent() {
             color: s.color,
           })))
         }
-        // Charger les champs existants
-        if (envelope.fields && envelope.fields.length > 0) {
+        if (envelope.fields?.length > 0) {
           setFields(envelope.fields.map((f: any) => ({
             id: f.id,
             type: f.type,
@@ -118,7 +109,7 @@ function SendPageContent() {
             label: f.label || '',
           })))
         }
-        setCurrentStep(2) // Passer à l'étape signataires
+        setCurrentStep(2)
       }
     } catch (error) {
       console.error('Failed to load envelope:', error)
@@ -127,7 +118,7 @@ function SendPageContent() {
     }
   }
 
-  // Upload du document
+  // Upload document
   const handleDocumentUpload = useCallback(async (file: File, name: string) => {
     setIsLoading(true)
     try {
@@ -152,47 +143,67 @@ function SendPageContent() {
         })
         setCurrentStep(2)
       } else {
-        alert('Échec de l\'upload. Veuillez réessayer.')
+        alert('Échec de l\'upload')
       }
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Échec de l\'upload. Veuillez réessayer.')
+      alert('Échec de l\'upload')
     } finally {
       setIsLoading(false)
     }
   }, [])
 
-  // Self-sign (je suis le seul signataire)
+  // Self-sign - je suis le seul signataire
   const handleSelfSign = useCallback(async () => {
-    setIsSelfSign(true)
-    // Récupérer l'email de l'utilisateur connecté
+    setIsLoading(true)
     try {
+      // Récupérer l'utilisateur connecté
       const res = await fetch('/api/auth/me', { credentials: 'include' })
+      let email = 'moi@drime.cloud'
+      let name = 'Moi'
+      
       if (res.ok) {
         const data = await res.json()
         if (data.user) {
-          const selfSigner: Signer = {
-            id: 'self-' + Date.now(),
-            name: data.user.name || 'Moi',
-            email: data.user.email,
-            color: SIGNER_COLORS[0],
-          }
-          setSigners([selfSigner])
-          setCurrentStep(3)
+          email = data.user.email
+          name = data.user.name || 'Moi'
         }
       }
-    } catch {
-      // Fallback: utiliser un placeholder
+
       const selfSigner: Signer = {
         id: 'self-' + Date.now(),
-        name: 'Moi',
-        email: 'dev@drime.cloud',
+        name,
+        email,
         color: SIGNER_COLORS[0],
       }
       setSigners([selfSigner])
+      
+      // Sauvegarder le signataire en base
+      if (document.slug) {
+        await fetch(`/api/envelopes/${document.slug}/signers`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signers: [{ name, email, color: SIGNER_COLORS[0] }] }),
+          credentials: 'include',
+        })
+      }
+      
+      // Passer directement à l'étape des champs
       setCurrentStep(3)
+    } catch (error) {
+      console.error('Self-sign error:', error)
+      // Fallback
+      setSigners([{
+        id: 'self-' + Date.now(),
+        name: 'Moi',
+        email: 'moi@drime.cloud',
+        color: SIGNER_COLORS[0],
+      }])
+      setCurrentStep(3)
+    } finally {
+      setIsLoading(false)
     }
-  }, [])
+  }, [document.slug])
 
   // Ajouter un signataire
   const addSigner = useCallback((name: string, email: string) => {
@@ -205,14 +216,11 @@ function SendPageContent() {
     setSigners(prev => [...prev, newSigner])
   }, [signers.length])
 
-  // Supprimer un signataire
   const removeSigner = useCallback((id: string) => {
     setSigners(prev => prev.filter(s => s.id !== id))
-    // Supprimer aussi les champs associés
     setFields(prev => prev.filter(f => f.signerId !== id))
   }, [])
 
-  // Mettre à jour un signataire
   const updateSigner = useCallback((id: string, updates: Partial<Signer>) => {
     setSigners(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
   }, [])
@@ -232,7 +240,6 @@ function SendPageContent() {
       
       if (res.ok) {
         const data = await res.json()
-        // Mettre à jour les IDs des signataires avec ceux du serveur
         if (data.signers) {
           setSigners(data.signers.map((s: any, i: number) => ({
             ...signers[i],
@@ -250,26 +257,19 @@ function SendPageContent() {
     }
   }, [document.slug, signers])
 
-  // Ajouter un champ
+  // Champs
   const addField = useCallback((field: Omit<SignField, 'id'>) => {
-    const newField: SignField = {
-      ...field,
-      id: 'field-' + Date.now(),
-    }
-    setFields(prev => [...prev, newField])
+    setFields(prev => [...prev, { ...field, id: 'field-' + Date.now() }])
   }, [])
 
-  // Supprimer un champ
   const removeField = useCallback((id: string) => {
     setFields(prev => prev.filter(f => f.id !== id))
   }, [])
 
-  // Mettre à jour un champ
   const updateField = useCallback((id: string, updates: Partial<SignField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
   }, [])
 
-  // Sauvegarder les champs
   const saveFields = useCallback(async () => {
     if (!document.slug) return false
     
@@ -281,7 +281,6 @@ function SendPageContent() {
         body: JSON.stringify({ fields }),
         credentials: 'include',
       })
-      
       return res.ok
     } catch (error) {
       console.error('Failed to save fields:', error)
@@ -291,16 +290,14 @@ function SendPageContent() {
     }
   }, [document.slug, fields])
 
-  // Envoyer le document
+  // Envoyer
   const sendDocument = useCallback(async () => {
     if (!document.slug) return
     
     setIsLoading(true)
     try {
-      // Sauvegarder les champs d'abord
       await saveFields()
       
-      // Envoyer pour signature
       const res = await fetch(`/api/envelopes/${document.slug}/send`, {
         method: 'POST',
         credentials: 'include',
@@ -309,142 +306,72 @@ function SendPageContent() {
       if (res.ok) {
         router.push(`/dashboard?sent=${document.slug}`)
       } else {
-        alert('Échec de l\'envoi. Veuillez réessayer.')
+        alert('Échec de l\'envoi')
       }
     } catch (error) {
       console.error('Send error:', error)
-      alert('Échec de l\'envoi. Veuillez réessayer.')
+      alert('Échec de l\'envoi')
     } finally {
       setIsLoading(false)
     }
   }, [document.slug, saveFields, router])
 
-  // Navigation entre étapes
-  const goToStep = async (step: number) => {
-    // Sauvegarder avant de changer d'étape
-    if (currentStep === 2 && step > 2 && signers.length > 0) {
-      const saved = await saveSigners()
-      if (!saved) {
-        alert('Erreur lors de la sauvegarde des signataires')
-        return
-      }
-    }
-    if (currentStep === 3 && step > 3) {
-      const saved = await saveFields()
-      if (!saved) {
-        alert('Erreur lors de la sauvegarde des champs')
-        return
-      }
-    }
-    setCurrentStep(step)
-  }
-
-  const canGoNext = () => {
-    switch (currentStep) {
-      case 1: return document.pdfUrl !== null
-      case 2: return signers.length > 0 && signers.every(s => s.email.includes('@'))
-      case 3: return fields.length > 0
-      case 4: return true
-      default: return false
-    }
-  }
-
-  // Render step icon
-  const renderStepIcon = (icon: string, isActive: boolean, isCompleted: boolean) => {
-    const color = isCompleted ? 'text-white' : isActive ? 'text-[#08CF65]' : 'text-gray-400'
-    
-    switch (icon) {
-      case 'document':
-        return (
-          <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-        )
-      case 'users':
-        return (
-          <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-          </svg>
-        )
-      case 'fields':
-        return (
-          <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-          </svg>
-        )
-      case 'check':
-        return (
-          <svg className={`w-5 h-5 ${color}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )
-      default:
-        return null
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header with steps */}
-      <header className="bg-white border-b shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+      {/* Header compact style HelloSign */}
+      <header className="bg-white border-b">
+        <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Close button */}
+            {/* Close */}
             <button
               onClick={() => router.push('/dashboard')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+              className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <span className="font-medium">Envoyer pour signature</span>
             </button>
 
-            {/* Steps indicator */}
-            <div className="flex items-center gap-2">
+            {/* Steps - Style HelloSign compact */}
+            <div className="flex items-center gap-1">
               {STEPS.map((step, index) => {
                 const isActive = currentStep === step.id
                 const isCompleted = currentStep > step.id
-                const isClickable = step.id < currentStep || (step.id === currentStep + 1 && canGoNext())
                 
                 return (
                   <div key={step.id} className="flex items-center">
                     {index > 0 && (
-                      <div className={`w-12 h-0.5 mx-1 ${isCompleted ? 'bg-[#08CF65]' : 'bg-gray-200'}`} />
+                      <div className={`w-8 h-px mx-1 ${isCompleted ? 'bg-[#08CF65]' : 'bg-gray-200'}`} />
                     )}
-                    <button
-                      onClick={() => isClickable && goToStep(step.id)}
-                      disabled={!isClickable}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                        isActive 
-                          ? 'bg-green-50 border border-[#08CF65]' 
-                          : isCompleted 
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                          isCompleted 
                             ? 'bg-[#08CF65] text-white' 
-                            : 'text-gray-400'
-                      } ${isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
-                    >
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center ${
-                        isCompleted ? 'bg-white/20' : isActive ? 'bg-[#08CF65]/10' : 'bg-gray-100'
-                      }`}>
-                        {renderStepIcon(step.icon, isActive, isCompleted)}
+                            : isActive 
+                              ? 'bg-[#08CF65] text-white ring-4 ring-[#08CF65]/20' 
+                              : 'bg-gray-100 text-gray-400'
+                        }`}
+                      >
+                        {isCompleted ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          step.id
+                        )}
                       </div>
-                      <span className={`text-sm font-medium hidden lg:block ${
-                        isActive ? 'text-[#08CF65]' : isCompleted ? 'text-white' : 'text-gray-400'
-                      }`}>
-                        {step.name}
+                      <span className={`text-xs mt-1 ${isActive || isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {step.label}
                       </span>
-                    </button>
+                    </div>
                   </div>
                 )
               })}
             </div>
 
-            {/* Help button */}
-            <button className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </button>
+            {/* Spacer */}
+            <div className="w-9" />
           </div>
         </div>
       </header>
@@ -455,25 +382,22 @@ function SendPageContent() {
           {currentStep === 1 && (
             <motion.div
               key="step1"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="h-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
-              <StepUpload
-                onUpload={handleDocumentUpload}
-                isLoading={isLoading}
-              />
+              <StepUpload onUpload={handleDocumentUpload} isLoading={isLoading} />
             </motion.div>
           )}
 
           {currentStep === 2 && (
             <motion.div
               key="step2"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="h-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
               <StepSigners
                 signers={signers}
@@ -494,10 +418,10 @@ function SendPageContent() {
           {currentStep === 3 && (
             <motion.div
               key="step3"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="h-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
               <StepFields
                 document={document}
@@ -519,10 +443,10 @@ function SendPageContent() {
           {currentStep === 4 && (
             <motion.div
               key="step4"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="h-full"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
               <StepReview
                 document={document}
@@ -539,10 +463,10 @@ function SendPageContent() {
 
       {/* Loading overlay */}
       {isLoading && (
-        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 shadow-xl">
-            <div className="w-10 h-10 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-gray-600 mt-4">Chargement...</p>
+        <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+          <div className="flex flex-col items-center">
+            <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-500 mt-3 text-sm">Chargement...</p>
           </div>
         </div>
       )}
@@ -554,10 +478,7 @@ export default function SendPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Chargement...</p>
-        </div>
+        <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
       </div>
     }>
       <SendPageContent />

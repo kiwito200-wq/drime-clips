@@ -1,4 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+
+const s3Client = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+  },
+})
+
+const BUCKET = process.env.R2_BUCKET_NAME || 'drime-sign'
 
 // Proxy API pour servir les PDFs depuis R2 (contourne CORS)
 export async function GET(
@@ -6,22 +21,36 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const path = params.path.join('/')
-    const pdfUrl = `${process.env.R2_PUBLIC_URL}/${path}`
+    const key = params.path.join('/')
     
-    console.log('[PDF Proxy] Fetching:', pdfUrl)
+    console.log('[PDF Proxy] Fetching from S3:', key)
     
-    // Fetch le PDF depuis R2
-    const response = await fetch(pdfUrl)
+    // Fetch directly from S3/R2 using credentials
+    const command = new GetObjectCommand({
+      Bucket: BUCKET,
+      Key: key,
+    })
     
-    if (!response.ok) {
-      console.error('[PDF Proxy] Failed to fetch PDF:', response.status)
+    const response = await s3Client.send(command)
+    
+    if (!response.Body) {
+      console.error('[PDF Proxy] No body in response')
       return NextResponse.json({ error: 'PDF not found' }, { status: 404 })
     }
     
-    const pdfBuffer = await response.arrayBuffer()
+    // Convert stream to buffer
+    const chunks: Uint8Array[] = []
+    const reader = response.Body.transformToWebStream().getReader()
     
-    // Retourner le PDF avec les headers CORS appropriés
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      chunks.push(value)
+    }
+    
+    const pdfBuffer = Buffer.concat(chunks)
+    
+    // Return PDF with CORS headers
     return new NextResponse(pdfBuffer, {
       status: 200,
       headers: {
