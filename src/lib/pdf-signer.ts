@@ -89,11 +89,11 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
       },
       {
         type: forge.pki.oids.signingTime,
-        value: signedAt,
+        value: signedAt.toISOString(),
       },
       {
         type: forge.pki.oids.messageDigest,
-        // Will be calculated
+        value: documentHash,
       },
     ],
   })
