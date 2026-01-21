@@ -450,7 +450,17 @@ function SendPageContent() {
                 onBack={() => setCurrentStep(2)}
                 onNext={async () => {
                   const saved = await saveFields()
-                  if (saved) setCurrentStep(4)
+                  if (saved) {
+                    // Check if auto-sign (single signer = current user)
+                    const isAutoSign = signers.length === 1
+                    if (isAutoSign) {
+                      // Auto-sign: send directly and redirect to signing page
+                      await sendDocument()
+                    } else {
+                      // Multiple signers: go to review step
+                      setCurrentStep(4)
+                    }
+                  }
                 }}
                 isLoading={isLoading}
               />
