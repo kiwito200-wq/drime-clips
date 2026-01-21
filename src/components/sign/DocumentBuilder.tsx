@@ -64,9 +64,50 @@ export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: in
   const pagesContainerRef = useRef<HTMLDivElement>(null)
 
   // Load envelope data
+  const loadEnvelope = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/envelopes/${envelopeSlug}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        const env = data.envelope
+        
+        // Convert DB signers to Recipients
+        const loadedRecipients: Recipient[] = env.signers.map((s: any) => ({
+          id: s.id,
+          name: s.name || s.email,
+          email: s.email,
+          color: s.color,
+        }))
+        setRecipients(loadedRecipients)
+        if (loadedRecipients.length > 0) {
+          setSelectedRecipientId(loadedRecipients[0].id)
+        }
+        
+        // Convert DB fields to Fields
+        const loadedFields: Field[] = env.fields.map((f: any) => ({
+          id: f.id,
+          type: f.type as FieldType,
+          recipientId: f.signerId,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          required: f.required,
+          label: f.label || '',
+          placeholder: f.placeholder || '',
+          value: f.value || undefined,
+        }))
+        setFields(loadedFields)
+      }
+    } catch (error) {
+      console.error('Failed to load envelope:', error)
+    }
+  }, [envelopeSlug])
+
   useEffect(() => {
     loadEnvelope()
-  }, [envelopeSlug])
+  }, [loadEnvelope])
 
   async function loadEnvelope() {
     try {

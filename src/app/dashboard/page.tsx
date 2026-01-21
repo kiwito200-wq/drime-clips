@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -27,11 +27,18 @@ export default function Dashboard() {
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    checkAuthAndFetch()
+  const fetchEnvelopes = useCallback(async () => {
+    const envelopesRes = await fetch('/api/envelopes', {
+      credentials: 'include',
+    })
+    
+    if (envelopesRes.ok) {
+      const data = await envelopesRes.json()
+      setEnvelopes(data.envelopes || [])
+    }
   }, [])
 
-  async function checkAuthAndFetch() {
+  const checkAuthAndFetch = useCallback(async () => {
     try {
       // Try to get user (optional in dev mode)
       const localAuthRes = await fetch('/api/auth/me', {
@@ -77,18 +84,11 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
-  
-  async function fetchEnvelopes() {
-    const envelopesRes = await fetch('/api/envelopes', {
-      credentials: 'include',
-    })
-    
-    if (envelopesRes.ok) {
-      const data = await envelopesRes.json()
-      setEnvelopes(data.envelopes || [])
-    }
-  }
+  }, [fetchEnvelopes])
+
+  useEffect(() => {
+    checkAuthAndFetch()
+  }, [checkAuthAndFetch])
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DocumentBuilder from '@/components/sign/DocumentBuilder'
 
@@ -12,11 +12,7 @@ export default function PrepareDocument() {
   const [envelope, setEnvelope] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchEnvelope()
-  }, [slug])
-
-  async function fetchEnvelope() {
+  const fetchEnvelope = useCallback(async () => {
     try {
       const res = await fetch(`/api/envelopes/${slug}`, { credentials: 'include' })
       if (res.ok) {
@@ -31,7 +27,11 @@ export default function PrepareDocument() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [slug, router])
+
+  useEffect(() => {
+    fetchEnvelope()
+  }, [fetchEnvelope])
 
   if (loading) {
     return (
