@@ -117,20 +117,14 @@ function FieldItem({
       // For checkboxes, ALWAYS allow toggle (check/uncheck) like DocuSeal
       if (field.type === 'checkbox') {
         onUpdate({ value: field.value === 'true' ? '' : 'true' })
-      } else if (field.type === 'signature' || field.type === 'initials') {
-        // Open signature pad for signature/initials fields
+      } else {
+        // All other fields open a popup modal (signature, initials, date, text, name, email)
         onSign()
-      } else if (field.type === 'date') {
-        // Open date modal for date fields
-        onSign()
-      } else if (!isFilled) {
-        // For text fields, etc., select the field to enable editing
-        onSelect()
       }
     } else if (!isPreviewMode && !isSignMode) {
       onSelect()
     }
-  }, [isSignMode, isPreviewMode, isFilled, field.type, field.value, onSign, onSelect, onUpdate])
+  }, [isSignMode, isPreviewMode, field.type, field.value, onSign, onSelect, onUpdate])
 
   // Handle drag
   useEffect(() => {
@@ -312,57 +306,28 @@ function FieldItem({
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-            ) : isSignMode && (field.type === 'text' || field.type === 'date' || field.type === 'name' || field.type === 'email') ? (
-              /* Input for text fields in sign mode (even when filled) */
-              <input
-                type={field.type === 'email' ? 'email' : field.type === 'date' ? 'date' : 'text'}
-                value={(field.value as string) || ''}
-                onChange={(e) => {
-                  e.stopPropagation()
-                  onUpdate({ value: e.target.value })
-                }}
-                onClick={(e) => e.stopPropagation()}
-                placeholder={field.label || field.placeholder || getFieldLabel(field.type)}
-                className="w-full h-full px-1 text-xs bg-transparent border-none outline-none text-gray-900 placeholder-gray-400"
-                autoFocus={isSelected}
-              />
             ) : (
-              <span className="text-xs font-medium text-gray-900 truncate px-1">
+              /* Display value for text/date/name/email - clicking opens popup */
+              <span className="text-xs font-medium text-gray-900 truncate px-1 cursor-pointer">
                 {field.value as string}
               </span>
             )}
           </div>
         ) : (
-          /* Empty Field Content */
-          isSignMode && (field.type === 'text' || field.type === 'date' || field.type === 'name' || field.type === 'email') ? (
-            /* Input for text fields in sign mode */
-            <input
-              type={field.type === 'email' ? 'email' : field.type === 'date' ? 'date' : 'text'}
-              value={(field.value as string) || ''}
-              onChange={(e) => {
-                e.stopPropagation()
-                onUpdate({ value: e.target.value })
-              }}
-              onClick={(e) => e.stopPropagation()}
-              placeholder={field.label || field.placeholder || getFieldLabel(field.type)}
-              className="w-full h-full px-1 text-xs bg-transparent border-none outline-none text-gray-900 placeholder-gray-400"
-              autoFocus={isSelected}
-            />
-          ) : (
-            <div className="flex items-center justify-center gap-1 text-gray-600 px-1 overflow-hidden">
-              <span style={{ color: recipientColor }}>
-                {getFieldIcon(field.type)}
+          /* Empty Field Content - clicking opens popup */
+          <div className="flex items-center justify-center gap-1 text-gray-600 px-1 overflow-hidden cursor-pointer">
+            <span style={{ color: recipientColor }}>
+              {getFieldIcon(field.type)}
+            </span>
+            {field.type !== 'checkbox' && (
+              <span 
+                className="text-xs font-medium truncate" 
+                style={{ color: recipientColor }}
+              >
+                {field.label || field.placeholder || getFieldLabel(field.type)}
               </span>
-              {field.type !== 'checkbox' && (
-                <span 
-                  className="text-xs font-medium truncate" 
-                  style={{ color: recipientColor }}
-                >
-                  {field.label || field.placeholder || getFieldLabel(field.type)}
-                </span>
-              )}
-            </div>
-          )
+            )}
+          </div>
         )}
       </div>
 

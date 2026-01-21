@@ -66,7 +66,7 @@ export default function FieldInputModal({
     switch (fieldType) {
       case 'date':
         return {
-          title: 'Select Date',
+          title: 'Date',
           inputType: 'date',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,7 @@ export default function FieldInputModal({
         }
       case 'text':
         return {
-          title: 'Enter Text',
+          title: 'Texte',
           inputType: 'text',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,7 +86,7 @@ export default function FieldInputModal({
         }
       case 'number':
         return {
-          title: 'Enter Number',
+          title: 'Nombre',
           inputType: 'number',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@ export default function FieldInputModal({
         }
       case 'name':
         return {
-          title: 'Enter Your Name',
+          title: 'Nom',
           inputType: 'text',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@ export default function FieldInputModal({
         }
       case 'email':
         return {
-          title: 'Enter Email Address',
+          title: 'Email',
           inputType: 'email',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export default function FieldInputModal({
         }
       case 'phone':
         return {
-          title: 'Enter Phone Number',
+          title: 'Téléphone',
           inputType: 'tel',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,7 +126,7 @@ export default function FieldInputModal({
         }
       case 'select':
         return {
-          title: 'Select Option',
+          title: 'Sélection',
           inputType: 'text',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +136,7 @@ export default function FieldInputModal({
         }
       case 'image':
         return {
-          title: 'Upload Image',
+          title: 'Image',
           inputType: 'text',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,7 +146,7 @@ export default function FieldInputModal({
         }
       case 'file':
         return {
-          title: 'Upload File',
+          title: 'Fichier',
           inputType: 'text',
           icon: (
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,7 +156,7 @@ export default function FieldInputModal({
         }
       default:
         return {
-          title: 'Enter Value',
+          title: 'Valeur',
           inputType: 'text',
           icon: null,
         }
@@ -181,73 +181,81 @@ export default function FieldInputModal({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4"
+        className="fixed inset-0 bg-black/50 z-50"
         onClick={onClose}
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl z-50 w-full max-w-md overflow-hidden"
       >
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
-        >
           {/* Header */}
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-              {config.icon}
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">{config.title}</h2>
-              {placeholder && (
-                <p className="text-xs text-gray-500">{placeholder}</p>
-              )}
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                  {config.icon}
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{config.title}</h2>
+                  <p className="text-sm text-gray-500">Entrez la valeur</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </div>
           </div>
 
           {/* Input */}
-          <div className="p-5">
+          <div className="p-6">
             <input
               ref={inputRef}
               type={config.inputType}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={placeholder || `Enter ${fieldType}...`}
-              className="w-full border border-gray-300 rounded-[10px] px-4 py-2.5 text-sm outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/20 transition-colors"
+              placeholder={placeholder || config.title}
+              className="w-full px-4 py-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
 
           {/* Actions */}
-          <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-end gap-2 bg-gray-50">
+          <div className="px-5 py-4 border-t border-gray-100 flex items-center gap-3 bg-gray-50">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-[10px] transition-colors"
+              className="flex-1 px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium"
             >
-              Cancel
+              Annuler
             </button>
             {hasNextField && onSaveAndNext ? (
               <button
                 onClick={handleSaveAndNext}
                 disabled={!value.trim()}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Next
+                Suivant
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
             ) : (
               <button
                 onClick={handleSave}
                 disabled={!value.trim()}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Apply
+                Confirmer
               </button>
             )}
           </div>
         </motion.div>
-      </motion.div>
     </AnimatePresence>
   )
 }

@@ -7,6 +7,7 @@ import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
 import SignaturePad from '@/components/sign/SignaturePad'
 import DateModal from '@/components/sign/DateModal'
+import FieldInputModal from '@/components/sign/FieldInputModal'
 import { Field, FieldType } from '@/components/sign/types'
 
 interface FieldData {
@@ -59,6 +60,9 @@ export default function SignPage() {
   const [signaturePadType, setSignaturePadType] = useState<'signature' | 'initials'>('signature')
   const [dateModalOpen, setDateModalOpen] = useState(false)
   const [dateFieldId, setDateFieldId] = useState<string | null>(null)
+  const [textModalOpen, setTextModalOpen] = useState(false)
+  const [textFieldId, setTextFieldId] = useState<string | null>(null)
+  const [textFieldType, setTextFieldType] = useState<FieldType>('text')
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
   
   // Convert fields to Field format
@@ -149,6 +153,11 @@ export default function SignPage() {
       // Open date modal for date fields
       setDateFieldId(fieldId)
       setDateModalOpen(true)
+    } else if (field.type === 'text' || field.type === 'name' || field.type === 'email') {
+      // Open text input modal for text/name/email fields
+      setTextFieldId(fieldId)
+      setTextFieldType(field.type as FieldType)
+      setTextModalOpen(true)
     }
   }, [internalFields])
 
@@ -211,6 +220,20 @@ export default function SignPage() {
     setDateModalOpen(false)
     setDateFieldId(null)
   }, [dateFieldId, updateFieldValue, scrollToNextField, fieldValues])
+
+  // Handle text input save
+  const handleTextSave = useCallback((textValue: string) => {
+    if (textFieldId) {
+      updateFieldValue(textFieldId, textValue)
+      // Auto-scroll to next field
+      setTimeout(() => {
+        const updatedValues = { ...fieldValues, [textFieldId]: textValue }
+        scrollToNextField(textFieldId, updatedValues)
+      }, 100)
+    }
+    setTextModalOpen(false)
+    setTextFieldId(null)
+  }, [textFieldId, updateFieldValue, scrollToNextField, fieldValues])
 
   // Handle field update (for checkboxes, text fields, etc.)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
@@ -514,6 +537,19 @@ export default function SignPage() {
         title="Date"
         currentValue={dateFieldId ? fieldValues[dateFieldId] : ''}
         required={dateFieldId ? (internalFields.find(f => f.id === dateFieldId)?.required ?? true) : true}
+      />
+
+      {/* Text Input Modal */}
+      <FieldInputModal
+        isOpen={textModalOpen}
+        onClose={() => {
+          setTextModalOpen(false)
+          setTextFieldId(null)
+        }}
+        onSave={handleTextSave}
+        fieldType={textFieldType}
+        placeholder={textFieldId ? (internalFields.find(f => f.id === textFieldId)?.label || '') : ''}
+        defaultValue={textFieldId ? (fieldValues[textFieldId] || '') : ''}
       />
     </div>
   )
