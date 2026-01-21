@@ -1,22 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { attemptDrimeAutoLogin } from '@/lib/drime-auth'
 
-export async function GET(request: NextRequest) {
+// GET /api/auth/me - Check if user has a local session
+// Note: Drime auto-login is handled client-side in the dashboard
+export async function GET() {
   try {
-    // First try to get existing session
-    let user = await getCurrentUser()
-    
-    // If no local session, try Drime auto-login
-    if (!user) {
-      const autoLoginResult = await attemptDrimeAutoLogin(request)
-      if (autoLoginResult.user) {
-        return NextResponse.json({ 
-          user: autoLoginResult.user,
-          autoLoggedIn: true 
-        })
-      }
-    }
+    const user = await getCurrentUser()
     
     if (!user) {
       return NextResponse.json({ user: null }, { status: 401 })
