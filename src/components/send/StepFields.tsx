@@ -252,8 +252,8 @@ export default function StepFields({
                     : 'hover:bg-gray-50'
                 }`}
                 style={{
-                  ringColor: selectedSignerId === signer.id ? signer.color : undefined,
-                }}
+                  ['--tw-ring-color' as string]: selectedSignerId === signer.id ? signer.color : undefined,
+                } as React.CSSProperties}
               >
                 <div 
                   className="w-4 h-4 rounded-full flex-shrink-0"
