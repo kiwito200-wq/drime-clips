@@ -12,6 +12,9 @@ import crypto from 'crypto'
 
 const pki = forge.pki
 
+// Type alias for RSA private key
+type RSAPrivateKey = forge.pki.rsa.PrivateKey
+
 // Certificate configuration
 const CERT_CONFIG = {
   organization: 'Drime',
@@ -127,7 +130,7 @@ function generateRootCA() {
 /**
  * Generate Sub-CA certificate (intermediate CA)
  */
-function generateSubCA(rootCA: { certificate: forge.pki.Certificate; privateKey: forge.pki.PrivateKey }) {
+function generateSubCA(rootCA: { certificate: forge.pki.Certificate; privateKey: RSAPrivateKey }) {
   const keys = pki.rsa.generateKeyPair(CERT_CONFIG.keySize)
   const cert = pki.createCertificate()
   
@@ -179,7 +182,7 @@ function generateSubCA(rootCA: { certificate: forge.pki.Certificate; privateKey:
 /**
  * Generate end-entity signing certificate
  */
-function generateSigningCertificate(subCA: { certificate: forge.pki.Certificate; privateKey: forge.pki.PrivateKey }) {
+function generateSigningCertificate(subCA: { certificate: forge.pki.Certificate; privateKey: RSAPrivateKey }) {
   const keys = pki.rsa.generateKeyPair(CERT_CONFIG.keySize)
   const cert = pki.createCertificate()
   
