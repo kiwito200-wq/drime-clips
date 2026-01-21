@@ -27,6 +27,15 @@ export function getSignerColor(index: number): string {
   return SIGNER_COLORS[index % SIGNER_COLORS.length]
 }
 
+export function getNextSignerColor(existingColors: string[]): string {
+  for (const color of SIGNER_COLORS) {
+    if (!existingColors.includes(color)) {
+      return color
+    }
+  }
+  return SIGNER_COLORS[existingColors.length % SIGNER_COLORS.length]
+}
+
 // Status helpers
 export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
