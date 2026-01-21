@@ -1,0 +1,706 @@
+'use client'
+
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter } from 'next/navigation'
+import PDFViewer from './PDFViewer'
+import FieldPalette from './FieldPalette'
+import FieldOverlay from './FieldOverlay'
+import TopBar from './TopBar'
+import SignaturePad from './SignaturePad'
+import FieldInputModal from './FieldInputModal'
+import PageThumbnails from './PageThumbnails'
+import SelectModal from './SelectModal'
+import FileUploadModal from './FileUploadModal'
+import DateModal from './DateModal'
+import { FieldType, Field, Recipient } from './types'
+
+interface DocumentBuilderProps {
+  envelopeSlug: string
+  pdfUrl: string
+  documentName: string
+  onBack: () => void
+}
+
+export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: initialName, onBack }: DocumentBuilderProps) {
+  const router = useRouter()
+  
+  // Document state
+  const [documentName, setDocumentName] = useState(initialName)
+  const [pages, setPages] = useState<{ width: number; height: number; imageUrl?: string | null }[]>([])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [scale, setScale] = useState(1)
+  
+  // Recipients (from DB signers)
+  const [recipients, setRecipients] = useState<Recipient[]>([])
+  const [selectedRecipientId, setSelectedRecipientId] = useState<string | null>(null)
+  
+  // Fields (from DB)
+  const [fields, setFields] = useState<Field[]>([])
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
+  const [dragFieldType, setDragFieldType] = useState<FieldType | null>(null)
+  const [drawMode, setDrawMode] = useState<FieldType | null>(null)
+  
+  // UI state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isSignMode, setIsSignMode] = useState(false)
+  
+  // Signature pad state
+  const [signaturePadOpen, setSignaturePadOpen] = useState(false)
+  const [signingFieldId, setSigningFieldId] = useState<string | null>(null)
+  
+  // Input modal state
+  const [inputModalOpen, setInputModalOpen] = useState(false)
+  const [selectModalOpen, setSelectModalOpen] = useState(false)
+  const [dateModalOpen, setDateModalOpen] = useState(false)
+  const [fileUploadModalOpen, setFileUploadModalOpen] = useState(false)
+  const [fileUploadType, setFileUploadType] = useState<'image' | 'file'>('image')
+  const [inputFieldId, setInputFieldId] = useState<string | null>(null)
+  
+  // Refs
+  const containerRef = useRef<HTMLDivElement>(null)
+  const pagesContainerRef = useRef<HTMLDivElement>(null)
+
+  // Load envelope data
+  useEffect(() => {
+    loadEnvelope()
+  }, [envelopeSlug])
+
+  async function loadEnvelope() {
+    try {
+      const res = await fetch(`/api/envelopes/${envelopeSlug}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        const env = data.envelope
+        
+        // Convert DB signers to Recipients
+        const loadedRecipients: Recipient[] = env.signers.map((s: any) => ({
+          id: s.id,
+          name: s.name || s.email,
+          email: s.email,
+          color: s.color,
+        }))
+        setRecipients(loadedRecipients)
+        if (loadedRecipients.length > 0) {
+          setSelectedRecipientId(loadedRecipients[0].id)
+        }
+        
+        // Convert DB fields to Fields
+        const loadedFields: Field[] = env.fields.map((f: any) => ({
+          id: f.id,
+          type: f.type as FieldType,
+          recipientId: f.signerId,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          required: f.required,
+          label: f.label || '',
+          placeholder: f.placeholder || '',
+          value: f.value || undefined,
+        }))
+        setFields(loadedFields)
+      }
+    } catch (error) {
+      console.error('Failed to load envelope:', error)
+    }
+  }
+
+  // Selected field
+  const selectedField = useMemo(() => 
+    fields.find(f => f.id === selectedFieldId) || null,
+    [fields, selectedFieldId]
+  )
+
+  // Selected recipient
+  const selectedRecipient = useMemo(() =>
+    recipients.find(r => r.id === selectedRecipientId) || recipients[0],
+    [recipients, selectedRecipientId]
+  )
+
+  // Signed fields count
+  const signedFieldsCount = useMemo(() => 
+    fields.filter(f => f.value !== undefined && f.value !== '' && f.value !== false).length,
+    [fields]
+  )
+
+  // Fields per page
+  const fieldsPerPage = useMemo(() => {
+    const counts: number[] = []
+    pages.forEach((_, pageIndex) => {
+      counts[pageIndex] = fields.filter(f => f.page === pageIndex).length
+    })
+    return counts
+  }, [pages, fields])
+
+  // Signed fields per page
+  const signedFieldsPerPage = useMemo(() => {
+    const counts: number[] = []
+    pages.forEach((_, pageIndex) => {
+      counts[pageIndex] = fields.filter(f => 
+        f.page === pageIndex && f.value !== undefined && f.value !== '' && f.value !== false
+      ).length
+    })
+    return counts
+  }, [pages, fields])
+
+  // Get recipient color
+  const getRecipientColor = useCallback((recipientId: string) => {
+    const recipient = recipients.find(r => r.id === recipientId)
+    return recipient?.color || '#EF4444'
+  }, [recipients])
+
+  // Handle PDF pages loaded
+  const handlePagesLoaded = useCallback((loadedPages: { width: number; height: number }[]) => {
+    setPages(loadedPages)
+  }, [])
+
+  // Add field at position
+  const addFieldAtPosition = useCallback((type: FieldType, page: number, x: number, y: number) => {
+    if (!selectedRecipientId) {
+      alert('Please select a signer first')
+      return
+    }
+
+    const defaultSizes: Record<FieldType, { w: number; h: number }> = {
+      signature: { w: 0.2, h: 0.06 },
+      initials: { w: 0.1, h: 0.04 },
+      stamp: { w: 0.12, h: 0.08 },
+      checkbox: { w: 0.03, h: 0.03 },
+      radio: { w: 0.03, h: 0.03 },
+      select: { w: 0.18, h: 0.035 },
+      date: { w: 0.15, h: 0.035 },
+      text: { w: 0.2, h: 0.035 },
+      number: { w: 0.12, h: 0.035 },
+      name: { w: 0.2, h: 0.035 },
+      email: { w: 0.25, h: 0.035 },
+      phone: { w: 0.18, h: 0.035 },
+      image: { w: 0.15, h: 0.1 },
+      file: { w: 0.15, h: 0.05 },
+    }
+
+    const size = defaultSizes[type]
+    const newField: Field = {
+      id: `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      recipientId: selectedRecipientId,
+      page,
+      x: Math.max(0, Math.min(x - size.w / 2, 1 - size.w)),
+      y: Math.max(0, Math.min(y - size.h / 2, 1 - size.h)),
+      width: size.w,
+      height: size.h,
+      required: type !== 'checkbox' && type !== 'radio',
+      label: '',
+      placeholder: getFieldPlaceholder(type),
+      options: type === 'select' || type === 'radio' ? ['Option 1', 'Option 2', 'Option 3'] : undefined,
+    }
+
+    setFields(prev => [...prev, newField])
+    setSelectedFieldId(newField.id)
+    setDrawMode(null)
+    setDragFieldType(null)
+  }, [selectedRecipientId])
+
+  // Handle drop on page
+  const handleDropOnPage = useCallback((page: number, x: number, y: number) => {
+    if (dragFieldType) {
+      addFieldAtPosition(dragFieldType, page, x, y)
+    }
+  }, [dragFieldType, addFieldAtPosition])
+
+  // Handle draw on page
+  const handleDrawOnPage = useCallback((page: number, x: number, y: number) => {
+    if (drawMode) {
+      addFieldAtPosition(drawMode, page, x, y)
+    }
+  }, [drawMode, addFieldAtPosition])
+
+  // Update field
+  const updateField = useCallback((fieldId: string, updates: Partial<Field>) => {
+    setFields(prev => prev.map(f => 
+      f.id === fieldId ? { ...f, ...updates } : f
+    ))
+  }, [])
+
+  // Delete field
+  const deleteField = useCallback((fieldId: string) => {
+    setFields(prev => prev.filter(f => f.id !== fieldId))
+    if (selectedFieldId === fieldId) {
+      setSelectedFieldId(null)
+    }
+  }, [selectedFieldId])
+
+  // Duplicate field
+  const duplicateField = useCallback((fieldId: string) => {
+    const field = fields.find(f => f.id === fieldId)
+    if (!field) return
+
+    const newField: Field = {
+      ...field,
+      id: `field-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      x: Math.min(field.x + 0.02, 1 - field.width),
+      y: Math.min(field.y + 0.02, 1 - field.height),
+    }
+
+    setFields(prev => [...prev, newField])
+    setSelectedFieldId(newField.id)
+  }, [fields])
+
+  // Add recipient
+  const addRecipient = useCallback(async () => {
+    const name = prompt('Enter signer name:')
+    if (!name) return
+    
+    const email = prompt('Enter signer email:')
+    if (!email) return
+
+    try {
+      const res = await fetch(`/api/envelopes/${envelopeSlug}/signers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, name }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const newRecipient: Recipient = {
+          id: data.signer.id,
+          name: data.signer.name || data.signer.email,
+          email: data.signer.email,
+          color: data.signer.color,
+        }
+        setRecipients(prev => [...prev, newRecipient])
+        setSelectedRecipientId(newRecipient.id)
+      }
+    } catch (error) {
+      console.error('Failed to add recipient:', error)
+    }
+  }, [envelopeSlug])
+
+  // Update recipient
+  const updateRecipient = useCallback((recipientId: string, updates: Partial<Recipient>) => {
+    setRecipients(prev => prev.map(r =>
+      r.id === recipientId ? { ...r, ...updates } : r
+    ))
+  }, [])
+
+  // Delete recipient
+  const deleteRecipient = useCallback(async (recipientId: string) => {
+    if (recipients.length <= 1) return
+    
+    try {
+      const res = await fetch(`/api/envelopes/${envelopeSlug}/signers?id=${recipientId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        setRecipients(prev => prev.filter(r => r.id !== recipientId))
+        setFields(prev => prev.filter(f => f.recipientId !== recipientId))
+        
+        if (selectedRecipientId === recipientId) {
+          setSelectedRecipientId(recipients[0].id === recipientId ? recipients[1]?.id : recipients[0].id)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to delete recipient:', error)
+    }
+  }, [recipients, selectedRecipientId, envelopeSlug])
+
+  // Handle sign field
+  const handleSignField = useCallback((fieldId: string) => {
+    const field = fields.find(f => f.id === fieldId)
+    if (!field) return
+
+    if (field.type === 'signature' || field.type === 'initials') {
+      setSigningFieldId(fieldId)
+      setSignaturePadOpen(true)
+    } else if (field.type === 'checkbox' || field.type === 'radio') {
+      updateField(fieldId, { value: !field.value })
+    } else if (field.type === 'select') {
+      setInputFieldId(fieldId)
+      setSelectModalOpen(true)
+    } else if (field.type === 'date') {
+      setInputFieldId(fieldId)
+      setDateModalOpen(true)
+    } else {
+      setInputFieldId(fieldId)
+      setInputModalOpen(true)
+    }
+  }, [fields, updateField])
+
+  // Handle signature saved
+  const handleSignatureSaved = useCallback((signatureDataUrl: string) => {
+    if (signingFieldId) {
+      updateField(signingFieldId, { value: signatureDataUrl })
+      setSigningFieldId(null)
+      setSignaturePadOpen(false)
+    }
+  }, [signingFieldId, updateField])
+
+  // Handle input saved
+  const handleInputSaved = useCallback((value: string) => {
+    if (inputFieldId) {
+      updateField(inputFieldId, { value })
+      setInputFieldId(null)
+      setInputModalOpen(false)
+      setSelectModalOpen(false)
+      setDateModalOpen(false)
+      setFileUploadModalOpen(false)
+    }
+  }, [inputFieldId, updateField])
+
+  // Handle send (save to DB)
+  const handleSend = useCallback(async () => {
+    setIsSaving(true)
+    
+    try {
+      // Save fields
+      const fieldsToSave = fields.map(f => ({
+        signerId: f.recipientId,
+        type: f.type,
+        label: f.label,
+        placeholder: f.placeholder,
+        required: f.required,
+        page: f.page,
+        x: f.x,
+        y: f.y,
+        width: f.width,
+        height: f.height,
+      }))
+      
+      const fieldsRes = await fetch(`/api/envelopes/${envelopeSlug}/fields`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ fields: fieldsToSave }),
+      })
+      
+      if (!fieldsRes.ok) {
+        throw new Error('Failed to save fields')
+      }
+      
+      // Save signers
+      const signersToSave = recipients.map(r => ({
+        email: r.email,
+        name: r.name,
+        color: r.color,
+      }))
+      
+      const signersRes = await fetch(`/api/envelopes/${envelopeSlug}/signers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ signers: signersToSave }),
+      })
+      
+      if (!signersRes.ok) {
+        throw new Error('Failed to save signers')
+      }
+      
+      router.push('/dashboard')
+    } catch (error) {
+      console.error('Failed to save:', error)
+      alert('Failed to save')
+    } finally {
+      setIsSaving(false)
+    }
+  }, [fields, recipients, envelopeSlug, router])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedFieldId(null)
+        setDrawMode(null)
+        setDragFieldType(null)
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedFieldId && document.activeElement === document.body) {
+          e.preventDefault()
+          deleteField(selectedFieldId)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedFieldId, deleteField])
+
+  const inputField = fields.find(f => f.id === inputFieldId)
+
+  return (
+    <div ref={containerRef} className="h-screen flex flex-col bg-gray-100 overflow-hidden">
+      {/* Top Bar */}
+      <TopBar
+        documentName={documentName}
+        onDocumentNameChange={setDocumentName}
+        onBack={onBack}
+        onSend={handleSend}
+        onPreview={() => setIsPreviewMode(!isPreviewMode)}
+        onAutoSign={() => setIsSignMode(!isSignMode)}
+        isPreviewMode={isPreviewMode}
+        isSaving={isSaving}
+        recipients={recipients}
+        onAddRecipient={addRecipient}
+        fieldsCount={fields.length}
+        signedFieldsCount={signedFieldsCount}
+      />
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Page Thumbnails */}
+        {pages.length > 0 && (
+          <PageThumbnails
+            pages={pages}
+            currentPage={currentPage}
+            onPageSelect={(pageIndex) => {
+              setCurrentPage(pageIndex)
+              const pageElement = document.querySelector(`[data-page="${pageIndex}"]`)
+              if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
+            fieldsPerPage={fieldsPerPage}
+            signedFieldsPerPage={signedFieldsPerPage}
+          />
+        )}
+
+        {/* PDF Viewer */}
+        <div 
+          className={`flex-1 overflow-auto transition-all duration-300 ${
+            isSidebarCollapsed ? '' : 'mr-80'
+          }`}
+          ref={pagesContainerRef}
+        >
+          <PDFViewer
+            fileUrl={pdfUrl}
+            onPagesLoaded={handlePagesLoaded}
+            scale={scale}
+            onScaleChange={setScale}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            isDrawMode={!!drawMode}
+            onDraw={handleDrawOnPage}
+            onDrop={handleDropOnPage}
+            isDragging={!!dragFieldType}
+          >
+            {/* Field overlays for each page */}
+            {pages.map((_, pageIndex) => (
+              <FieldOverlay
+                key={pageIndex}
+                pageIndex={pageIndex}
+                fields={fields.filter(f => f.page === pageIndex)}
+                selectedFieldId={selectedFieldId}
+                onSelectField={setSelectedFieldId}
+                onUpdateField={updateField}
+                onDeleteField={deleteField}
+                getRecipientColor={getRecipientColor}
+                isPreviewMode={isPreviewMode}
+                isSignMode={isSignMode}
+                onSignField={handleSignField}
+                scale={scale}
+              />
+            ))}
+          </PDFViewer>
+        </div>
+
+        {/* Right Sidebar */}
+        <AnimatePresence>
+          {!isSidebarCollapsed && (
+            <motion.div
+              initial={{ x: 320 }}
+              animate={{ x: 0 }}
+              exit={{ x: 320 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed right-0 top-[57px] bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10"
+            >
+              <FieldPalette
+                recipients={recipients}
+                selectedRecipientId={selectedRecipientId || ''}
+                onSelectRecipient={setSelectedRecipientId}
+                onAddRecipient={addRecipient}
+                onUpdateRecipient={updateRecipient}
+                onDeleteRecipient={deleteRecipient}
+                selectedField={selectedField}
+                onUpdateField={updateField}
+                onDeleteField={deleteField}
+                onDuplicateField={duplicateField}
+                drawMode={drawMode}
+                onSetDrawMode={setDrawMode}
+                onDragStart={setDragFieldType}
+                onDragEnd={() => setDragFieldType(null)}
+                isPreviewMode={isPreviewMode}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sidebar Toggle */}
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className={`fixed z-20 bg-white border border-gray-200 rounded-l-lg p-2 shadow-sm transition-all duration-300 ${
+            isSidebarCollapsed ? 'right-0' : 'right-80'
+          }`}
+          style={{ top: '50%', transform: 'translateY(-50%)' }}
+        >
+          <svg 
+            className={`w-5 h-5 text-gray-500 transition-transform ${isSidebarCollapsed ? 'rotate-180' : ''}`}
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Draw Mode Indicator */}
+      <AnimatePresence>
+        {drawMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50"
+          >
+            <div className="w-2 h-2 bg-[#08CF65] rounded-full animate-pulse" />
+            <span className="text-sm font-medium">
+              Click on the document to place a {getFieldLabel(drawMode)} field
+            </span>
+            <button
+              onClick={() => setDrawMode(null)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Signature Pad Modal */}
+      <SignaturePad
+        isOpen={signaturePadOpen}
+        onClose={() => {
+          setSignaturePadOpen(false)
+          setSigningFieldId(null)
+        }}
+        onSave={handleSignatureSaved}
+        title={
+          signingFieldId && fields.find(f => f.id === signingFieldId)?.type === 'initials'
+            ? 'Draw your initials'
+            : 'Draw your signature'
+        }
+      />
+
+      {/* Input Modal */}
+      {inputField && (
+        <FieldInputModal
+          isOpen={inputModalOpen}
+          onClose={() => {
+            setInputModalOpen(false)
+            setInputFieldId(null)
+          }}
+          onSave={handleInputSaved}
+          fieldType={inputField.type}
+          placeholder={inputField.placeholder}
+          defaultValue={inputField.value as string || inputField.defaultValue}
+        />
+      )}
+
+      {/* Select Modal */}
+      {inputField && (
+        <SelectModal
+          isOpen={selectModalOpen}
+          onClose={() => {
+            setSelectModalOpen(false)
+            setInputFieldId(null)
+          }}
+          onSave={handleInputSaved}
+          options={inputField.options || ['Option 1', 'Option 2', 'Option 3']}
+          title={inputField.label || 'Select an option'}
+          currentValue={inputField.value as string}
+          required={inputField.required}
+        />
+      )}
+
+      {/* Date Modal */}
+      {inputField && (
+        <DateModal
+          isOpen={dateModalOpen}
+          onClose={() => {
+            setDateModalOpen(false)
+            setInputFieldId(null)
+          }}
+          onSave={handleInputSaved}
+          title={inputField.label || 'Select a date'}
+          currentValue={inputField.value as string}
+          required={inputField.required}
+        />
+      )}
+
+      {/* File Upload Modal */}
+      {inputField && (
+        <FileUploadModal
+          isOpen={fileUploadModalOpen}
+          onClose={() => {
+            setFileUploadModalOpen(false)
+            setInputFieldId(null)
+          }}
+          onSave={handleInputSaved}
+          title={inputField.label || (fileUploadType === 'image' ? 'Upload Image' : 'Upload File')}
+          type={fileUploadType}
+          currentValue={inputField.value as string}
+          required={inputField.required}
+        />
+      )}
+    </div>
+  )
+}
+
+// Helper functions
+function getFieldLabel(type: FieldType): string {
+  const labels: Record<FieldType, string> = {
+    signature: 'Signature',
+    initials: 'Initials',
+    stamp: 'Stamp',
+    checkbox: 'Checkbox',
+    radio: 'Radio',
+    select: 'Select',
+    date: 'Date',
+    text: 'Text',
+    number: 'Number',
+    name: 'Name',
+    email: 'Email',
+    phone: 'Phone',
+    image: 'Image',
+    file: 'File',
+  }
+  return labels[type] || type
+}
+
+function getFieldPlaceholder(type: FieldType): string {
+  const placeholders: Record<FieldType, string> = {
+    signature: 'Sign here',
+    initials: 'Initial here',
+    stamp: 'Stamp here',
+    checkbox: '',
+    radio: '',
+    select: 'Select option',
+    date: 'MM/DD/YYYY',
+    text: 'Enter text',
+    number: '0',
+    name: 'Full name',
+    email: 'Email address',
+    phone: 'Phone number',
+    image: 'Upload image',
+    file: 'Upload file',
+  }
+  return placeholders[type] || ''
+}
