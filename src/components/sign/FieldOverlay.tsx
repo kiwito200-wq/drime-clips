@@ -114,7 +114,7 @@ function FieldItem({
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (isSignMode) {
-      // For checkboxes, ALWAYS allow toggle (check/uncheck) like DocuSeal
+      // For checkboxes, ALWAYS allow toggle (check/uncheck)
       if (field.type === 'checkbox') {
         onUpdate({ value: field.value === 'true' ? '' : 'true' })
       } else {

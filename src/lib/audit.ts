@@ -551,9 +551,9 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
         }
       } else if (field.type === 'checkbox') {
         if (field.value === 'true') {
-          // Draw checkmark like DocuSeal - clean green checkmark
+          // Draw checkmark - clean green checkmark
           // SVG path inspiration: M9 11 l3 3 l8 -8 (left-mid → bottom-center → top-right)
-          const checkColor = rgb(0.03, 0.51, 0.25) // DocuSeal green #08823F
+          const checkColor = rgb(0.03, 0.81, 0.40) // Drime green #08CF65
           const size = Math.min(width, height)
           const lineWidth = Math.max(1.5, size * 0.12)
           

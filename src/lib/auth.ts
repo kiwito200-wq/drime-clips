@@ -50,17 +50,33 @@ export async function checkDrimeSession(cookieHeader: string | null): Promise<{
   name: string | null
   avatar_url: string | null
 } | null> {
-  if (!cookieHeader) return null
+  if (!cookieHeader) {
+    console.log('[Drime Auth] No cookie header provided')
+    return null
+  }
   
   try {
-    const response = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
+    // Use full URL for external API call
+    const apiUrl = `${DRIME_API_URL}/api/v1/auth/external/me`
+    console.log('[Drime Auth] Checking session at:', apiUrl)
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Cookie': cookieHeader,
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
       },
-      credentials: 'include',
     })
+    
+    console.log('[Drime Auth] Response status:', response.status)
+    
+    // Check content-type before parsing
+    const contentType = response.headers.get('content-type')
+    if (!contentType?.includes('application/json')) {
+      console.log('[Drime Auth] Response is not JSON, content-type:', contentType)
+      return null
+    }
     
     if (!response.ok) {
       console.log('[Drime Auth] Session check failed:', response.status)
@@ -68,6 +84,7 @@ export async function checkDrimeSession(cookieHeader: string | null): Promise<{
     }
     
     const data = await response.json()
+    console.log('[Drime Auth] Response data:', JSON.stringify(data).slice(0, 200))
     
     if (data.user) {
       return {
