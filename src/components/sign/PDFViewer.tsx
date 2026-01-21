@@ -3,8 +3,6 @@
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react'
 import { motion } from 'framer-motion'
 
-// PDF.js for rendering PDF documents
-
 interface PDFViewerProps {
   fileUrl: string
   onPagesLoaded: (pages: { width: number; height: number; imageUrl?: string | null }[]) => void
@@ -56,7 +54,6 @@ export default function PDFViewer({
         setError(null)
 
         // First, fetch the blob URL and convert to ArrayBuffer
-        // This is more reliable than passing blob URLs to PDF.js
         const response = await fetch(fileUrl)
         if (!response.ok) {
           throw new Error('Failed to fetch PDF file')
@@ -68,7 +65,7 @@ export default function PDFViewer({
         // Dynamically import PDF.js
         const pdfjsLib = await import('pdfjs-dist')
         
-        // Set worker using jsdelivr CDN (more reliable)
+        // Set worker using jsdelivr CDN
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 
         // Load the PDF document from ArrayBuffer
@@ -177,7 +174,7 @@ export default function PDFViewer({
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500">Loading document...</p>
         </div>
       </div>
@@ -251,7 +248,7 @@ export default function PDFViewer({
               transition={{ delay: index * 0.1 }}
               className={`relative bg-white shadow-lg rounded-sm overflow-hidden ${
                 isDrawMode ? 'cursor-crosshair' : ''
-              } ${isDragging ? 'ring-2 ring-primary ring-opacity-50' : ''}`}
+              } ${isDragging ? 'ring-2 ring-[#08CF65] ring-opacity-50' : ''}`}
               style={{
                 width: page.width * scale,
                 height: page.height * scale,
@@ -273,7 +270,6 @@ export default function PDFViewer({
               
               {/* Field Overlay Container */}
               <div className="absolute inset-0">
-                {/* Children (field overlays) will be rendered here */}
                 {Array.isArray(children) ? children[index] : null}
               </div>
 
@@ -284,7 +280,7 @@ export default function PDFViewer({
 
               {/* Drop Indicator */}
               {isDragging && (
-                <div className="absolute inset-0 bg-primary/5 border-2 border-dashed border-primary/30 pointer-events-none" />
+                <div className="absolute inset-0 bg-[#08CF65]/5 border-2 border-dashed border-[#08CF65]/30 pointer-events-none" />
               )}
             </motion.div>
           ))}

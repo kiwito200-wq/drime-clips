@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 type SignatureMode = 'draw' | 'type' | 'upload'
 
-// Signature font options
 const SIGNATURE_FONTS = [
   { name: 'Brush Script', value: '"Brush Script MT", "Segoe Script", cursive' },
   { name: 'Dancing Script', value: '"Dancing Script", cursive' },
@@ -29,32 +28,24 @@ export default function SignaturePad({
   onSave,
   onSaveAndNext,
   hasNextField = false,
-  title = 'Add your signature',
+  title = 'Ajoutez votre signature',
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  // Mode state
   const [mode, setMode] = useState<SignatureMode>('draw')
-  
-  // Draw mode state
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasDrawnSignature, setHasDrawnSignature] = useState(false)
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 })
-  
-  // Type mode state
   const [typedName, setTypedName] = useState('')
   const [selectedFont, setSelectedFont] = useState(SIGNATURE_FONTS[0].value)
-  
-  // Upload mode state
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
 
-  // Check if we have a valid signature based on mode
   const hasSignature = mode === 'draw' ? hasDrawnSignature : 
                        mode === 'type' ? typedName.trim().length > 0 :
                        uploadedImage !== null
 
-  // Initialize canvas for draw mode
+  // Initialize canvas
   useEffect(() => {
     if (!isOpen || mode !== 'draw') return
     
@@ -64,26 +55,22 @@ export default function SignaturePad({
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Set canvas size
     const rect = canvas.getBoundingClientRect()
-    canvas.width = rect.width * 2 // Retina
+    canvas.width = rect.width * 2
     canvas.height = rect.height * 2
     ctx.scale(2, 2)
 
-    // Set drawing style
     ctx.strokeStyle = '#1a1a1a'
     ctx.lineWidth = 2.5
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
-    // Clear canvas
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, rect.width, rect.height)
 
     setHasDrawnSignature(false)
   }, [isOpen, mode])
   
-  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setMode('draw')
@@ -93,7 +80,6 @@ export default function SignaturePad({
     }
   }, [isOpen])
 
-  // Get position from event (draw mode)
   const getPosition = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
@@ -115,7 +101,6 @@ export default function SignaturePad({
     }
   }, [])
 
-  // Start drawing
   const startDrawing = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
     const pos = getPosition(e)
@@ -123,7 +108,6 @@ export default function SignaturePad({
     setLastPos(pos)
   }, [getPosition])
 
-  // Draw
   const draw = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing) return
     e.preventDefault()
@@ -143,12 +127,10 @@ export default function SignaturePad({
     setHasDrawnSignature(true)
   }, [isDrawing, lastPos, getPosition])
 
-  // Stop drawing
   const stopDrawing = useCallback(() => {
     setIsDrawing(false)
   }, [])
 
-  // Clear drawn signature
   const clearDrawnSignature = useCallback(() => {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
@@ -160,14 +142,12 @@ export default function SignaturePad({
     setHasDrawnSignature(false)
   }, [])
 
-  // Handle file upload
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Check if it's an image
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file')
+      alert('Veuillez uploader une image')
       return
     }
 
@@ -178,7 +158,6 @@ export default function SignaturePad({
     reader.readAsDataURL(file)
   }, [])
 
-  // Generate typed signature as image
   const generateTypedSignature = useCallback((): string => {
     const canvas = document.createElement('canvas')
     canvas.width = 400
@@ -187,18 +166,15 @@ export default function SignaturePad({
     const ctx = canvas.getContext('2d')
     if (!ctx) return ''
 
-    // White background
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Signature style text
     ctx.fillStyle = '#1a1a1a'
     ctx.font = `italic 40px ${selectedFont}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(typedName || 'Signature', canvas.width / 2, canvas.height / 2)
 
-    // Add a slight underline
     const textWidth = ctx.measureText(typedName || 'Signature').width
     ctx.beginPath()
     ctx.strokeStyle = '#1a1a1a'
@@ -210,7 +186,6 @@ export default function SignaturePad({
     return canvas.toDataURL('image/png')
   }, [typedName, selectedFont])
 
-  // Get signature data URL based on mode
   const getSignatureDataUrl = useCallback((): string => {
     if (!hasSignature) return ''
 
@@ -227,7 +202,6 @@ export default function SignaturePad({
     return ''
   }, [hasSignature, mode, generateTypedSignature, uploadedImage])
 
-  // Save signature based on mode
   const handleSave = useCallback(() => {
     const dataUrl = getSignatureDataUrl()
     if (dataUrl) {
@@ -236,7 +210,6 @@ export default function SignaturePad({
     }
   }, [getSignatureDataUrl, onSave, onClose])
 
-  // Save and go to next field
   const handleSaveAndNext = useCallback(() => {
     const dataUrl = getSignatureDataUrl()
     if (dataUrl && onSaveAndNext) {
@@ -244,7 +217,6 @@ export default function SignaturePad({
     }
   }, [getSignatureDataUrl, onSaveAndNext])
   
-  // Clear based on mode
   const handleClear = useCallback(() => {
     if (mode === 'draw') {
       clearDrawnSignature()
@@ -295,46 +267,45 @@ export default function SignaturePad({
               onClick={() => setMode('draw')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'draw' 
-                  ? 'text-primary border-b-2 border-primary bg-primary/5' 
+                  ? 'text-[#08CF65] border-b-2 border-[#08CF65] bg-[#08CF65]/5' 
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              Draw
+              Dessiner
             </button>
             <button
               onClick={() => setMode('type')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'type' 
-                  ? 'text-primary border-b-2 border-primary bg-primary/5' 
+                  ? 'text-[#08CF65] border-b-2 border-[#08CF65] bg-[#08CF65]/5' 
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
               </svg>
-              Type
+              Taper
             </button>
             <button
               onClick={() => setMode('upload')}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
                 mode === 'upload' 
-                  ? 'text-primary border-b-2 border-primary bg-primary/5' 
+                  ? 'text-[#08CF65] border-b-2 border-[#08CF65] bg-[#08CF65]/5' 
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Upload
+              Uploader
             </button>
           </div>
 
-          {/* Content based on mode */}
+          {/* Content */}
           <div className="p-6">
-            {/* DRAW MODE */}
             {mode === 'draw' && (
               <>
                 <div className="relative border-2 border-dashed border-gray-200 rounded-xl overflow-hidden bg-gray-50">
@@ -351,65 +322,59 @@ export default function SignaturePad({
                   />
                   {!hasDrawnSignature && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <p className="text-gray-400 text-sm">Draw your signature here</p>
+                      <p className="text-gray-400 text-sm">Dessinez votre signature ici</p>
                     </div>
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-2 text-center">
-                  Use your mouse or finger to sign
+                  Utilisez votre souris ou votre doigt
                 </p>
               </>
             )}
 
-            {/* TYPE MODE */}
             {mode === 'type' && (
-              <>
-                <div className="space-y-4">
-                  <input
-                    type="text"
-                    value={typedName}
-                    onChange={(e) => setTypedName(e.target.value)}
-                    placeholder="Type your name..."
-                    className="w-full border border-gray-300 rounded-[10px] px-4 py-2.5 text-lg outline-none focus:border-primary focus:ring-[3px] focus:ring-primary/20 transition-colors"
-                    autoFocus
-                  />
-                  
-                  {/* Font selector */}
-                  <div className="flex flex-wrap gap-2">
-                    {SIGNATURE_FONTS.map((font) => (
-                      <button
-                        key={font.value}
-                        onClick={() => setSelectedFont(font.value)}
-                        className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                          selectedFont === font.value
-                            ? 'bg-primary text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                        style={{ fontFamily: font.value }}
-                      >
-                        {font.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Preview */}
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 bg-gray-50 min-h-[100px] flex items-center justify-center">
-                    {typedName ? (
-                      <span
-                        className="text-4xl italic text-gray-900"
-                        style={{ fontFamily: selectedFont }}
-                      >
-                        {typedName}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-sm">Preview will appear here</span>
-                    )}
-                  </div>
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={typedName}
+                  onChange={(e) => setTypedName(e.target.value)}
+                  placeholder="Tapez votre nom..."
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-lg outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20 transition-colors"
+                  autoFocus
+                />
+                
+                <div className="flex flex-wrap gap-2">
+                  {SIGNATURE_FONTS.map((font) => (
+                    <button
+                      key={font.value}
+                      onClick={() => setSelectedFont(font.value)}
+                      className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                        selectedFont === font.value
+                          ? 'bg-[#08CF65] text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                      style={{ fontFamily: font.value }}
+                    >
+                      {font.name}
+                    </button>
+                  ))}
                 </div>
-              </>
+
+                <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 bg-gray-50 min-h-[100px] flex items-center justify-center">
+                  {typedName ? (
+                    <span
+                      className="text-4xl italic text-gray-900"
+                      style={{ fontFamily: selectedFont }}
+                    >
+                      {typedName}
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-sm">L&apos;aperçu apparaîtra ici</span>
+                  )}
+                </div>
+              </div>
             )}
 
-            {/* UPLOAD MODE */}
             {mode === 'upload' && (
               <>
                 <input
@@ -424,14 +389,14 @@ export default function SignaturePad({
                   <div className="border-2 border-gray-200 rounded-xl p-4 bg-gray-50">
                     <img
                       src={uploadedImage}
-                      alt="Uploaded signature"
+                      alt="Signature uploadée"
                       className="max-w-full max-h-40 mx-auto object-contain"
                     />
                   </div>
                 ) : (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-primary hover:bg-primary/5 transition-colors flex flex-col items-center gap-3"
+                    className="w-full border-2 border-dashed border-gray-300 rounded-xl p-8 hover:border-[#08CF65] hover:bg-[#08CF65]/5 transition-colors flex flex-col items-center gap-3"
                   >
                     <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
                       <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -439,8 +404,8 @@ export default function SignaturePad({
                       </svg>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-gray-700">Click to upload image</p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF up to 5MB</p>
+                      <p className="text-sm font-medium text-gray-700">Cliquez pour uploader une image</p>
+                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF jusqu&apos;à 5MB</p>
                     </div>
                   </button>
                 )}
@@ -453,24 +418,24 @@ export default function SignaturePad({
             <button
               onClick={handleClear}
               disabled={!hasSignature}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Clear
+              Effacer
             </button>
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-[10px] transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition-colors"
               >
-                Cancel
+                Annuler
               </button>
               {hasNextField && onSaveAndNext ? (
                 <button
                   onClick={handleSaveAndNext}
                   disabled={!hasSignature}
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Next
+                  Suivant
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -479,9 +444,9 @@ export default function SignaturePad({
                 <button
                   onClick={handleSave}
                   disabled={!hasSignature}
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-primary hover:bg-primary/90 rounded-[10px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Apply
+                  Appliquer
                 </button>
               )}
             </div>
@@ -490,36 +455,4 @@ export default function SignaturePad({
       </motion.div>
     </AnimatePresence>
   )
-}
-
-// Generate a simple auto-signature from a name
-export function generateAutoSignature(name: string): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = 400
-  canvas.height = 100
-  
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
-
-  // White background
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-  // Signature style text
-  ctx.fillStyle = '#1a1a1a'
-  ctx.font = 'italic 36px "Brush Script MT", "Segoe Script", cursive'
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-  ctx.fillText(name || 'Signature', canvas.width / 2, canvas.height / 2)
-
-  // Add a slight underline
-  const textWidth = ctx.measureText(name || 'Signature').width
-  ctx.beginPath()
-  ctx.strokeStyle = '#1a1a1a'
-  ctx.lineWidth = 1
-  ctx.moveTo((canvas.width - textWidth) / 2 - 10, canvas.height / 2 + 15)
-  ctx.lineTo((canvas.width + textWidth) / 2 + 10, canvas.height / 2 + 15)
-  ctx.stroke()
-
-  return canvas.toDataURL('image/png')
 }

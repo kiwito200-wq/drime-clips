@@ -41,7 +41,7 @@ export default function PageThumbnails({
               className={`
                 w-full relative rounded-lg overflow-hidden transition-all
                 ${currentPage === index 
-                  ? 'ring-2 ring-primary shadow-md' 
+                  ? 'ring-2 ring-[#08CF65] shadow-md' 
                   : 'ring-1 ring-gray-200 hover:ring-gray-300 hover:shadow-sm'
                 }
               `}
@@ -65,7 +65,7 @@ export default function PageThumbnails({
 
                 {/* Current page indicator */}
                 {currentPage === index && (
-                  <div className="absolute inset-0 bg-primary/10 pointer-events-none" />
+                  <div className="absolute inset-0 bg-[#08CF65]/10 pointer-events-none" />
                 )}
               </div>
 

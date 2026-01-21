@@ -1,35 +1,14 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { motion } from 'framer-motion'
-
-interface Signer {
-  id: string
-  name: string
-  email: string
-  color: string
-}
-
-interface SignField {
-  id: string
-  type: 'signature' | 'initials' | 'date' | 'text' | 'checkbox' | 'name' | 'email'
-  signerId: string
-  page: number
-  x: number
-  y: number
-  width: number
-  height: number
-  required: boolean
-  label: string
-}
-
-interface DocumentData {
-  file: File | null
-  name: string
-  pdfUrl: string | null
-  envelopeId: string | null
-  slug: string | null
-}
+import { useState, useCallback, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { DocumentData, Signer, SignField } from '@/app/send/page'
+import PDFViewer from '@/components/sign/PDFViewer'
+import FieldOverlay from '@/components/sign/FieldOverlay'
+import FieldPalette from '@/components/sign/FieldPalette'
+import PageThumbnails from '@/components/sign/PageThumbnails'
+import SignaturePad from '@/components/sign/SignaturePad'
+import { Field, FieldType, Recipient } from '@/components/sign/types'
 
 interface StepFieldsProps {
   document: DocumentData
@@ -43,321 +22,516 @@ interface StepFieldsProps {
   isLoading: boolean
 }
 
-type FieldType = SignField['type']
-
-const FIELD_TYPES: { type: FieldType; label: string; icon: string; size: { w: number; h: number } }[] = [
-  { type: 'signature', label: 'Signature', icon: '✍️', size: { w: 0.2, h: 0.06 } },
-  { type: 'initials', label: 'Initiales', icon: 'AB', size: { w: 0.08, h: 0.04 } },
-  { type: 'date', label: 'Date', icon: '📅', size: { w: 0.12, h: 0.035 } },
-  { type: 'text', label: 'Texte', icon: '📝', size: { w: 0.15, h: 0.035 } },
-  { type: 'checkbox', label: 'Case', icon: '☑️', size: { w: 0.025, h: 0.025 } },
-]
-
 export default function StepFields({
   document,
   signers,
   fields,
   onAddField,
   onRemoveField,
+  onUpdateField,
   onBack,
   onNext,
   isLoading,
 }: StepFieldsProps) {
-  const [pages, setPages] = useState<{ width: number; height: number; imageUrl: string }[]>([])
-  const [pdfLoading, setPdfLoading] = useState(true)
-  const [pdfError, setPdfError] = useState<string | null>(null)
-  const [selectedSignerId, setSelectedSignerId] = useState<string>(signers[0]?.id || '')
-  const [selectedFieldType, setSelectedFieldType] = useState<FieldType>('signature')
+  // State
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
+  const [loadingPdf, setLoadingPdf] = useState(true)
+  const [pages, setPages] = useState<{ width: number; height: number; imageUrl?: string | null }[]>([])
+  const [currentPage, setCurrentPage] = useState(0)
+  const [scale, setScale] = useState(0.6)
+  const [selectedRecipientId, setSelectedRecipientId] = useState(signers[0]?.id || '')
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
-  const [scale, setScale] = useState(0.8)
+  const [dragFieldType, setDragFieldType] = useState<FieldType | null>(null)
+  const [drawMode, setDrawMode] = useState<FieldType | null>(null)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isSignMode, setIsSignMode] = useState(false)
+  const [signaturePadOpen, setSignaturePadOpen] = useState(false)
+  const [signingFieldId, setSigningFieldId] = useState<string | null>(null)
 
-  // Load PDF using signed URL (like Transfr)
+  // Convert signers to Recipient format
+  const recipients: Recipient[] = useMemo(() => 
+    signers.map(s => ({
+      id: s.id,
+      name: s.name || s.email,
+      email: s.email,
+      color: s.color,
+    })),
+    [signers]
+  )
+
+  // Convert fields to internal format
+  const internalFields: Field[] = useMemo(() =>
+    fields.map(f => ({
+      id: f.id,
+      type: f.type as FieldType,
+      recipientId: f.signerId,
+      page: f.page,
+      x: f.x,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      required: f.required,
+      label: f.label || '',
+      placeholder: getFieldPlaceholder(f.type as FieldType),
+    })),
+    [fields]
+  )
+
+  // Selected field
+  const selectedField = useMemo(() =>
+    internalFields.find(f => f.id === selectedFieldId) || null,
+    [internalFields, selectedFieldId]
+  )
+
+  // Fields per page
+  const fieldsPerPage = useMemo(() => {
+    const counts: number[] = []
+    pages.forEach((_, pageIndex) => {
+      counts[pageIndex] = internalFields.filter(f => f.page === pageIndex).length
+    })
+    return counts
+  }, [pages, internalFields])
+
+  // Signed fields per page
+  const signedFieldsPerPage = useMemo(() => {
+    const counts: number[] = []
+    pages.forEach((_, pageIndex) => {
+      counts[pageIndex] = internalFields.filter(f =>
+        f.page === pageIndex && f.value !== undefined && f.value !== '' && f.value !== false
+      ).length
+    })
+    return counts
+  }, [pages, internalFields])
+
+  // Fetch signed URL for PDF
   useEffect(() => {
-    if (!document.slug) return
-
-    const loadPdf = async () => {
+    const fetchPdfUrl = async () => {
+      if (!document.slug) return
+      
+      setLoadingPdf(true)
       try {
-        setPdfLoading(true)
-        setPdfError(null)
-
-        // Get signed URL from API (like Transfr does)
-        console.log('[StepFields] Getting signed URL for:', document.slug)
-        const urlRes = await fetch(`/api/envelopes/${document.slug}/pdf-url`, {
+        const res = await fetch(`/api/envelopes/${document.slug}/pdf-url`, {
           credentials: 'include',
         })
-        
-        if (!urlRes.ok) {
-          const errorData = await urlRes.json().catch(() => ({}))
-          throw new Error(errorData.error || `Failed to get PDF URL: ${urlRes.status}`)
+        if (res.ok) {
+          const data = await res.json()
+          setPdfUrl(data.url)
+        } else {
+          console.error('Failed to get PDF URL')
         }
-        
-        const { url: signedUrl } = await urlRes.json()
-        console.log('[StepFields] Got signed URL, loading PDF...')
-        
-        // Fetch PDF using signed URL
-        const response = await fetch(signedUrl)
-        if (!response.ok) {
-          throw new Error(`Failed to fetch PDF: ${response.status}`)
-        }
-        
-        const arrayBuffer = await response.arrayBuffer()
-        console.log('[StepFields] PDF fetched, size:', arrayBuffer.byteLength)
-        
-        // Load with PDF.js
-        const pdfjsLib = await import('pdfjs-dist')
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
-
-        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
-        const loadedPages: { width: number; height: number; imageUrl: string }[] = []
-
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-          const page = await pdfDoc.getPage(i)
-          const viewport = page.getViewport({ scale: 1.5 })
-          const canvas = globalThis.document.createElement('canvas')
-          const context = canvas.getContext('2d')!
-          canvas.width = viewport.width
-          canvas.height = viewport.height
-          await page.render({ canvasContext: context, viewport }).promise
-          
-          loadedPages.push({
-            width: viewport.width,
-            height: viewport.height,
-            imageUrl: canvas.toDataURL('image/png'),
-          })
-        }
-
-        setPages(loadedPages)
-        setPdfLoading(false)
       } catch (error) {
-        console.error('[StepFields] PDF load error:', error)
-        setPdfError(error instanceof Error ? error.message : 'Impossible de charger le PDF')
-        setPdfLoading(false)
+        console.error('Error fetching PDF URL:', error)
+      } finally {
+        setLoadingPdf(false)
+      }
+    }
+    fetchPdfUrl()
+  }, [document.slug])
+
+  // Get recipient color by ID
+  const getRecipientColor = useCallback((recipientId: string) => {
+    const recipient = recipients.find(r => r.id === recipientId)
+    return recipient?.color || '#EF4444'
+  }, [recipients])
+
+  // Handle PDF pages loaded
+  const handlePagesLoaded = useCallback((loadedPages: { width: number; height: number }[]) => {
+    setPages(loadedPages)
+  }, [])
+
+  // Add field at position
+  const addFieldAtPosition = useCallback((type: FieldType, page: number, x: number, y: number) => {
+    const defaultSizes: Record<FieldType, { w: number; h: number }> = {
+      signature: { w: 0.2, h: 0.06 },
+      initials: { w: 0.1, h: 0.04 },
+      stamp: { w: 0.12, h: 0.08 },
+      checkbox: { w: 0.03, h: 0.03 },
+      radio: { w: 0.03, h: 0.03 },
+      select: { w: 0.18, h: 0.035 },
+      date: { w: 0.15, h: 0.035 },
+      text: { w: 0.2, h: 0.035 },
+      number: { w: 0.12, h: 0.035 },
+      name: { w: 0.2, h: 0.035 },
+      email: { w: 0.25, h: 0.035 },
+      phone: { w: 0.18, h: 0.035 },
+      image: { w: 0.15, h: 0.1 },
+      file: { w: 0.15, h: 0.05 },
+    }
+
+    const size = defaultSizes[type] || { w: 0.15, h: 0.04 }
+    const newField: Omit<SignField, 'id'> = {
+      type: type as SignField['type'],
+      signerId: selectedRecipientId,
+      page,
+      x: Math.max(0, Math.min(x - size.w / 2, 1 - size.w)),
+      y: Math.max(0, Math.min(y - size.h / 2, 1 - size.h)),
+      width: size.w,
+      height: size.h,
+      required: type !== 'checkbox' && type !== 'radio',
+      label: '',
+    }
+
+    onAddField(newField)
+    setDrawMode(null)
+    setDragFieldType(null)
+  }, [selectedRecipientId, onAddField])
+
+  // Handle drop on page
+  const handleDropOnPage = useCallback((page: number, x: number, y: number) => {
+    if (dragFieldType) {
+      addFieldAtPosition(dragFieldType, page, x, y)
+    }
+  }, [dragFieldType, addFieldAtPosition])
+
+  // Handle draw on page
+  const handleDrawOnPage = useCallback((page: number, x: number, y: number) => {
+    if (drawMode) {
+      addFieldAtPosition(drawMode, page, x, y)
+    }
+  }, [drawMode, addFieldAtPosition])
+
+  // Update field (convert between formats)
+  const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
+    const mappedUpdates: Partial<SignField> = {}
+    if (updates.x !== undefined) mappedUpdates.x = updates.x
+    if (updates.y !== undefined) mappedUpdates.y = updates.y
+    if (updates.width !== undefined) mappedUpdates.width = updates.width
+    if (updates.height !== undefined) mappedUpdates.height = updates.height
+    if (updates.required !== undefined) mappedUpdates.required = updates.required
+    if (updates.label !== undefined) mappedUpdates.label = updates.label
+    if (updates.recipientId !== undefined) mappedUpdates.signerId = updates.recipientId
+    if (updates.type !== undefined) mappedUpdates.type = updates.type as SignField['type']
+    
+    onUpdateField(fieldId, mappedUpdates)
+  }, [onUpdateField])
+
+  // Duplicate field
+  const duplicateField = useCallback((fieldId: string) => {
+    const field = fields.find(f => f.id === fieldId)
+    if (!field) return
+
+    const newField: Omit<SignField, 'id'> = {
+      ...field,
+      x: Math.min(field.x + 0.02, 1 - field.width),
+      y: Math.min(field.y + 0.02, 1 - field.height),
+    }
+
+    onAddField(newField)
+  }, [fields, onAddField])
+
+  // Handle sign field click
+  const handleSignField = useCallback((fieldId: string) => {
+    const field = internalFields.find(f => f.id === fieldId)
+    if (!field) return
+
+    if (field.type === 'signature' || field.type === 'initials') {
+      setSigningFieldId(fieldId)
+      setSignaturePadOpen(true)
+    } else if (field.type === 'checkbox' || field.type === 'radio') {
+      handleUpdateField(fieldId, { value: !field.value })
+    }
+  }, [internalFields, handleUpdateField])
+
+  // Handle signature saved
+  const handleSignatureSaved = useCallback((signatureDataUrl: string) => {
+    if (signingFieldId) {
+      handleUpdateField(signingFieldId, { value: signatureDataUrl })
+      setSigningFieldId(null)
+      setSignaturePadOpen(false)
+    }
+  }, [signingFieldId, handleUpdateField])
+
+  // Add recipient
+  const addRecipient = useCallback(() => {
+    // Not implemented in this step - signers are added in step 2
+  }, [])
+
+  // Update recipient
+  const updateRecipient = useCallback((id: string, updates: Partial<Recipient>) => {
+    // Not implemented in this step
+  }, [])
+
+  // Delete recipient
+  const deleteRecipient = useCallback((id: string) => {
+    // Not implemented in this step
+  }, [])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedFieldId(null)
+        setDrawMode(null)
+        setDragFieldType(null)
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedFieldId && (document.activeElement as HTMLElement)?.tagName !== 'INPUT') {
+          e.preventDefault()
+          onRemoveField(selectedFieldId)
+          setSelectedFieldId(null)
+        }
       }
     }
 
-    loadPdf()
-  }, [document.slug])
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedFieldId, onRemoveField])
 
-  // Handle click to add field
-  const handlePageClick = useCallback((e: React.MouseEvent, pageIndex: number) => {
-    if (!selectedSignerId) return
-
-    const target = e.currentTarget as HTMLElement
-    const rect = target.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-
-    const fieldConfig = FIELD_TYPES.find(f => f.type === selectedFieldType)!
-    
-    onAddField({
-      type: selectedFieldType,
-      signerId: selectedSignerId,
-      page: pageIndex,
-      x: Math.max(0, Math.min(x - fieldConfig.size.w / 2, 1 - fieldConfig.size.w)),
-      y: Math.max(0, Math.min(y - fieldConfig.size.h / 2, 1 - fieldConfig.size.h)),
-      width: fieldConfig.size.w,
-      height: fieldConfig.size.h,
-      required: true,
-      label: '',
-    })
-  }, [selectedSignerId, selectedFieldType, onAddField])
-
-  const getSignerById = (id: string) => signers.find(s => s.id === id)
-
-  if (pdfLoading) {
+  if (loadingPdf || !pdfUrl) {
     return (
-      <div className="h-[calc(100vh-80px)] flex items-center justify-center">
+      <div className="h-screen flex items-center justify-center bg-gray-100">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Chargement du document...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (pdfError) {
-    return (
-      <div className="h-[calc(100vh-80px)] flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-            <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="text-red-600 font-medium mb-2">Impossible de charger le PDF</p>
-          <p className="text-gray-500 text-sm mb-4">{pdfError}</p>
-          <button onClick={onBack} className="text-sm text-[#08CF65] hover:underline">
-            ← Retour
-          </button>
+          <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Chargement du document...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-80px)] flex">
-      {/* Sidebar */}
-      <div className="w-64 bg-white border-r flex flex-col">
-        {/* Signers */}
-        <div className="p-3 border-b">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Signataire</p>
-          <div className="space-y-1">
-            {signers.map((signer, i) => (
-              <button
-                key={signer.id}
-                onClick={() => setSelectedSignerId(signer.id)}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm transition-all ${
-                  selectedSignerId === signer.id ? 'bg-gray-100' : 'hover:bg-gray-50'
-                }`}
-              >
-                <div 
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
-                  style={{ backgroundColor: signer.color }}
+    <div className="h-[calc(100vh-57px)] flex flex-col bg-gray-100 overflow-hidden">
+      {/* Top Bar */}
+      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
+        {/* Left */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <span className="hidden sm:inline">Retour</span>
+          </button>
+          <div className="w-px h-6 bg-gray-200" />
+          <span className="font-medium text-gray-900 truncate max-w-[200px]">{document.name}</span>
+        </div>
+
+        {/* Center - Status */}
+        <div className="hidden lg:flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex -space-x-2">
+              {recipients.slice(0, 3).map((recipient, index) => (
+                <div
+                  key={recipient.id}
+                  className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-medium"
+                  style={{ backgroundColor: recipient.color, zIndex: 3 - index }}
+                  title={recipient.name}
                 >
-                  {i + 1}
+                  {recipient.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="truncate text-gray-700">{signer.name || signer.email}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Field types */}
-        <div className="p-3 flex-1">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Champs</p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {FIELD_TYPES.map(ft => (
-              <button
-                key={ft.type}
-                onClick={() => setSelectedFieldType(ft.type)}
-                className={`p-2 rounded-lg border text-center transition-all ${
-                  selectedFieldType === ft.type
-                    ? 'border-[#08CF65] bg-green-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <span className="text-lg">{ft.icon}</span>
-                <p className="text-xs text-gray-600 mt-0.5">{ft.label}</p>
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400 mt-3 text-center">
-            Cliquez sur le document pour ajouter
-          </p>
-        </div>
-
-        {/* Navigation */}
-        <div className="p-3 border-t">
-          <div className="flex gap-2">
-            <button
-              onClick={onBack}
-              className="flex-1 py-2 text-sm text-gray-600 hover:text-gray-900"
-            >
-              Retour
-            </button>
-            <button
-              onClick={onNext}
-              disabled={fields.length === 0 || isLoading}
-              className="flex-1 py-2 bg-[#08CF65] text-white text-sm font-medium rounded-lg hover:bg-[#07b858] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Continuer
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* PDF Viewer */}
-      <div className="flex-1 bg-gray-100 overflow-auto">
-        {/* Zoom */}
-        <div className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b px-3 py-2 flex items-center justify-between">
-          <span className="text-xs text-gray-500">{fields.length} champ{fields.length !== 1 ? 's' : ''}</span>
-          <div className="flex items-center gap-1">
-            <button onClick={() => setScale(s => Math.max(0.5, s - 0.1))} className="p-1.5 hover:bg-gray-100 rounded">
-              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-              </svg>
-            </button>
-            <span className="text-xs text-gray-600 w-12 text-center">{Math.round(scale * 100)}%</span>
-            <button onClick={() => setScale(s => Math.min(1.5, s + 0.1))} className="p-1.5 hover:bg-gray-100 rounded">
-              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-          </div>
-          <span className="text-xs text-gray-500">{pages.length} page{pages.length !== 1 ? 's' : ''}</span>
-        </div>
-
-        {/* Pages */}
-        <div className="p-4 flex flex-col items-center gap-4">
-          {pages.map((page, pageIndex) => (
-            <div
-              key={pageIndex}
-              className="relative bg-white shadow-md cursor-crosshair"
-              style={{ width: page.width * scale, height: page.height * scale }}
-              onClick={(e) => handlePageClick(e, pageIndex)}
-            >
-              <img
-                src={page.imageUrl}
-                alt={`Page ${pageIndex + 1}`}
-                className="w-full h-full pointer-events-none"
-                draggable={false}
-              />
-              
-              {/* Fields */}
-              {fields.filter(f => f.page === pageIndex).map(field => {
-                const signer = getSignerById(field.signerId)
-                const isSelected = selectedFieldId === field.id
-                
-                return (
-                  <motion.div
-                    key={field.id}
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className={`absolute border-2 rounded flex items-center justify-center text-xs cursor-pointer transition-shadow ${
-                      isSelected ? 'ring-2 ring-blue-500 shadow-lg' : 'hover:shadow-md'
-                    }`}
-                    style={{
-                      left: `${field.x * 100}%`,
-                      top: `${field.y * 100}%`,
-                      width: `${field.width * 100}%`,
-                      height: `${field.height * 100}%`,
-                      backgroundColor: `${signer?.color}20`,
-                      borderColor: signer?.color,
-                      color: signer?.color,
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedFieldId(isSelected ? null : field.id)
-                    }}
-                  >
-                    <span className="truncate px-1 font-medium">
-                      {FIELD_TYPES.find(f => f.type === field.type)?.icon}
-                    </span>
-                    
-                    {isSelected && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onRemoveField(field.id)
-                          setSelectedFieldId(null)
-                        }}
-                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </motion.div>
-                )
-              })}
-
-              {/* Page number */}
-              <div className="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-1.5 py-0.5 rounded">
-                {pageIndex + 1}
-              </div>
+              ))}
             </div>
-          ))}
+            <span>{recipients.length} signataire{recipients.length > 1 ? 's' : ''}</span>
+          </div>
+          <div className="w-px h-5 bg-gray-200" />
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <span>{fields.length} champ{fields.length !== 1 ? 's' : ''}</span>
+          </div>
         </div>
+
+        {/* Right */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onNext}
+            disabled={fields.length === 0 || isLoading}
+            className="px-4 py-2 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            Continuer
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Page Thumbnails */}
+        {pages.length > 0 && (
+          <PageThumbnails
+            pages={pages}
+            currentPage={currentPage}
+            onPageSelect={(pageIndex) => {
+              setCurrentPage(pageIndex)
+              const pageElement = document.querySelector(`[data-page="${pageIndex}"]`)
+              if (pageElement) {
+                pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
+            fieldsPerPage={fieldsPerPage}
+            signedFieldsPerPage={signedFieldsPerPage}
+          />
+        )}
+
+        {/* PDF Viewer */}
+        <div
+          className={`flex-1 overflow-auto transition-all duration-300 ${
+            isSidebarCollapsed ? '' : 'mr-80'
+          }`}
+        >
+          <PDFViewer
+            fileUrl={pdfUrl}
+            onPagesLoaded={handlePagesLoaded}
+            scale={scale}
+            onScaleChange={setScale}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            isDrawMode={!!drawMode}
+            onDraw={handleDrawOnPage}
+            onDrop={handleDropOnPage}
+            isDragging={!!dragFieldType}
+          >
+            {pages.map((_, pageIndex) => (
+              <FieldOverlay
+                key={pageIndex}
+                pageIndex={pageIndex}
+                fields={internalFields.filter(f => f.page === pageIndex)}
+                selectedFieldId={selectedFieldId}
+                onSelectField={setSelectedFieldId}
+                onUpdateField={handleUpdateField}
+                onDeleteField={onRemoveField}
+                getRecipientColor={getRecipientColor}
+                isPreviewMode={isPreviewMode}
+                isSignMode={isSignMode}
+                onSignField={handleSignField}
+                scale={scale}
+              />
+            ))}
+          </PDFViewer>
+        </div>
+
+        {/* Right Sidebar */}
+        <AnimatePresence>
+          {!isSidebarCollapsed && (
+            <motion.div
+              initial={{ x: 320 }}
+              animate={{ x: 0 }}
+              exit={{ x: 320 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="fixed right-0 top-[114px] bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10"
+            >
+              <FieldPalette
+                recipients={recipients}
+                selectedRecipientId={selectedRecipientId}
+                onSelectRecipient={setSelectedRecipientId}
+                onAddRecipient={addRecipient}
+                onUpdateRecipient={updateRecipient}
+                onDeleteRecipient={deleteRecipient}
+                selectedField={selectedField}
+                onUpdateField={handleUpdateField}
+                onDeleteField={onRemoveField}
+                onDuplicateField={duplicateField}
+                drawMode={drawMode}
+                onSetDrawMode={setDrawMode}
+                onDragStart={setDragFieldType}
+                onDragEnd={() => setDragFieldType(null)}
+                isPreviewMode={isPreviewMode}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sidebar Toggle */}
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className={`fixed z-20 bg-white border border-gray-200 rounded-l-lg p-2 shadow-sm transition-all duration-300 ${
+            isSidebarCollapsed ? 'right-0' : 'right-80'
+          }`}
+          style={{ top: '50%', transform: 'translateY(-50%)' }}
+        >
+          <svg
+            className={`w-5 h-5 text-gray-500 transition-transform ${isSidebarCollapsed ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       </div>
+
+      {/* Draw Mode Indicator */}
+      <AnimatePresence>
+        {drawMode && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50"
+          >
+            <div className="w-2 h-2 bg-[#08CF65] rounded-full animate-pulse" />
+            <span className="text-sm font-medium">
+              Cliquez sur le document pour placer un champ {getFieldLabel(drawMode)}
+            </span>
+            <button
+              onClick={() => setDrawMode(null)}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Signature Pad Modal */}
+      <SignaturePad
+        isOpen={signaturePadOpen}
+        onClose={() => {
+          setSignaturePadOpen(false)
+          setSigningFieldId(null)
+        }}
+        onSave={handleSignatureSaved}
+        title={
+          signingFieldId && internalFields.find(f => f.id === signingFieldId)?.type === 'initials'
+            ? 'Dessinez vos initiales'
+            : 'Dessinez votre signature'
+        }
+      />
     </div>
   )
+}
+
+// Helper functions
+function getFieldLabel(type: FieldType): string {
+  const labels: Record<FieldType, string> = {
+    signature: 'Signature',
+    initials: 'Initiales',
+    stamp: 'Tampon',
+    checkbox: 'Case',
+    radio: 'Radio',
+    select: 'Sélection',
+    date: 'Date',
+    text: 'Texte',
+    number: 'Nombre',
+    name: 'Nom',
+    email: 'Email',
+    phone: 'Téléphone',
+    image: 'Image',
+    file: 'Fichier',
+  }
+  return labels[type] || type
+}
+
+function getFieldPlaceholder(type: FieldType): string {
+  const placeholders: Record<FieldType, string> = {
+    signature: 'Signez ici',
+    initials: 'Paraphez ici',
+    stamp: 'Tampon ici',
+    checkbox: '',
+    radio: '',
+    select: 'Sélectionner',
+    date: 'JJ/MM/AAAA',
+    text: 'Entrer du texte',
+    number: '0',
+    name: 'Nom complet',
+    email: 'Adresse email',
+    phone: 'Numéro de téléphone',
+    image: 'Uploader une image',
+    file: 'Uploader un fichier',
+  }
+  return placeholders[type] || ''
 }
