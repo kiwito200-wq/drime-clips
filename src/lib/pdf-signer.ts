@@ -126,21 +126,19 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
       passphrase: ''
     })
     
-    // Step 3: Add visual signature stamp AFTER signing
-    // Note: This will invalidate the digital signature visually in some viewers
-    // but the cryptographic signature remains valid
-    console.log('[PDF Signer] Adding visual signature stamp...')
-    const finalPdf = await addVisualSignatureStamp(signedPdf, signerName, signedAt)
+    // IMPORTANT: Do NOT modify the PDF after signing!
+    // Any modification would invalidate the digital signature.
+    // The visual elements should already be in the PDF before signing.
     
     // Calculate final document hash
-    const documentHash = crypto.createHash('sha256').update(finalPdf).digest('hex')
+    const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
     
     console.log('[PDF Signer] PDF signed successfully!')
     console.log('[PDF Signer] Certificate: Drime Sign')
     console.log('[PDF Signer] Document hash:', documentHash.substring(0, 16) + '...')
     
     return {
-      pdfBuffer: finalPdf,
+      pdfBuffer: signedPdf,
       signatureInfo: {
         signedAt,
         documentHash,
