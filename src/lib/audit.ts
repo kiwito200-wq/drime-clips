@@ -489,7 +489,7 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
     
     // Verify it's actually a PDF (starts with %PDF)
     const firstBytes = new Uint8Array(originalPdfBytes.slice(0, 5))
-    const header = String.fromCharCode(...firstBytes)
+    const header = Array.from(firstBytes).map(b => String.fromCharCode(b)).join('')
     console.log('[PDF Gen] PDF header:', header)
     
     if (!header.startsWith('%PDF')) {
