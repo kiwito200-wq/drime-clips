@@ -477,8 +477,7 @@ export default function SignPage() {
             isOpen={signaturePadOpen}
             onClose={() => setSignaturePadOpen(false)}
             onSave={handleSignatureSave}
-            signerName={data?.name || ''}
-            type={signaturePadType}
+            title={signaturePadType === 'initials' ? 'Ajoutez vos initiales' : 'Ajoutez votre signature'}
           />
         )}
       </AnimatePresence>
