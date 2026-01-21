@@ -1,110 +1,21 @@
 /**
  * Drime Sign - PDF Digital Signature Module
  * 
- * Uses @signpdf packages to create REAL digital signatures
- * that can be verified by Adobe Reader, DocuSeal, etc.
+ * Adds visual signature + metadata to PDFs.
+ * For real PKCS#7 signatures, a proper certificate infrastructure is needed.
  */
 
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import { P12Signer } from '@signpdf/signer-p12'
-import { pdflibAddPlaceholder } from '@signpdf/placeholder-pdf-lib'
-import signpdf from '@signpdf/signpdf'
-import * as forge from 'node-forge'
 import crypto from 'crypto'
 
 // ==============================================
-// CERTIFICATE GENERATION
+// CONFIGURATION
 // ==============================================
 
 const CERT_CONFIG = {
   organization: 'Drime',
   organizationUnit: 'Drime Sign',
-  country: 'FR',
-  state: 'Ile-de-France', 
-  locality: 'Paris',
   commonName: 'Drime Sign',
-  validityYears: 10,
-  keySize: 2048,
-}
-
-// Cached P12 buffer
-let cachedP12Buffer: Buffer | null = null
-
-/**
- * Generate a self-signed certificate and return as P12/PFX buffer
- */
-function generateP12Certificate(): Buffer {
-  if (cachedP12Buffer) {
-    return cachedP12Buffer
-  }
-
-  console.log('[PDF Signer] Generating Drime certificate...')
-
-  const pki = forge.pki
-
-  // Generate RSA key pair
-  const keys = pki.rsa.generateKeyPair(CERT_CONFIG.keySize)
-
-  // Create certificate
-  const cert = pki.createCertificate()
-  cert.publicKey = keys.publicKey
-  cert.serialNumber = crypto.randomBytes(16).toString('hex')
-
-  // Set validity
-  cert.validity.notBefore = new Date()
-  cert.validity.notAfter = new Date()
-  cert.validity.notAfter.setFullYear(
-    cert.validity.notBefore.getFullYear() + CERT_CONFIG.validityYears
-  )
-
-  // Set subject and issuer (self-signed)
-  const attrs = [
-    { name: 'commonName', value: CERT_CONFIG.commonName },
-    { name: 'organizationName', value: CERT_CONFIG.organization },
-    { name: 'organizationalUnitName', value: CERT_CONFIG.organizationUnit },
-    { name: 'countryName', value: CERT_CONFIG.country },
-    { name: 'stateOrProvinceName', value: CERT_CONFIG.state },
-    { name: 'localityName', value: CERT_CONFIG.locality },
-  ]
-
-  cert.setSubject(attrs)
-  cert.setIssuer(attrs) // Self-signed
-
-  // Add extensions
-  cert.setExtensions([
-    {
-      name: 'basicConstraints',
-      cA: false,
-      critical: true,
-    },
-    {
-      name: 'keyUsage',
-      digitalSignature: true,
-      nonRepudiation: true,
-      critical: true,
-    },
-    {
-      name: 'subjectKeyIdentifier',
-    },
-  ])
-
-  // Sign certificate with private key
-  cert.sign(keys.privateKey, forge.md.sha256.create())
-
-  // Create PKCS#12 (P12/PFX)
-  const p12Asn1 = forge.pkcs12.toPkcs12Asn1(
-    keys.privateKey,
-    [cert],
-    '', // Empty password
-    { algorithm: '3des' }
-  )
-
-  const p12Der = forge.asn1.toDer(p12Asn1).getBytes()
-  cachedP12Buffer = Buffer.from(p12Der, 'binary')
-
-  console.log('[PDF Signer] Certificate generated successfully')
-
-  return cachedP12Buffer
 }
 
 // ==============================================
@@ -129,77 +40,39 @@ interface SignedPdfResult {
 }
 
 /**
- * Sign a PDF with a real PKCS#7 digital signature
+ * Sign a PDF with visual signature and metadata
  */
 export async function signPdfWithCertificate(options: SignPdfOptions): Promise<SignedPdfResult> {
   const {
     pdfBuffer,
-    reason = 'Document signé électroniquement via Drime Sign',
-    location = 'France',
-    contactInfo = 'https://sign.drime.cloud',
     signerName = 'Drime Sign',
   } = options
 
   const signedAt = new Date()
 
-  try {
-    // Load PDF
-    const pdfDoc = await PDFDocument.load(pdfBuffer)
+  // Load PDF and add visual signature
+  const pdfDoc = await PDFDocument.load(pdfBuffer)
+  
+  // Set metadata
+  pdfDoc.setProducer('Drime Sign - https://sign.drime.cloud')
+  pdfDoc.setCreator('Drime Sign')
+  pdfDoc.setSubject(`Signed by ${signerName} on ${signedAt.toISOString()}`)
+  
+  // Add visual signature
+  const signedPdf = await addVisualSignature(pdfDoc, signerName, signedAt)
+  
+  // Calculate document hash
+  const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
 
-    // Add signature placeholder using @signpdf/placeholder-pdf-lib
-    pdflibAddPlaceholder({
-      pdfDoc,
-      reason,
-      location,
-      name: signerName,
-      contactInfo,
-      signatureLength: 8192, // Size for signature
-    })
+  console.log('[PDF Signer] PDF signed with Drime visual signature')
 
-    // Save PDF with placeholder
-    const pdfWithPlaceholder = await pdfDoc.save({ useObjectStreams: false })
-    const pdfWithPlaceholderBuffer = Buffer.from(pdfWithPlaceholder)
-
-    // Get P12 certificate
-    const p12Buffer = generateP12Certificate()
-
-    // Create signer
-    const signer = new P12Signer(p12Buffer, { passphrase: '' })
-
-    // Sign the PDF
-    const signedPdfBuffer = await signpdf.sign(pdfWithPlaceholderBuffer, signer)
-
-    // Calculate document hash
-    const documentHash = crypto.createHash('sha256').update(signedPdfBuffer).digest('hex')
-
-    console.log('[PDF Signer] PDF signed successfully with Drime certificate')
-
-    return {
-      pdfBuffer: signedPdfBuffer,
-      signatureInfo: {
-        signedAt,
-        documentHash,
-        certificateSubject: CERT_CONFIG.commonName,
-      },
-    }
-  } catch (error) {
-    console.error('[PDF Signer] Failed to sign PDF:', error)
-
-    // Fallback: return original PDF with visual signature only
-    console.log('[PDF Signer] Falling back to visual signature only')
-    
-    const pdfDoc = await PDFDocument.load(pdfBuffer)
-    const visualPdf = await addVisualSignature(pdfDoc, signerName, signedAt)
-    const documentHash = crypto.createHash('sha256').update(visualPdf).digest('hex')
-
-    return {
-      pdfBuffer: visualPdf,
-      signatureInfo: {
-        signedAt,
-        documentHash,
-        certificateSubject: CERT_CONFIG.commonName,
-      },
-    }
+  return {
+    pdfBuffer: signedPdf,
+    signatureInfo: {
+      signedAt,
+      documentHash,
+      certificateSubject: CERT_CONFIG.commonName,
+    },
   }
 }
 
