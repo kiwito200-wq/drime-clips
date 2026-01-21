@@ -1,0 +1,171 @@
+// Drime Sign - Clean Prisma Schema
+// Electronic signature service
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  avatarUrl       String?
+  passwordHash    String?
+  
+  // Drime integration
+  drimeUserId     String?   @unique
+  drimeToken      String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  envelopes       Envelope[]
+  sessions        Session[]
+  
+  @@index([email])
+  @@index([drimeUserId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([token])
+  @@index([userId])
+}
+
+// ============================================
+// SIGNATURE DOCUMENTS
+// ============================================
+
+model Envelope {
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  userId          String
+  
+  name            String
+  message         String?
+  status          String    @default("draft") // draft, pending, completed, expired, cancelled
+  
+  // PDF storage
+  pdfUrl          String
+  pdfHash         String    // SHA-256 hash of original PDF
+  finalPdfUrl     String?   // Signed PDF
+  finalPdfHash    String?
+  
+  // Settings
+  signingOrder    String    @default("parallel") // parallel, sequential
+  expiresAt       DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  completedAt     DateTime?
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signers         Signer[]
+  fields          Field[]
+  auditLogs       AuditLog[]
+  
+  @@index([userId])
+  @@index([status])
+  @@index([slug])
+}
+
+model Signer {
+  id              String    @id @default(cuid())
+  envelopeId      String
+  
+  email           String
+  name            String?
+  color           String    @default("#EF4444")
+  order           Int       @default(0)
+  status          String    @default("pending") // pending, sent, viewed, signed, declined
+  token           String    @unique // Unique signing URL token
+  
+  signedAt        DateTime?
+  viewedAt        DateTime?
+  declinedAt      DateTime?
+  declineReason   String?
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  fields          Field[]
+  auditLogs       AuditLog[]
+  
+  @@index([envelopeId])
+  @@index([token])
+  @@index([email])
+}
+
+model Field {
+  id              String    @id @default(cuid())
+  envelopeId      String
+  signerId        String
+  
+  type            String    // signature, initials, text, date, checkbox
+  label           String?
+  placeholder     String?
+  required        Boolean   @default(true)
+  
+  // Position (percentage 0-1)
+  page            Int
+  x               Float
+  y               Float
+  width           Float
+  height          Float
+  
+  // Value after signing
+  value           String?
+  filledAt        DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  signer          Signer    @relation(fields: [signerId], references: [id], onDelete: Cascade)
+  
+  @@index([envelopeId])
+  @@index([signerId])
+}
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  envelopeId      String
+  signerId        String?
+  
+  action          String    // created, sent, viewed, signed, completed, downloaded
+  details         String?   // JSON
+  ipAddress       String?
+  userAgent       String?
+  
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  signer          Signer?   @relation(fields: [signerId], references: [id], onDelete: SetNull)
+  
+  @@index([envelopeId])
+  @@index([action])
+}
