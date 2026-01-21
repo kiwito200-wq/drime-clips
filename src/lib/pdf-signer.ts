@@ -1,16 +1,19 @@
 /**
  * Drime Sign - PDF Digital Signature Module
  * 
- * This module implements PKCS#7 digital signatures for PDFs.
- * Based on DocuSeal's HexaPDF approach, adapted for Node.js.
- * 
- * Uses node-signpdf for embedding the cryptographic signature.
+ * Uses node-signpdf library for proper PKCS#7 digital signatures.
+ * This creates signatures that are verifiable by Adobe Reader, 
+ * verifysignature.eu, and other PDF validators.
  */
 
+// @ts-ignore - node-signpdf doesn't have proper TS types
+import signer from 'node-signpdf'
+// @ts-ignore
+import { plainAddPlaceholder } from 'node-signpdf/dist/helpers'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import crypto from 'crypto'
 import * as forge from 'node-forge'
-import { getDrimeCertificates, exportAsPKCS12 } from './certificate'
+import { getDrimeCertificates } from './certificate'
 
 const pki = forge.pki
 
@@ -36,183 +39,14 @@ interface SignedPdfResult {
 }
 
 // ==============================================
-// PDF SIGNATURE PLACEHOLDER HELPERS
-// ==============================================
-
-const SIGNATURE_LENGTH = 8192 // Length for signature content
-const BYTE_RANGE_PLACEHOLDER = '/ByteRange [0 /********** /********** /**********]'
-
-/**
- * Find the ByteRange placeholder in the PDF
- */
-function findByteRange(pdf: Buffer): { byteRangePos: number; byteRangePlaceholderLength: number } {
-  const byteRangeString = '/ByteRange'
-  let byteRangePos = pdf.indexOf(byteRangeString)
-  
-  if (byteRangePos === -1) {
-    throw new Error('ByteRange placeholder not found in PDF')
-  }
-  
-  // Find the end of the ByteRange array
-  let bracketStart = pdf.indexOf('[', byteRangePos)
-  let bracketEnd = pdf.indexOf(']', bracketStart)
-  
-  return {
-    byteRangePos,
-    byteRangePlaceholderLength: bracketEnd - bracketStart + 1
-  }
-}
-
-/**
- * Add signature placeholder to PDF
- * This creates a signature dictionary with ByteRange placeholder
- */
-async function addSignaturePlaceholder(
-  pdfBuffer: Buffer,
-  reason: string,
-  signerName: string,
-  signedAt: Date
-): Promise<{ pdf: Buffer; placeholderPos: number }> {
-  const pdfDoc = await PDFDocument.load(pdfBuffer)
-  
-  // Set metadata first
-  pdfDoc.setProducer('Drime Sign - https://sign.drime.cloud')
-  pdfDoc.setCreator('Drime Sign')
-  pdfDoc.setSubject(`Signed by ${signerName} on ${signedAt.toISOString()}`)
-  
-  // Save PDF with metadata
-  let pdfBytes = await pdfDoc.save()
-  let pdf = Buffer.from(pdfBytes)
-  
-  // Create signature dictionary
-  const signatureDict = buildSignatureDict(reason, signerName, signedAt)
-  
-  // Find the last %%EOF to insert signature before it
-  const eofPattern = '%%EOF'
-  let eofPos = pdf.lastIndexOf(eofPattern)
-  
-  if (eofPos === -1) {
-    // Append %%EOF if not found
-    pdf = Buffer.concat([pdf, Buffer.from('\n%%EOF\n')])
-    eofPos = pdf.length - 7
-  }
-  
-  // Build the signature object
-  const sigObjNum = findNextObjectNumber(pdf)
-  const sigRefString = `${sigObjNum} 0 R`
-  
-  // Insert signature reference in AcroForm
-  // We need to create a complete new incremental update
-  const signaturePlaceholder = Buffer.from(signatureDict)
-  
-  // For simplicity, we'll embed the signature in the PDF trailer
-  // This is a simplified approach - for production, use proper incremental update
-  
-  const placeholderPos = pdf.length
-  
-  // Append signature object
-  const sigObject = buildSignatureObject(sigObjNum, reason, signerName, signedAt)
-  const newPdf = Buffer.concat([
-    pdf.slice(0, eofPos),
-    Buffer.from('\n'),
-    Buffer.from(sigObject),
-    Buffer.from('\n%%EOF\n')
-  ])
-  
-  return { pdf: newPdf, placeholderPos }
-}
-
-/**
- * Find the next available object number in the PDF
- */
-function findNextObjectNumber(pdf: Buffer): number {
-  const objPattern = /(\d+)\s+0\s+obj/g
-  const content = pdf.toString('latin1')
-  let maxObjNum = 0
-  let match
-  
-  while ((match = objPattern.exec(content)) !== null) {
-    const num = parseInt(match[1], 10)
-    if (num > maxObjNum) maxObjNum = num
-  }
-  
-  return maxObjNum + 1
-}
-
-/**
- * Build signature dictionary string
- */
-function buildSignatureDict(reason: string, signerName: string, signedAt: Date): string {
-  const date = formatPdfDate(signedAt)
-  
-  return `<<
-/Type /Sig
-/Filter /Adobe.PPKLite
-/SubFilter /adbe.pkcs7.detached
-/M (D:${date})
-/Name (${escapeString(signerName)})
-/Reason (${escapeString(reason)})
-/Location (France)
-/ContactInfo (https://sign.drime.cloud)
-${BYTE_RANGE_PLACEHOLDER}
-/Contents <${'0'.repeat(SIGNATURE_LENGTH * 2)}>
->>`
-}
-
-/**
- * Build complete signature object
- */
-function buildSignatureObject(objNum: number, reason: string, signerName: string, signedAt: Date): string {
-  const date = formatPdfDate(signedAt)
-  
-  return `${objNum} 0 obj
-<<
-/Type /Sig
-/Filter /Adobe.PPKLite
-/SubFilter /adbe.pkcs7.detached
-/M (D:${date})
-/Name (${escapeString(signerName)})
-/Reason (${escapeString(reason)})
-/Location (France)
-/ContactInfo (https://sign.drime.cloud)
-${BYTE_RANGE_PLACEHOLDER}
-/Contents <${'0'.repeat(SIGNATURE_LENGTH * 2)}>
->>
-endobj`
-}
-
-/**
- * Format date for PDF signature
- */
-function formatPdfDate(date: Date): string {
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  const hours = String(date.getUTCHours()).padStart(2, '0')
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-  const seconds = String(date.getUTCSeconds()).padStart(2, '0')
-  
-  return `${year}${month}${day}${hours}${minutes}${seconds}+00'00'`
-}
-
-/**
- * Escape special characters in PDF strings
- */
-function escapeString(str: string): string {
-  return str
-    .replace(/\\/g, '\\\\')
-    .replace(/\(/g, '\\(')
-    .replace(/\)/g, '\\)')
-}
-
-// ==============================================
-// PKCS#7 SIGNATURE CREATION
+// P12 CERTIFICATE GENERATION
 // ==============================================
 
 /**
- * Create PKCS#7 signature using node-forge
+ * Generate a P12 (PKCS#12) certificate buffer from our certificate chain
+ * This is what node-signpdf expects
  */
-function createPKCS7Signature(dataToSign: Buffer, signedAt: Date): Buffer {
+function generateP12Buffer(password: string = ''): Buffer {
   const certs = getDrimeCertificates()
   
   // Parse certificates and key
@@ -221,51 +55,32 @@ function createPKCS7Signature(dataToSign: Buffer, signedAt: Date): Buffer {
   const subCaCert = pki.certificateFromPem(certs.subCA.certificate)
   const rootCaCert = pki.certificateFromPem(certs.rootCA.certificate)
   
-  // Create PKCS#7 signed data
-  const p7 = forge.pkcs7.createSignedData()
+  // Create PKCS#12 structure
+  const p12Asn1 = forge.pkcs12.toPkcs12Asn1(
+    privateKey,
+    [signingCert, subCaCert, rootCaCert],
+    password,
+    {
+      algorithm: '3des', // Compatible with most tools
+      friendlyName: 'Drime Sign'
+    }
+  )
   
-  // Set content (the hash of the PDF data, not the raw data)
-  // For detached signatures, we don't include the content
-  p7.content = forge.util.createBuffer('')
-  
-  // Add certificates to the signature
-  p7.addCertificate(signingCert)
-  p7.addCertificate(subCaCert)
-  p7.addCertificate(rootCaCert)
-  
-  // Create message digest
-  const md = forge.md.sha256.create()
-  md.update(dataToSign.toString('binary'))
-  
-  // Add signer
-  p7.addSigner({
-    key: privateKey,
-    certificate: signingCert,
-    digestAlgorithm: forge.pki.oids.sha256,
-    authenticatedAttributes: [
-      {
-        type: forge.pki.oids.contentType,
-        value: forge.pki.oids.data
-      },
-      {
-        type: forge.pki.oids.signingTime,
-        value: signedAt.toISOString()
-      },
-      {
-        type: forge.pki.oids.messageDigest,
-        // messageDigest will be calculated automatically
-      }
-    ]
-  })
-  
-  // Sign the data
-  p7.sign({ detached: true })
-  
-  // Convert to DER format
-  const asn1 = p7.toAsn1()
-  const derBytes = forge.asn1.toDer(asn1).getBytes()
-  
-  return Buffer.from(derBytes, 'binary')
+  // Convert to DER then to Buffer
+  const p12Der = forge.asn1.toDer(p12Asn1).getBytes()
+  return Buffer.from(p12Der, 'binary')
+}
+
+// Cache the P12 buffer to avoid regenerating it every time
+let cachedP12Buffer: Buffer | null = null
+
+function getP12Buffer(): Buffer {
+  if (!cachedP12Buffer) {
+    console.log('[PDF Signer] Generating P12 certificate...')
+    cachedP12Buffer = generateP12Buffer('')
+    console.log('[PDF Signer] P12 certificate generated')
+  }
+  return cachedP12Buffer
 }
 
 // ==============================================
@@ -274,34 +89,48 @@ function createPKCS7Signature(dataToSign: Buffer, signedAt: Date): Buffer {
 
 /**
  * Sign a PDF with a real PKCS#7 digital signature
- * This creates a cryptographically verifiable signature
+ * Uses node-signpdf for proper PDF digital signature
  */
 export async function signPdfWithCertificate(options: SignPdfOptions): Promise<SignedPdfResult> {
   const {
     pdfBuffer,
-    reason = 'Document signé électroniquement',
+    reason = 'Document signe electroniquement via Drime Sign',
     signerName = 'Drime Sign',
+    location = 'France',
+    contactInfo = 'https://sign.drime.cloud'
   } = options
 
   const signedAt = new Date()
   
   try {
-    // Step 1: Add visual signature stamp
+    console.log('[PDF Signer] Starting PDF signing process...')
+    
+    // Step 1: Add visual signature stamp first
+    console.log('[PDF Signer] Adding visual signature stamp...')
     const pdfWithVisual = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
     
-    // Step 2: Prepare PDF with signature placeholder
-    const preparedPdf = await preparePdfForSigning(pdfWithVisual, reason, signerName, signedAt)
+    // Step 2: Add signature placeholder using node-signpdf helper
+    console.log('[PDF Signer] Adding signature placeholder...')
+    const pdfWithPlaceholder = plainAddPlaceholder({
+      pdfBuffer: pdfWithVisual,
+      reason: reason,
+      contactInfo: contactInfo,
+      name: signerName,
+      location: location,
+      signatureLength: 8192 // Large enough for the signature + certificates
+    })
     
-    // Step 3: Calculate hash and create PKCS#7 signature
-    const signature = createPKCS7Signature(preparedPdf.dataToSign, signedAt)
-    
-    // Step 4: Insert signature into PDF
-    const signedPdf = insertSignatureIntoPdf(preparedPdf.pdf, signature, preparedPdf.signaturePos, preparedPdf.signatureLength)
+    // Step 3: Sign the PDF with our P12 certificate
+    console.log('[PDF Signer] Signing PDF with Drime certificate...')
+    const p12Buffer = getP12Buffer()
+    const signedPdf = signer.sign(pdfWithPlaceholder, p12Buffer, {
+      passphrase: ''
+    })
     
     // Calculate final document hash
     const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
     
-    console.log('[PDF Signer] PDF signed with Drime PKCS#7 certificate')
+    console.log('[PDF Signer] PDF signed successfully!')
     console.log('[PDF Signer] Certificate: Drime Sign')
     console.log('[PDF Signer] Document hash:', documentHash.substring(0, 16) + '...')
     
@@ -317,6 +146,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
     console.error('[PDF Signer] Error during signing:', error)
     
     // Fallback: return PDF with visual signature only
+    console.log('[PDF Signer] Falling back to visual signature only...')
     const visualPdf = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
     const documentHash = crypto.createHash('sha256').update(visualPdf).digest('hex')
     
@@ -331,132 +161,8 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
   }
 }
 
-/**
- * Prepare PDF for signing by adding signature dictionary with ByteRange
- */
-async function preparePdfForSigning(
-  pdfBuffer: Buffer,
-  reason: string,
-  signerName: string,
-  signedAt: Date
-): Promise<{
-  pdf: Buffer
-  dataToSign: Buffer
-  signaturePos: number
-  signatureLength: number
-}> {
-  const pdfDoc = await PDFDocument.load(pdfBuffer)
-  
-  // Re-save to ensure consistent format
-  let pdfBytes = Buffer.from(await pdfDoc.save())
-  
-  // Find where to insert signature
-  const eofMarker = '%%EOF'
-  let eofPos = pdfBytes.lastIndexOf(eofMarker)
-  
-  if (eofPos === -1) {
-    pdfBytes = Buffer.concat([pdfBytes, Buffer.from('\n%%EOF\n')])
-    eofPos = pdfBytes.length - 7
-  }
-  
-  // Build signature dictionary
-  const date = formatPdfDate(signedAt)
-  const contentsPlaceholder = '0'.repeat(SIGNATURE_LENGTH * 2)
-  
-  // Calculate positions for ByteRange
-  const beforeSigDict = pdfBytes.slice(0, eofPos)
-  
-  // Build the signature object
-  const objNum = findNextObjectNumber(pdfBytes)
-  const sigDictStart = `\n${objNum} 0 obj\n<<\n/Type /Sig\n/Filter /Adobe.PPKLite\n/SubFilter /adbe.pkcs7.detached\n/M (D:${date})\n/Name (${escapeString(signerName)})\n/Reason (${escapeString(reason)})\n/Location (France)\n/ContactInfo (https://sign.drime.cloud)\n/ByteRange [`
-  const sigDictEnd = `]\n/Contents <${contentsPlaceholder}>\n>>\nendobj\n%%EOF\n`
-  
-  // Calculate byte range values
-  const byteRangeStart = beforeSigDict.length + sigDictStart.length
-  
-  // We need to calculate the actual positions
-  // ByteRange format: [start1 length1 start2 length2]
-  // start1 = 0 (beginning of file)
-  // length1 = position of <contents> - start of file
-  // start2 = position after </contents>
-  // length2 = end of file - start2
-  
-  // Build preliminary PDF to calculate positions
-  const prelimPdf = Buffer.concat([
-    beforeSigDict,
-    Buffer.from(sigDictStart),
-    Buffer.from('0 0000000000 0000000000 0000000000'), // placeholder for byte range
-    Buffer.from(sigDictEnd)
-  ])
-  
-  // Find /Contents < position
-  const contentsStartMarker = '/Contents <'
-  const contentsPos = prelimPdf.indexOf(contentsStartMarker)
-  const actualContentsStart = contentsPos + contentsStartMarker.length
-  const actualContentsEnd = actualContentsStart + SIGNATURE_LENGTH * 2
-  
-  // Calculate ByteRange
-  const byteRange1Start = 0
-  const byteRange1Length = actualContentsStart
-  const byteRange2Start = actualContentsEnd
-  const byteRange2Length = prelimPdf.length - actualContentsEnd
-  
-  // Format ByteRange values with padding
-  const byteRangeStr = `${byteRange1Start} ${byteRange1Length.toString().padStart(10, '0')} ${byteRange2Start.toString().padStart(10, '0')} ${byteRange2Length.toString().padStart(10, '0')}`
-  
-  // Build final PDF with correct ByteRange
-  const finalSigDict = `\n${objNum} 0 obj\n<<\n/Type /Sig\n/Filter /Adobe.PPKLite\n/SubFilter /adbe.pkcs7.detached\n/M (D:${date})\n/Name (${escapeString(signerName)})\n/Reason (${escapeString(reason)})\n/Location (France)\n/ContactInfo (https://sign.drime.cloud)\n/ByteRange [${byteRangeStr}]\n/Contents <${contentsPlaceholder}>\n>>\nendobj\n%%EOF\n`
-  
-  const finalPdf = Buffer.concat([
-    beforeSigDict,
-    Buffer.from(finalSigDict)
-  ])
-  
-  // Extract data to sign (everything except the signature contents)
-  const finalContentsPos = finalPdf.indexOf(contentsStartMarker)
-  const finalContentsStart = finalContentsPos + contentsStartMarker.length
-  const finalContentsEnd = finalContentsStart + SIGNATURE_LENGTH * 2
-  
-  const dataToSign = Buffer.concat([
-    finalPdf.slice(0, finalContentsStart),
-    finalPdf.slice(finalContentsEnd)
-  ])
-  
-  return {
-    pdf: finalPdf,
-    dataToSign,
-    signaturePos: finalContentsStart,
-    signatureLength: SIGNATURE_LENGTH * 2
-  }
-}
-
-/**
- * Insert the PKCS#7 signature into the prepared PDF
- */
-function insertSignatureIntoPdf(
-  pdf: Buffer,
-  signature: Buffer,
-  signaturePos: number,
-  signatureLength: number
-): Buffer {
-  // Convert signature to hex
-  const signatureHex = signature.toString('hex')
-  
-  // Pad with zeros to fill the placeholder
-  const paddedSignature = signatureHex.padEnd(signatureLength, '0')
-  
-  // Replace the placeholder with actual signature
-  const result = Buffer.concat([
-    pdf.slice(0, signaturePos),
-    Buffer.from(paddedSignature),
-    pdf.slice(signaturePos + signatureLength)
-  ])
-  
-  return result
-}
-
 // ==============================================
-// VISUAL SIGNATURE
+// VISUAL SIGNATURE STAMP
 // ==============================================
 
 /**
@@ -471,6 +177,11 @@ async function addVisualSignatureStamp(
   const pages = pdfDoc.getPages()
   const lastPage = pages[pages.length - 1]
   const { width } = lastPage.getSize()
+
+  // Set metadata
+  pdfDoc.setProducer('Drime Sign - https://sign.drime.cloud')
+  pdfDoc.setCreator('Drime Sign')
+  pdfDoc.setSubject(`Signe par ${signerName} le ${signedAt.toISOString()}`)
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
@@ -515,7 +226,7 @@ async function addVisualSignatureStamp(
     color: rgb(1, 1, 1),
   })
 
-  // Signature text
+  // Signature text (avoiding accented characters for PDF compatibility)
   lastPage.drawText('Signe electroniquement via Drime Sign', {
     x: boxX + 50,
     y: boxY + 38,
@@ -532,7 +243,9 @@ async function addVisualSignatureStamp(
     color: rgb(0.3, 0.3, 0.3),
   })
 
-  lastPage.drawText(`Date: ${signedAt.toLocaleDateString('fr-FR')} a ${signedAt.toLocaleTimeString('fr-FR')}`, {
+  const dateStr = signedAt.toLocaleDateString('fr-FR')
+  const timeStr = signedAt.toLocaleTimeString('fr-FR')
+  lastPage.drawText(`Date: ${dateStr} a ${timeStr}`, {
     x: boxX + 50,
     y: boxY + 14,
     size: 8,
