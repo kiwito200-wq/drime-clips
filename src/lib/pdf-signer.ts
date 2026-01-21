@@ -64,10 +64,9 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
   // Get PDF bytes for signing
   const pdfBytes = await pdfDoc.save()
   
-  // Create the hash of the document
-  const md = forge.md.sha256.create()
-  md.update(forge.util.createBuffer(pdfBytes).getBytes())
-  const documentHash = md.digest().toHex()
+  // Create the hash of the document using Node's crypto (more efficient)
+  const crypto = await import('crypto')
+  const documentHash = crypto.createHash('sha256').update(Buffer.from(pdfBytes)).digest('hex')
   
   // Create PKCS#7 signed data
   const p7 = pkcs7.createSignedData()
