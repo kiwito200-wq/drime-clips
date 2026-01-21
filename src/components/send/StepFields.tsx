@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { getPdfProxyUrl } from '@/lib/pdf-utils'
 
 interface Signer {
   id: string
@@ -60,7 +59,6 @@ export default function StepFields({
   fields,
   onAddField,
   onRemoveField,
-  onUpdateField,
   onBack,
   onNext,
   isLoading,
@@ -73,20 +71,31 @@ export default function StepFields({
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [scale, setScale] = useState(0.8)
 
-  // Load PDF
+  // Load PDF using signed URL (like Transfr)
   useEffect(() => {
-    if (!document.pdfUrl) return
+    if (!document.slug) return
 
     const loadPdf = async () => {
       try {
         setPdfLoading(true)
         setPdfError(null)
 
-        // Use proxy URL
-        const proxyUrl = getPdfProxyUrl(document.pdfUrl!)
-        console.log('[StepFields] Loading PDF from:', proxyUrl)
+        // Get signed URL from API (like Transfr does)
+        console.log('[StepFields] Getting signed URL for:', document.slug)
+        const urlRes = await fetch(`/api/envelopes/${document.slug}/pdf-url`, {
+          credentials: 'include',
+        })
         
-        const response = await fetch(proxyUrl)
+        if (!urlRes.ok) {
+          const errorData = await urlRes.json().catch(() => ({}))
+          throw new Error(errorData.error || `Failed to get PDF URL: ${urlRes.status}`)
+        }
+        
+        const { url: signedUrl } = await urlRes.json()
+        console.log('[StepFields] Got signed URL, loading PDF...')
+        
+        // Fetch PDF using signed URL
+        const response = await fetch(signedUrl)
         if (!response.ok) {
           throw new Error(`Failed to fetch PDF: ${response.status}`)
         }
@@ -94,6 +103,7 @@ export default function StepFields({
         const arrayBuffer = await response.arrayBuffer()
         console.log('[StepFields] PDF fetched, size:', arrayBuffer.byteLength)
         
+        // Load with PDF.js
         const pdfjsLib = await import('pdfjs-dist')
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
 
@@ -120,13 +130,13 @@ export default function StepFields({
         setPdfLoading(false)
       } catch (error) {
         console.error('[StepFields] PDF load error:', error)
-        setPdfError('Impossible de charger le PDF')
+        setPdfError(error instanceof Error ? error.message : 'Impossible de charger le PDF')
         setPdfLoading(false)
       }
     }
 
     loadPdf()
-  }, [document.pdfUrl])
+  }, [document.slug])
 
   // Handle click to add field
   const handlePageClick = useCallback((e: React.MouseEvent, pageIndex: number) => {
@@ -168,15 +178,16 @@ export default function StepFields({
   if (pdfError) {
     return (
       <div className="h-[calc(100vh-80px)] flex items-center justify-center">
-        <div className="text-center">
+        <div className="text-center max-w-md">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
             <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <p className="text-red-600 font-medium">{pdfError}</p>
-          <button onClick={onBack} className="mt-4 text-sm text-gray-500 hover:text-gray-700">
-            Retour
+          <p className="text-red-600 font-medium mb-2">Impossible de charger le PDF</p>
+          <p className="text-gray-500 text-sm mb-4">{pdfError}</p>
+          <button onClick={onBack} className="text-sm text-[#08CF65] hover:underline">
+            ← Retour
           </button>
         </div>
       </div>
