@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import StepUpload from '@/components/send/StepUpload'
@@ -55,7 +55,7 @@ const SIGNER_COLORS = [
   '#F97316', // Orange
 ]
 
-export default function SendPage() {
+function SendPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   
@@ -547,5 +547,20 @@ export default function SendPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function SendPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Chargement...</p>
+        </div>
+      </div>
+    }>
+      <SendPageContent />
+    </Suspense>
   )
 }

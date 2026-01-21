@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { attemptDrimeAutoLogin } from '@/lib/drime-auth'
 
+// Force dynamic rendering (uses cookies)
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     const result = await attemptDrimeAutoLogin(request)
