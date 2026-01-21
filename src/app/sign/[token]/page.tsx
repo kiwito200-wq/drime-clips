@@ -322,6 +322,10 @@ export default function SignPage() {
               onScaleChange={setScale}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
+              isDrawMode={false}
+              onDraw={() => {}}
+              onDrop={() => {}}
+              isDragging={false}
             >
               {/* Render fields on each page */}
               {pages.map((_, pageIndex) => (
