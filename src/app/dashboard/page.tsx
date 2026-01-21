@@ -40,47 +40,28 @@ export default function Dashboard() {
 
   const checkAuthAndFetch = useCallback(async () => {
     try {
-      // Try to get user (optional in dev mode)
-      const localAuthRes = await fetch('/api/auth/me', {
+      // Check auth via Drime session
+      const authRes = await fetch('/api/auth/me', {
         credentials: 'include',
       })
       
-      if (localAuthRes.ok) {
-        const localData = await localAuthRes.json()
-        if (localData.user) {
-          setUser(localData.user)
-        } else {
-          // DEV MODE: Set dev user for display
-          setUser({
-            id: 'dev',
-            email: 'dev@drime.cloud',
-            name: 'Dev User',
-            avatarUrl: null,
-          })
-        }
-      } else {
-        // DEV MODE: Set dev user for display
-        setUser({
-          id: 'dev',
-          email: 'dev@drime.cloud',
-          name: 'Dev User',
-          avatarUrl: null,
-        })
-      }
+      const authData = await authRes.json()
       
-      // Fetch envelopes (works without auth in dev mode)
-      await fetchEnvelopes()
+      if (authRes.ok && authData.user) {
+        // User is authenticated
+        setUser(authData.user)
+        await fetchEnvelopes()
+      } else {
+        // Not authenticated - redirect to Drime login
+        const loginUrl = authData.loginUrl || 'https://staging.drime.cloud/login'
+        window.location.href = loginUrl
+        return
+      }
       
     } catch (error) {
       console.error('Failed to load dashboard:', error)
-      // In dev mode, continue anyway
-      setUser({
-        id: 'dev',
-        email: 'dev@drime.cloud',
-        name: 'Dev User',
-        avatarUrl: null,
-      })
-      await fetchEnvelopes()
+      // On error, redirect to Drime login
+      window.location.href = 'https://staging.drime.cloud/login'
     } finally {
       setLoading(false)
     }

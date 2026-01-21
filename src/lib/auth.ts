@@ -9,6 +9,12 @@ const JWT_SECRET = new TextEncoder().encode(
 
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
+// Drime API URL (staging for now, will be app.drime.cloud in production)
+const DRIME_API_URL = process.env.DRIME_API_URL || 'https://staging.drime.cloud'
+const DRIME_LOGIN_URL = process.env.DRIME_LOGIN_URL || 'https://staging.drime.cloud/login'
+
+export { DRIME_LOGIN_URL }
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10)
 }
@@ -35,6 +41,73 @@ export async function createSession(userId: string): Promise<string> {
   })
   
   return token
+}
+
+// Check Drime session and get user data
+export async function checkDrimeSession(cookieHeader: string | null): Promise<{
+  id: string
+  email: string
+  name: string | null
+  avatar_url: string | null
+} | null> {
+  if (!cookieHeader) return null
+  
+  try {
+    const response = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
+      method: 'GET',
+      headers: {
+        'Cookie': cookieHeader,
+        'Accept': 'application/json',
+      },
+      credentials: 'include',
+    })
+    
+    if (!response.ok) {
+      console.log('[Drime Auth] Session check failed:', response.status)
+      return null
+    }
+    
+    const data = await response.json()
+    
+    if (data.user) {
+      return {
+        id: String(data.user.id),
+        email: data.user.email,
+        name: data.user.name || data.user.display_name || null,
+        avatar_url: data.user.avatar_url || null,
+      }
+    }
+    
+    return null
+  } catch (error) {
+    console.error('[Drime Auth] Error checking session:', error)
+    return null
+  }
+}
+
+// Get or create user from Drime data
+export async function getOrCreateUserFromDrime(drimeUser: {
+  id: string
+  email: string
+  name: string | null
+  avatar_url: string | null
+}) {
+  const user = await prisma.user.upsert({
+    where: { email: drimeUser.email },
+    update: {
+      name: drimeUser.name || undefined,
+      avatarUrl: drimeUser.avatar_url || undefined,
+      drimeUserId: drimeUser.id,
+    },
+    create: {
+      email: drimeUser.email,
+      name: drimeUser.name,
+      avatarUrl: drimeUser.avatar_url,
+      drimeUserId: drimeUser.id,
+    },
+  })
+  
+  return user
 }
 
 export async function getCurrentUser() {

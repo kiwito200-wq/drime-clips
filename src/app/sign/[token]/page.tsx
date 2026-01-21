@@ -235,44 +235,20 @@ export default function SignPage() {
     setTextFieldId(null)
   }, [textFieldId, updateFieldValue, scrollToNextField, fieldValues])
 
-  // Handle field update (for checkboxes, text fields, etc.)
+  // Handle field update (for checkboxes)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
     if (updates.value !== undefined) {
       const newValue = String(updates.value)
       updateFieldValue(fieldId, newValue)
-      // If checkbox was checked, scroll to next field
-      if (updates.value === 'true') {
+      // Always scroll to next unfilled field after checkbox is CHECKED
+      if (newValue === 'true') {
         setTimeout(() => {
-          setFieldValues(prev => {
-            const updatedValues = { ...prev, [fieldId]: newValue }
-            // Call scrollToNextField with updated values
-            const currentIndex = internalFields.findIndex(f => f.id === fieldId)
-            if (currentIndex !== -1) {
-              const nextField = internalFields.slice(currentIndex + 1).find(f => {
-                if (!f.required) return false
-                const value = updatedValues[f.id] || f.value
-                if (typeof value === 'boolean') return !value
-                if (Array.isArray(value)) return value.length === 0
-                if (typeof value === 'string') return !value || value.trim() === ''
-                return !value
-              })
-              if (nextField) {
-                setCurrentPage(nextField.page)
-                setSelectedFieldId(nextField.id)
-                setTimeout(() => {
-                  const fieldElement = document.querySelector(`[data-field-id="${nextField.id}"]`)
-                  if (fieldElement) {
-                    fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                  }
-                }, 300)
-              }
-            }
-            return updatedValues
-          })
-        }, 300)
+          const updatedValues = { ...fieldValues, [fieldId]: newValue }
+          scrollToNextField(fieldId, updatedValues)
+        }, 200)
       }
     }
-  }, [updateFieldValue, internalFields])
+  }, [updateFieldValue, fieldValues, scrollToNextField])
 
   // Check if a field is filled (handles different field types)
   const isFieldFilled = useCallback((fieldId: string, fieldType: string): boolean => {
