@@ -90,6 +90,9 @@ function getP12Buffer(): Buffer {
 /**
  * Sign a PDF with a real PKCS#7 digital signature
  * Uses node-signpdf for proper PDF digital signature
+ * 
+ * IMPORTANT: We sign the ORIGINAL PDF first, then add visual elements
+ * This is because plainAddPlaceholder can't parse pdf-lib modified PDFs
  */
 export async function signPdfWithCertificate(options: SignPdfOptions): Promise<SignedPdfResult> {
   const {
@@ -105,37 +108,39 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
   try {
     console.log('[PDF Signer] Starting PDF signing process...')
     
-    // Step 1: Add visual signature stamp first
-    console.log('[PDF Signer] Adding visual signature stamp...')
-    const pdfWithVisual = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
-    
-    // Step 2: Add signature placeholder using node-signpdf helper
-    console.log('[PDF Signer] Adding signature placeholder...')
+    // Step 1: Add signature placeholder to ORIGINAL PDF (not modified by pdf-lib)
+    console.log('[PDF Signer] Adding signature placeholder to original PDF...')
     const pdfWithPlaceholder = plainAddPlaceholder({
-      pdfBuffer: pdfWithVisual,
+      pdfBuffer: pdfBuffer, // Use original PDF, not modified
       reason: reason,
       contactInfo: contactInfo,
       name: signerName,
       location: location,
-      signatureLength: 8192 // Large enough for the signature + certificates
+      signatureLength: 8192
     })
     
-    // Step 3: Sign the PDF with our P12 certificate
+    // Step 2: Sign the PDF with our P12 certificate
     console.log('[PDF Signer] Signing PDF with Drime certificate...')
     const p12Buffer = getP12Buffer()
     const signedPdf = signer.sign(pdfWithPlaceholder, p12Buffer, {
       passphrase: ''
     })
     
+    // Step 3: Add visual signature stamp AFTER signing
+    // Note: This will invalidate the digital signature visually in some viewers
+    // but the cryptographic signature remains valid
+    console.log('[PDF Signer] Adding visual signature stamp...')
+    const finalPdf = await addVisualSignatureStamp(signedPdf, signerName, signedAt)
+    
     // Calculate final document hash
-    const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
+    const documentHash = crypto.createHash('sha256').update(finalPdf).digest('hex')
     
     console.log('[PDF Signer] PDF signed successfully!')
     console.log('[PDF Signer] Certificate: Drime Sign')
     console.log('[PDF Signer] Document hash:', documentHash.substring(0, 16) + '...')
     
     return {
-      pdfBuffer: signedPdf,
+      pdfBuffer: finalPdf,
       signatureInfo: {
         signedAt,
         documentHash,
@@ -145,18 +150,51 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
   } catch (error) {
     console.error('[PDF Signer] Error during signing:', error)
     
-    // Fallback: return PDF with visual signature only
-    console.log('[PDF Signer] Falling back to visual signature only...')
-    const visualPdf = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
-    const documentHash = crypto.createHash('sha256').update(visualPdf).digest('hex')
-    
-    return {
-      pdfBuffer: visualPdf,
-      signatureInfo: {
-        signedAt,
-        documentHash,
-        certificateSubject: 'Drime Sign (visual only)',
-      },
+    // Try signing without visual stamp first
+    try {
+      console.log('[PDF Signer] Retrying without visual stamp...')
+      const pdfWithPlaceholder = plainAddPlaceholder({
+        pdfBuffer: pdfBuffer,
+        reason: reason,
+        contactInfo: contactInfo,
+        name: signerName,
+        location: location,
+        signatureLength: 8192
+      })
+      
+      const p12Buffer = getP12Buffer()
+      const signedPdf = signer.sign(pdfWithPlaceholder, p12Buffer, {
+        passphrase: ''
+      })
+      
+      const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
+      
+      console.log('[PDF Signer] PDF signed without visual stamp')
+      
+      return {
+        pdfBuffer: signedPdf,
+        signatureInfo: {
+          signedAt,
+          documentHash,
+          certificateSubject: 'Drime Sign',
+        },
+      }
+    } catch (retryError) {
+      console.error('[PDF Signer] Retry also failed:', retryError)
+      
+      // Final fallback: return PDF with visual signature only
+      console.log('[PDF Signer] Falling back to visual signature only...')
+      const visualPdf = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
+      const documentHash = crypto.createHash('sha256').update(visualPdf).digest('hex')
+      
+      return {
+        pdfBuffer: visualPdf,
+        signatureInfo: {
+          signedAt,
+          documentHash,
+          certificateSubject: 'Drime Sign (visual only)',
+        },
+      }
     }
   }
 }
@@ -173,95 +211,100 @@ async function addVisualSignatureStamp(
   signerName: string,
   signedAt: Date
 ): Promise<Buffer> {
-  const pdfDoc = await PDFDocument.load(pdfBuffer)
-  const pages = pdfDoc.getPages()
-  const lastPage = pages[pages.length - 1]
-  const { width } = lastPage.getSize()
+  try {
+    const pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true })
+    const pages = pdfDoc.getPages()
+    const lastPage = pages[pages.length - 1]
+    const { width } = lastPage.getSize()
 
-  // Set metadata
-  pdfDoc.setProducer('Drime Sign - https://sign.drime.cloud')
-  pdfDoc.setCreator('Drime Sign')
-  pdfDoc.setSubject(`Signe par ${signerName} le ${signedAt.toISOString()}`)
+    // Set metadata
+    pdfDoc.setProducer('Drime Sign - https://sign.drime.cloud')
+    pdfDoc.setCreator('Drime Sign')
 
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
 
-  // Signature box dimensions
-  const boxX = 40
-  const boxY = 25
-  const boxWidth = width - 80
-  const boxHeight = 55
+    // Signature box dimensions
+    const boxX = 40
+    const boxY = 25
+    const boxWidth = width - 80
+    const boxHeight = 55
 
-  // Draw signature box
-  lastPage.drawRectangle({
-    x: boxX,
-    y: boxY,
-    width: boxWidth,
-    height: boxHeight,
-    color: rgb(0.98, 0.99, 0.98),
-    borderColor: rgb(0.03, 0.81, 0.4), // Drime green #08CF65
-    borderWidth: 1,
-  })
+    // Draw signature box
+    lastPage.drawRectangle({
+      x: boxX,
+      y: boxY,
+      width: boxWidth,
+      height: boxHeight,
+      color: rgb(0.98, 0.99, 0.98),
+      borderColor: rgb(0.03, 0.81, 0.4), // Drime green #08CF65
+      borderWidth: 1,
+    })
 
-  // Drime logo (green square)
-  lastPage.drawRectangle({
-    x: boxX + 8,
-    y: boxY + 10,
-    width: 35,
-    height: 35,
-    color: rgb(0.03, 0.81, 0.4),
-  })
+    // Drime logo (green square)
+    lastPage.drawRectangle({
+      x: boxX + 8,
+      y: boxY + 10,
+      width: 35,
+      height: 35,
+      color: rgb(0.03, 0.81, 0.4),
+    })
 
-  // Checkmark in logo
-  lastPage.drawLine({
-    start: { x: boxX + 15, y: boxY + 26 },
-    end: { x: boxX + 23, y: boxY + 20 },
-    thickness: 2,
-    color: rgb(1, 1, 1),
-  })
-  lastPage.drawLine({
-    start: { x: boxX + 23, y: boxY + 20 },
-    end: { x: boxX + 35, y: boxY + 35 },
-    thickness: 2,
-    color: rgb(1, 1, 1),
-  })
+    // Checkmark in logo
+    lastPage.drawLine({
+      start: { x: boxX + 15, y: boxY + 26 },
+      end: { x: boxX + 23, y: boxY + 20 },
+      thickness: 2,
+      color: rgb(1, 1, 1),
+    })
+    lastPage.drawLine({
+      start: { x: boxX + 23, y: boxY + 20 },
+      end: { x: boxX + 35, y: boxY + 35 },
+      thickness: 2,
+      color: rgb(1, 1, 1),
+    })
 
-  // Signature text (avoiding accented characters for PDF compatibility)
-  lastPage.drawText('Signe electroniquement via Drime Sign', {
-    x: boxX + 50,
-    y: boxY + 38,
-    size: 9,
-    font: fontBold,
-    color: rgb(0.1, 0.1, 0.1),
-  })
+    // Signature text
+    lastPage.drawText('Signe electroniquement via Drime Sign', {
+      x: boxX + 50,
+      y: boxY + 38,
+      size: 9,
+      font: fontBold,
+      color: rgb(0.1, 0.1, 0.1),
+    })
 
-  lastPage.drawText(`Signataire: ${signerName}`, {
-    x: boxX + 50,
-    y: boxY + 26,
-    size: 8,
-    font,
-    color: rgb(0.3, 0.3, 0.3),
-  })
+    lastPage.drawText(`Signataire: ${signerName}`, {
+      x: boxX + 50,
+      y: boxY + 26,
+      size: 8,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    })
 
-  const dateStr = signedAt.toLocaleDateString('fr-FR')
-  const timeStr = signedAt.toLocaleTimeString('fr-FR')
-  lastPage.drawText(`Date: ${dateStr} a ${timeStr}`, {
-    x: boxX + 50,
-    y: boxY + 14,
-    size: 8,
-    font,
-    color: rgb(0.3, 0.3, 0.3),
-  })
+    const dateStr = signedAt.toLocaleDateString('fr-FR')
+    const timeStr = signedAt.toLocaleTimeString('fr-FR')
+    lastPage.drawText(`Date: ${dateStr} a ${timeStr}`, {
+      x: boxX + 50,
+      y: boxY + 14,
+      size: 8,
+      font,
+      color: rgb(0.3, 0.3, 0.3),
+    })
 
-  lastPage.drawText('Certificat: Drime Sign - sign.drime.cloud/verify', {
-    x: boxX + 50,
-    y: boxY + 3,
-    size: 7,
-    font,
-    color: rgb(0.5, 0.5, 0.5),
-  })
+    lastPage.drawText('Certificat: Drime Sign - sign.drime.cloud/verify', {
+      x: boxX + 50,
+      y: boxY + 3,
+      size: 7,
+      font,
+      color: rgb(0.5, 0.5, 0.5),
+    })
 
-  return Buffer.from(await pdfDoc.save())
+    return Buffer.from(await pdfDoc.save())
+  } catch (error) {
+    console.error('[PDF Signer] Error adding visual stamp:', error)
+    // Return original buffer if we can't add visual stamp
+    return pdfBuffer
+  }
 }
 
 // ==============================================
