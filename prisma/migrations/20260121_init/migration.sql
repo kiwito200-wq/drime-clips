@@ -104,13 +104,13 @@ CREATE TABLE IF NOT EXISTS "AuditLog" (
 );
 
 -- CreateIndex (idempotent)
-CREATE UNIQUE INDEX IF NOT EXISTS IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
 
 -- CreateIndex (idempotent)
-CREATE UNIQUE INDEX IF NOT EXISTS IF NOT EXISTS "User_drimeUserId_key" ON "User"("drimeUserId");
+CREATE UNIQUE INDEX IF NOT EXISTS "User_drimeUserId_key" ON "User"("drimeUserId");
 
 -- CreateIndex (idempotent)
-CREATE INDEX IF NOT EXISTS IF NOT EXISTS "User_email_idx" ON "User"("email");
+CREATE INDEX IF NOT EXISTS "User_email_idx" ON "User"("email");
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "User_drimeUserId_idx" ON "User"("drimeUserId");
