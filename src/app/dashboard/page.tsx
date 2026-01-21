@@ -39,34 +39,39 @@ export default function Dashboard() {
     }
   }, [])
 
+  const clearSessionAndRedirect = useCallback(async () => {
+    // Clear local session
+    await fetch('/api/auth/logout', { method: 'POST' })
+    // Redirect to Drime login
+    window.location.href = DRIME_LOGIN_URL
+  }, [])
+
   const checkAuthAndFetch = useCallback(async () => {
     try {
-      // Check if we have a local session
-      const localAuthRes = await fetch('/api/auth/me', {
+      // Always check with server which will verify Drime session
+      const authRes = await fetch('/api/auth/check', {
         credentials: 'include',
       })
       
-      if (localAuthRes.ok) {
-        const localData = await localAuthRes.json()
-        if (localData.user) {
-          // User is authenticated
-          setUser(localData.user)
+      if (authRes.ok) {
+        const data = await authRes.json()
+        if (data.user) {
+          setUser(data.user)
           await fetchEnvelopes()
           setLoading(false)
           return
         }
       }
 
-      // Not authenticated - redirect to Drime login
+      // Not authenticated or session mismatch - redirect to Drime login
       console.log('[Dashboard] Not authenticated, redirecting to Drime login...')
-      window.location.href = DRIME_LOGIN_URL
+      await clearSessionAndRedirect()
       
     } catch (error) {
       console.error('[Dashboard] Auth error:', error)
-      // On any error, redirect to Drime login
-      window.location.href = DRIME_LOGIN_URL
+      await clearSessionAndRedirect()
     }
-  }, [fetchEnvelopes])
+  }, [fetchEnvelopes, clearSessionAndRedirect])
 
   useEffect(() => {
     checkAuthAndFetch()
@@ -134,20 +139,6 @@ export default function Dashboard() {
                 <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
-              
-              {/* Logout button */}
-              <button
-                onClick={async () => {
-                  await fetch('/api/auth/logout', { method: 'POST' })
-                  window.location.href = 'https://app.drime.cloud/login'
-                }}
-                className="ml-2 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Déconnexion"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
