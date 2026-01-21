@@ -7,7 +7,7 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-change-in-production'
 )
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+const DRIME_API_URL = process.env.DRIME_API_URL || 'https://staging.drime.cloud'
 
 /**
  * Check authentication by verifying with Drime

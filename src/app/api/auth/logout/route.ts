@@ -42,5 +42,5 @@ export async function GET() {
   cookieStore.delete('session')
 
   // Redirect to Drime login
-  return NextResponse.redirect('https://app.drime.cloud/login')
+  return NextResponse.redirect('https://staging.drime.cloud/login')
 }

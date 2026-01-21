@@ -21,7 +21,7 @@ interface Envelope {
 }
 
 // Production Drime URL
-const DRIME_LOGIN_URL = 'https://app.drime.cloud/login'
+const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
 
 export default function Dashboard() {
   const [user, setUser] = useState<User | null>(null)

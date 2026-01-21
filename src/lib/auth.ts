@@ -10,8 +10,8 @@ const JWT_SECRET = new TextEncoder().encode(
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
 // Drime API URL (staging for now, will be app.drime.cloud in production)
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
-const DRIME_LOGIN_URL = process.env.DRIME_LOGIN_URL || 'https://app.drime.cloud/login'
+const DRIME_API_URL = process.env.DRIME_API_URL || 'https://staging.drime.cloud'
+const DRIME_LOGIN_URL = process.env.DRIME_LOGIN_URL || 'https://staging.drime.cloud/login'
 
 export { DRIME_LOGIN_URL }
 
