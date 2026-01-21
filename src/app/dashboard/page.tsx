@@ -81,7 +81,6 @@ export default function Dashboard() {
       }
 
       // STEP 2: No local session - try Drime auth from browser
-      // Note: This may fail due to CORS if Drime doesn't allow sign.drime.cloud
       console.log('[Dashboard] Checking Drime session from browser...')
       
       try {
@@ -122,15 +121,30 @@ export default function Dashboard() {
               setLoading(false)
               return
             }
+          } else {
+            // Drime responded OK but no user = user not logged in on Drime
+            // Redirect to Drime login
+            console.log('[Dashboard] No Drime user, redirecting to Drime login...')
+            const redirectUrl = encodeURIComponent(window.location.href)
+            window.location.href = `${DRIME_AUTH_URL}/login?redirect=${redirectUrl}`
+            return
           }
+        } else {
+          // Drime returned error (401, etc.) - redirect to login
+          console.log('[Dashboard] Drime auth failed, redirecting to login...')
+          const redirectUrl = encodeURIComponent(window.location.href)
+          window.location.href = `${DRIME_AUTH_URL}/login?redirect=${redirectUrl}`
+          return
         }
       } catch (corsError) {
-        // CORS error - Drime doesn't allow cross-origin requests with credentials
-        console.log('[Dashboard] CORS error with Drime auth:', corsError)
+        // CORS or network error - show dev login as fallback
+        console.log('[Dashboard] CORS/network error with Drime auth:', corsError)
+        setShowDevLogin(true)
+        return
       }
 
-      // No auth available - show dev login option
-      console.log('[Dashboard] No auth, showing dev login')
+      // Fallback - show dev login
+      console.log('[Dashboard] Fallback - showing dev login')
       setShowDevLogin(true)
       
     } catch (error) {
