@@ -54,7 +54,7 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      replyTo: senderEmail,
+      reply_to: senderEmail,
       subject: `${senderName} vous invite à signer "${documentName}"`,
       html: `
 <!DOCTYPE html>
