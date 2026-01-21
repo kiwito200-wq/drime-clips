@@ -96,7 +96,6 @@ export default function PDFViewer({
           await page.render({
             canvasContext: context!,
             viewport: viewport,
-            canvas: canvas,
           }).promise
 
           // Convert to image URL for better performance
