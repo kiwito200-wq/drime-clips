@@ -36,7 +36,7 @@ interface StepReviewProps {
   signers: Signer[]
   fields: SignField[]
   onBack: () => void
-  onSend: () => void
+  onSend: (message?: string) => void
   isLoading: boolean
 }
 
@@ -211,7 +211,7 @@ export default function StepReview({
           Retour
         </button>
         <button
-          onClick={onSend}
+          onClick={() => onSend(message || undefined)}
           disabled={isLoading}
           className="btn-primary px-8 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >

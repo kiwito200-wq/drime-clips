@@ -178,28 +178,35 @@ function SendPageContent() {
       }
       setSigners([selfSigner])
       
-      // Sauvegarder le signataire en base
+      // Sauvegarder le signataire en base et récupérer le vrai ID
       if (document.slug) {
-        await fetch(`/api/envelopes/${document.slug}/signers`, {
+        const res = await fetch(`/api/envelopes/${document.slug}/signers`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ signers: [{ name, email, color: SIGNER_COLORS[0] }] }),
           credentials: 'include',
         })
+        
+        if (res.ok) {
+          const data = await res.json()
+          // Utiliser le vrai ID de la DB
+          if (data.signers && data.signers.length > 0) {
+            setSigners([{
+              id: data.signers[0].id,
+              name: data.signers[0].name || name,
+              email: data.signers[0].email,
+              color: data.signers[0].color || SIGNER_COLORS[0],
+            }])
+          }
+        }
       }
       
       // Passer directement à l'étape des champs
       setCurrentStep(3)
     } catch (error) {
       console.error('Self-sign error:', error)
-      // Fallback
-      setSigners([{
-        id: 'self-' + Date.now(),
-        name: 'Moi',
-        email: 'moi@drime.cloud',
-        color: SIGNER_COLORS[0],
-      }])
-      setCurrentStep(3)
+      alert('Erreur lors de la création du signataire')
+      return
     } finally {
       setIsLoading(false)
     }
@@ -291,7 +298,7 @@ function SendPageContent() {
   }, [document.slug, fields])
 
   // Envoyer
-  const sendDocument = useCallback(async () => {
+  const sendDocument = useCallback(async (message?: string) => {
     if (!document.slug) return
     
     setIsLoading(true)
@@ -300,13 +307,23 @@ function SendPageContent() {
       
       const res = await fetch(`/api/envelopes/${document.slug}/send`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
         credentials: 'include',
       })
       
       if (res.ok) {
-        router.push(`/dashboard?sent=${document.slug}`)
+        const data = await res.json()
+        
+        // If self-sign, redirect to signing page instead of dashboard
+        if (data.isSelfSign && data.selfSignUrl) {
+          router.push(data.selfSignUrl)
+        } else {
+          router.push(`/dashboard?sent=${document.slug}`)
+        }
       } else {
-        alert('Échec de l\'envoi')
+        const error = await res.json()
+        alert(error.error || 'Échec de l\'envoi')
       }
     } catch (error) {
       console.error('Send error:', error)

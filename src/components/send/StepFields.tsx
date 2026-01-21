@@ -41,6 +41,13 @@ export default function StepFields({
   const [scale, setScale] = useState(0.6)
   const [selectedRecipientId, setSelectedRecipientId] = useState(signers[0]?.id || '')
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
+
+  // Update selectedRecipientId when signers change (e.g., after saving to DB)
+  useEffect(() => {
+    if (signers.length > 0 && !signers.find(s => s.id === selectedRecipientId)) {
+      setSelectedRecipientId(signers[0].id)
+    }
+  }, [signers, selectedRecipientId])
   const [dragFieldType, setDragFieldType] = useState<FieldType | null>(null)
   const [drawMode, setDrawMode] = useState<FieldType | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)

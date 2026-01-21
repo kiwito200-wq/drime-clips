@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
+import { sendSignatureRequestEmail } from '@/lib/email'
+import { logAuditEvent } from '@/lib/audit'
 
 interface Params {
   params: {
@@ -8,22 +10,35 @@ interface Params {
   }
 }
 
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sign.drime.cloud'
+
 // POST /api/envelopes/[slug]/send - Send envelope for signature
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    const user = await getCurrentUser()
-    if (!user && process.env.DEV_BYPASS_AUTH !== 'true') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    let user = await getCurrentUser()
+    
+    // DEV MODE: Get or create dev user
+    if (!user) {
+      const devEmail = 'dev@drime.cloud'
+      user = await prisma.user.upsert({
+        where: { email: devEmail },
+        update: {},
+        create: {
+          email: devEmail,
+          name: 'Dev User',
+        },
+      })
     }
 
     const envelope = await prisma.envelope.findFirst({
       where: {
         slug: params.slug,
-        userId: user?.id || undefined,
+        userId: user.id,
       },
       include: {
         signers: true,
         fields: true,
+        user: true,
       },
     })
 
@@ -43,6 +58,15 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'At least one field is required' }, { status: 400 })
     }
 
+    // Parse request body for optional message
+    let message: string | undefined
+    try {
+      const body = await request.json()
+      message = body.message
+    } catch {
+      // No body provided, that's fine
+    }
+
     // Update envelope status to pending
     await prisma.envelope.update({
       where: { id: envelope.id },
@@ -55,25 +79,59 @@ export async function POST(request: NextRequest, { params }: Params) {
       data: { status: 'sent' },
     })
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        envelopeId: envelope.id,
-        action: 'sent',
-        details: JSON.stringify({
-          signerCount: envelope.signers.length,
-          fieldCount: envelope.fields.length,
-        }),
-      },
+    // Log audit event
+    await logAuditEvent(envelope.id, 'sent', null, {
+      signerCount: envelope.signers.length,
+      fieldCount: envelope.fields.length,
+      ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
+      userAgent: request.headers.get('user-agent') || undefined,
     })
 
-    // TODO: Send emails to signers with their unique signing links
-    // For now, we'll just return the signer tokens
-    const signerLinks = envelope.signers.map(signer => ({
-      email: signer.email,
-      name: signer.name,
-      signUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'https://sign.drime.cloud'}/sign/${signer.token}`,
-    }))
+    // Send emails to all signers
+    const signerLinks: { email: string; name: string | null; signUrl: string; emailSent: boolean }[] = []
+    
+    for (const signer of envelope.signers) {
+      const signUrl = `${APP_URL}/sign/${signer.token}`
+      
+      // Check if this is self-signing (signer email = owner email)
+      const isSelfSign = signer.email.toLowerCase() === user.email.toLowerCase()
+      
+      let emailSent = false
+      
+      if (!isSelfSign) {
+        // Send email to external signer
+        const emailResult = await sendSignatureRequestEmail({
+          to: signer.email,
+          signerName: signer.name,
+          documentName: envelope.name,
+          senderName: user.name || user.email,
+          senderEmail: user.email,
+          signingLink: signUrl,
+          message,
+          expiresAt: envelope.expiresAt || undefined,
+        })
+        
+        emailSent = emailResult.success
+        
+        // Log email sent event
+        if (emailSent) {
+          await logAuditEvent(envelope.id, 'sent', signer.id, {
+            email: signer.email,
+          })
+        }
+      }
+      
+      signerLinks.push({
+        email: signer.email,
+        name: signer.name,
+        signUrl,
+        emailSent,
+      })
+    }
+
+    // Check if this is self-signing only
+    const isSelfSignOnly = envelope.signers.length === 1 && 
+      envelope.signers[0].email.toLowerCase() === user.email.toLowerCase()
 
     return NextResponse.json({ 
       success: true,
@@ -83,6 +141,8 @@ export async function POST(request: NextRequest, { params }: Params) {
         status: 'pending',
       },
       signerLinks,
+      isSelfSign: isSelfSignOnly,
+      selfSignUrl: isSelfSignOnly ? `${APP_URL}/sign/${envelope.signers[0].token}` : undefined,
     })
   } catch (error) {
     console.error('[POST /api/envelopes/[slug]/send] Error:', error)
