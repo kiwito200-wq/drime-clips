@@ -146,19 +146,6 @@ export default function SignPage() {
     }
   }, [internalFields])
 
-  // Handle signature save
-  const handleSignatureSave = useCallback((dataUrl: string) => {
-    if (selectedFieldId) {
-      updateFieldValue(selectedFieldId, dataUrl)
-      // Auto-scroll to next field
-      setTimeout(() => {
-        scrollToNextField(selectedFieldId)
-      }, 100)
-    }
-    setSignaturePadOpen(false)
-    setSelectedFieldId(null)
-  }, [selectedFieldId, updateFieldValue, scrollToNextField])
-
   // Scroll to next unfilled field
   const scrollToNextField = useCallback((currentFieldId: string, currentFieldValues?: Record<string, string>) => {
     const values = currentFieldValues || fieldValues
@@ -187,6 +174,19 @@ export default function SignPage() {
       }, 300)
     }
   }, [internalFields, fieldValues])
+
+  // Handle signature save
+  const handleSignatureSave = useCallback((dataUrl: string) => {
+    if (selectedFieldId) {
+      updateFieldValue(selectedFieldId, dataUrl)
+      // Auto-scroll to next field
+      setTimeout(() => {
+        scrollToNextField(selectedFieldId)
+      }, 100)
+    }
+    setSignaturePadOpen(false)
+    setSelectedFieldId(null)
+  }, [selectedFieldId, updateFieldValue, scrollToNextField])
 
   // Handle field update (for checkboxes, text fields, etc.)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
