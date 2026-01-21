@@ -21,11 +21,14 @@ interface Envelope {
   signers: { email: string; status: string }[]
 }
 
+const DRIME_AUTH_URL = 'https://staging.drime.cloud'
+
 export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   const fetchEnvelopes = useCallback(async () => {
     const envelopesRes = await fetch('/api/envelopes', {
@@ -40,28 +43,78 @@ export default function Dashboard() {
 
   const checkAuthAndFetch = useCallback(async () => {
     try {
-      // Check auth via Drime session
-      const authRes = await fetch('/api/auth/me', {
+      // STEP 1: Check if we have a local session already
+      const localAuthRes = await fetch('/api/auth/me', {
         credentials: 'include',
       })
       
-      const authData = await authRes.json()
+      if (localAuthRes.ok) {
+        const localData = await localAuthRes.json()
+        if (localData.user) {
+          // Already have local session
+          setUser(localData.user)
+          await fetchEnvelopes()
+          setLoading(false)
+          return
+        }
+      }
+
+      // STEP 2: No local session - check Drime session DIRECTLY from browser
+      // This is crucial: the browser sends its cookies to staging.drime.cloud
+      console.log('[Dashboard] Checking Drime session from browser...')
       
-      if (authRes.ok && authData.user) {
-        // User is authenticated
-        setUser(authData.user)
-        await fetchEnvelopes()
-      } else {
-        // Not authenticated - redirect to Drime login
-        const loginUrl = authData.loginUrl || 'https://staging.drime.cloud/login'
-        window.location.href = loginUrl
+      const drimeAuthRes = await fetch(`${DRIME_AUTH_URL}/api/v1/auth/external/me`, {
+        method: 'GET',
+        credentials: 'include', // Send browser cookies to Drime
+        headers: {
+          'Accept': 'application/json',
+        },
+      })
+      
+      console.log('[Dashboard] Drime response status:', drimeAuthRes.status)
+      
+      if (!drimeAuthRes.ok) {
+        console.log('[Dashboard] Drime auth failed, redirecting to login')
+        window.location.href = `${DRIME_AUTH_URL}/login?redirect=${encodeURIComponent(window.location.href)}`
         return
       }
       
+      const drimeData = await drimeAuthRes.json()
+      console.log('[Dashboard] Drime data:', drimeData)
+      
+      if (!drimeData.user) {
+        console.log('[Dashboard] No Drime user, redirecting to login')
+        window.location.href = `${DRIME_AUTH_URL}/login?redirect=${encodeURIComponent(window.location.href)}`
+        return
+      }
+
+      // STEP 3: Drime user found - create local session
+      console.log('[Dashboard] Creating local session for:', drimeData.user.email)
+      
+      const createSessionRes = await fetch('/api/auth/create-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          drimeUserId: drimeData.user.id,
+          email: drimeData.user.email,
+          name: drimeData.user.name || drimeData.user.display_name,
+          avatarUrl: drimeData.user.avatar_url,
+        }),
+      })
+      
+      if (createSessionRes.ok) {
+        const sessionData = await createSessionRes.json()
+        setUser(sessionData.user)
+        await fetchEnvelopes()
+      } else {
+        console.error('[Dashboard] Failed to create local session')
+        setAuthError('Failed to create session')
+      }
+      
     } catch (error) {
-      console.error('Failed to load dashboard:', error)
-      // On error, redirect to Drime login
-      window.location.href = 'https://staging.drime.cloud/login'
+      console.error('[Dashboard] Auth error:', error)
+      setAuthError(String(error))
     } finally {
       setLoading(false)
     }
@@ -86,7 +139,29 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Chargement...</p>
+          <p className="text-gray-500">Connexion à Drime...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md p-8">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Erreur d&apos;authentification</h2>
+          <p className="text-gray-500 mb-4">{authError}</p>
+          <button 
+            onClick={() => window.location.href = `${DRIME_AUTH_URL}/login`}
+            className="btn-primary"
+          >
+            Se connecter sur Drime
+          </button>
         </div>
       </div>
     )
