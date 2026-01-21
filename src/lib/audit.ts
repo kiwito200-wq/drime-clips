@@ -605,25 +605,32 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
       }
     }
     
-    // Add signature verification footer on last page
-    const lastPage = pages[pages.length - 1]
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
-    const { height: lastPageHeight } = lastPage.getSize()
+    // Save the PDF with visual signatures first
+    const visualPdfBytes = await pdfDoc.save()
+    const visualPdfBuffer = Buffer.from(visualPdfBytes)
     
-    lastPage.drawText(`Document signé électroniquement via Drime Sign - ${new Date().toLocaleDateString('fr-FR')}`, {
-      x: 50,
-      y: 30,
-      size: 8,
-      font,
-      color: rgb(0.5, 0.5, 0.5),
+    // Now apply digital signature with Drime certificate
+    const { signPdfWithCertificate } = await import('./pdf-signer')
+    
+    // Get the main signer info for the signature
+    const mainSigner = envelope.signers[0]
+    
+    const { pdfBuffer, signatureInfo } = await signPdfWithCertificate({
+      pdfBuffer: visualPdfBuffer,
+      reason: `Document "${envelope.name}" signé électroniquement`,
+      location: 'France',
+      contactInfo: 'https://sign.drime.cloud',
+      signerName: mainSigner?.name || mainSigner?.email || 'Drime Sign',
+      signerEmail: mainSigner?.email,
     })
     
-    // Save PDF
-    const pdfBytes = await pdfDoc.save()
-    const pdfBuffer = Buffer.from(pdfBytes)
-    const pdfHash = crypto.createHash('sha256').update(pdfBuffer).digest('hex')
+    console.log('[PDF Gen] Document signed with Drime certificate:', {
+      certificateId: signatureInfo.certificateId,
+      issuer: signatureInfo.issuer,
+      subject: signatureInfo.subject,
+    })
     
-    return { pdfBuffer, pdfHash }
+    return { pdfBuffer, pdfHash: signatureInfo.signatureHash }
   } catch (error) {
     console.error('Failed to generate signed PDF:', error)
     throw error
@@ -916,9 +923,28 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       }
     )
     
-    // Save PDF
-    const pdfBytes = await pdfDoc.save()
-    return Buffer.from(pdfBytes)
+    // Save the visual PDF first
+    const visualPdfBytes = await pdfDoc.save()
+    const visualPdfBuffer = Buffer.from(visualPdfBytes)
+    
+    // Apply Drime digital signature to audit trail
+    try {
+      const { signPdfWithCertificate } = await import('./pdf-signer')
+      
+      const { pdfBuffer } = await signPdfWithCertificate({
+        pdfBuffer: visualPdfBuffer,
+        reason: `Certificat d'audit pour "${audit.documentName}"`,
+        location: 'France',
+        contactInfo: 'https://sign.drime.cloud',
+        signerName: 'Drime Sign - Audit Trail',
+      })
+      
+      console.log('[Audit PDF] Audit trail signed with Drime certificate')
+      return pdfBuffer
+    } catch (signError) {
+      console.error('[Audit PDF] Failed to sign audit trail, returning unsigned:', signError)
+      return visualPdfBuffer
+    }
   } catch (error) {
     console.error('Failed to generate audit trail PDF:', error)
     throw error
