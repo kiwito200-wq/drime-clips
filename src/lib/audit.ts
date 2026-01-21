@@ -606,7 +606,11 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
     }
     
     // Save the PDF with visual signatures first
-    const visualPdfBytes = await pdfDoc.save()
+    // Use options that produce a more compatible PDF structure for signing
+    const visualPdfBytes = await pdfDoc.save({
+      useObjectStreams: false, // Don't use object streams - more compatible
+      addDefaultPage: false,
+    })
     const visualPdfBuffer = Buffer.from(visualPdfBytes)
     
     // Now apply digital signature with Drime certificate
@@ -922,7 +926,11 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     )
     
     // Save the visual PDF first
-    const visualPdfBytes = await pdfDoc.save()
+    // Use options that produce a more compatible PDF structure for signing
+    const visualPdfBytes = await pdfDoc.save({
+      useObjectStreams: false,
+      addDefaultPage: false,
+    })
     const visualPdfBuffer = Buffer.from(visualPdfBytes)
     
     // Apply Drime digital signature to audit trail
