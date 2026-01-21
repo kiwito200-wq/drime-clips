@@ -64,6 +64,7 @@ function SendPageContent() {
   const [signers, setSigners] = useState<Signer[]>([])
   const [fields, setFields] = useState<SignField[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isSelfSignMode, setIsSelfSignMode] = useState(false) // Track if user chose "Je suis le seul signataire"
 
   // Vérifier si on a un slug existant
   useEffect(() => {
@@ -156,6 +157,7 @@ function SendPageContent() {
   // Self-sign - je suis le seul signataire
   const handleSelfSign = useCallback(async () => {
     setIsLoading(true)
+    setIsSelfSignMode(true) // Mark that user explicitly chose self-sign
     try {
       // Récupérer l'utilisateur connecté
       const res = await fetch('/api/auth/me', { credentials: 'include' })
@@ -315,8 +317,8 @@ function SendPageContent() {
     try {
       await saveFields()
       
-      // Determine if this is auto-sign (single signer)
-      const isAutoSign = forceAutoSign || signers.length === 1
+      // Determine if this is auto-sign (ONLY if user explicitly chose self-sign mode)
+      const isAutoSign = forceAutoSign || isSelfSignMode
       
       const res = await fetch(`/api/envelopes/${document.slug}/send`, {
         method: 'POST',
@@ -464,13 +466,12 @@ function SendPageContent() {
                 onNext={async () => {
                   const saved = await saveFields()
                   if (saved) {
-                    // Check if auto-sign (single signer = current user)
-                    const isAutoSign = signers.length === 1
-                    if (isAutoSign) {
+                    // ONLY auto-sign if user explicitly chose "Je suis le seul signataire"
+                    if (isSelfSignMode) {
                       // Auto-sign: send directly and redirect to signing page
                       await sendDocument(undefined, true)
                     } else {
-                      // Multiple signers: go to review step
+                      // External signers: go to review step
                       setCurrentStep(4)
                     }
                   }

@@ -729,7 +729,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     if (audit.completedAt) {
       addText(`Date de complétion: ${formatDate(audit.completedAt)}`)
     }
-    addText(`Hash SHA-256: ${audit.documentHash.substring(0, 32)}...`)
+    addText(`Hash SHA-256: ${audit.documentHash}`)
     
     y -= 16
     
