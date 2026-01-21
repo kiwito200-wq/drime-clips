@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 
@@ -35,11 +35,7 @@ export default function SignPage() {
   const [submitting, setSubmitting] = useState(false)
   const [completed, setCompleted] = useState(false)
 
-  useEffect(() => {
-    fetchSignerData()
-  }, [token])
-
-  async function fetchSignerData() {
+  const fetchSignerData = useCallback(async () => {
     try {
       const res = await fetch(`/api/sign/${token}`)
       
@@ -56,7 +52,11 @@ export default function SignPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token])
+
+  useEffect(() => {
+    fetchSignerData()
+  }, [fetchSignerData])
 
   async function handleComplete() {
     setSubmitting(true)
