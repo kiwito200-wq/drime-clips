@@ -126,11 +126,11 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-4">
-            <Link href="/new" className="btn-primary flex items-center gap-2">
+            <Link href="/send" className="btn-primary flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              New Document
+              Nouveau document
             </Link>
             
             {/* User info */}
@@ -174,7 +174,7 @@ export default function Dashboard() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2">Aucun document</h2>
             <p className="text-gray-500 mb-6">Commencez par uploader votre premier document</p>
-            <Link href="/new" className="btn-primary inline-flex items-center gap-2">
+            <Link href="/send" className="btn-primary inline-flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>

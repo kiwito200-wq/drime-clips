@@ -14,6 +14,7 @@ import SelectModal from './SelectModal'
 import FileUploadModal from './FileUploadModal'
 import DateModal from './DateModal'
 import { FieldType, Field, Recipient } from './types'
+import { getPdfProxyUrl } from '@/lib/pdf-utils'
 
 interface DocumentBuilderProps {
   envelopeSlug: string
@@ -478,7 +479,7 @@ export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: in
           ref={pagesContainerRef}
         >
           <PDFViewer
-            fileUrl={pdfUrl}
+            fileUrl={getPdfProxyUrl(pdfUrl)}
             onPagesLoaded={handlePagesLoaded}
             scale={scale}
             onScaleChange={setScale}
