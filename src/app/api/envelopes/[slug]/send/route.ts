@@ -132,10 +132,12 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     // Check if this is self-signing only
-    // Use client flag OR check if single signer matches user email
+    // ONLY use client flag when explicitly set, or check if single signer matches user email
     const emailMatch = envelope.signers.length === 1 && 
       envelope.signers[0].email.toLowerCase() === user.email.toLowerCase()
-    const isSelfSignOnly = clientSelfSign || emailMatch || envelope.signers.length === 1
+    // IMPORTANT: Only redirect to sign if clientSelfSign is explicitly true OR email matches
+    // Do NOT redirect just because there's only 1 signer (could be sending to someone else)
+    const isSelfSignOnly = clientSelfSign === true || emailMatch
 
     return NextResponse.json({ 
       success: true,

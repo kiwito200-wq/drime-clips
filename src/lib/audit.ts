@@ -461,17 +461,43 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
     try {
       const url = new URL(envelope.pdfUrl)
       pdfKey = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+      // Decode URL-encoded characters (like %20 for spaces)
+      pdfKey = decodeURIComponent(pdfKey)
       const bucketName = process.env.R2_BUCKET_NAME || 'drimesign'
       if (pdfKey.startsWith(bucketName + '/')) {
         pdfKey = pdfKey.slice(bucketName.length + 1)
       }
-    } catch {
+      console.log('[PDF Gen] Extracted PDF key:', pdfKey)
+    } catch (e) {
+      console.error('[PDF Gen] Error extracting PDF key:', e)
       // Keep as-is
     }
     
     const signedUrl = await r2.getSignedUrl(pdfKey)
+    console.log('[PDF Gen] Fetching PDF from signed URL...')
     const pdfResponse = await fetch(signedUrl)
+    
+    if (!pdfResponse.ok) {
+      throw new Error(`Failed to fetch PDF: ${pdfResponse.status} ${pdfResponse.statusText}`)
+    }
+    
+    const contentType = pdfResponse.headers.get('content-type')
+    console.log('[PDF Gen] Response content-type:', contentType)
+    
     const originalPdfBytes = await pdfResponse.arrayBuffer()
+    console.log('[PDF Gen] PDF bytes received:', originalPdfBytes.byteLength)
+    
+    // Verify it's actually a PDF (starts with %PDF)
+    const firstBytes = new Uint8Array(originalPdfBytes.slice(0, 5))
+    const header = String.fromCharCode(...firstBytes)
+    console.log('[PDF Gen] PDF header:', header)
+    
+    if (!header.startsWith('%PDF')) {
+      // Log what we actually received
+      const textContent = new TextDecoder().decode(originalPdfBytes.slice(0, 200))
+      console.error('[PDF Gen] Not a PDF! First 200 chars:', textContent)
+      throw new Error('Fetched content is not a valid PDF')
+    }
     
     // Load PDF
     const pdfDoc = await PDFDocument.load(originalPdfBytes)

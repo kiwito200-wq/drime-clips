@@ -179,14 +179,16 @@ export default function SignPage() {
   const handleSignatureSave = useCallback((dataUrl: string) => {
     if (selectedFieldId) {
       updateFieldValue(selectedFieldId, dataUrl)
-      // Auto-scroll to next field
+      // Auto-scroll to next field with updated values
       setTimeout(() => {
-        scrollToNextField(selectedFieldId)
+        // Pass the updated value explicitly since state might not be updated yet
+        const updatedValues = { ...fieldValues, [selectedFieldId]: dataUrl }
+        scrollToNextField(selectedFieldId, updatedValues)
       }, 100)
     }
     setSignaturePadOpen(false)
     setSelectedFieldId(null)
-  }, [selectedFieldId, updateFieldValue, scrollToNextField])
+  }, [selectedFieldId, updateFieldValue, scrollToNextField, fieldValues])
 
   // Handle field update (for checkboxes, text fields, etc.)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
