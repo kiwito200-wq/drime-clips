@@ -42,21 +42,6 @@ export async function getCurrentUser() {
     const cookieStore = await cookies()
     const token = cookieStore.get('session')?.value
     
-    // TEMPORARY: Dev bypass mode - auto-create/return test user
-    if (process.env.DEV_BYPASS_AUTH === 'true') {
-      const devEmail = process.env.DEV_USER_EMAIL || 'dev@drime.cloud'
-      let user = await prisma.user.findUnique({ where: { email: devEmail } })
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email: devEmail,
-            name: 'Dev User',
-          },
-        })
-      }
-      return user
-    }
-    
     if (!token) return null
     
     const { payload } = await jwtVerify(token, JWT_SECRET)
