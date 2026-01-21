@@ -114,11 +114,16 @@ function FieldItem({
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
     if (isSignMode && !isFilled) {
-      onSign()
+      // For checkboxes, toggle directly without opening signature pad
+      if (field.type === 'checkbox') {
+        onUpdate({ value: !field.value ? 'true' : '' })
+      } else {
+        onSign()
+      }
     } else if (!isPreviewMode && !isSignMode) {
       onSelect()
     }
-  }, [isSignMode, isPreviewMode, isFilled, onSign, onSelect])
+  }, [isSignMode, isPreviewMode, isFilled, field.type, field.value, onSign, onSelect, onUpdate])
 
   // Handle drag
   useEffect(() => {
@@ -267,6 +272,7 @@ function FieldItem({
       animate={{ scale: 1, opacity: 1 }}
       className={`absolute group ${isDragging || isResizing ? 'z-50' : 'z-10'}`}
       style={style}
+      data-field-id={field.id}
     >
       {/* Field Container */}
       <div
