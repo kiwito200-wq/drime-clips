@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getCurrentUser, checkDrimeSession, getOrCreateUserFromDrime, createSession, setSessionCookie, DRIME_LOGIN_URL } from '@/lib/auth'
+import { NextResponse } from 'next/server'
+import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 
-// GET /api/auth/me - Check local session OR Drime session
-export async function GET(request: NextRequest) {
+// GET /api/auth/me - Check LOCAL session only
+// Drime auth is handled directly from the browser (client-side)
+export async function GET() {
   try {
-    // First check if we have a local session
+    // Check local session only
     const localUser = await getCurrentUser()
     
     if (localUser) {
@@ -18,27 +19,8 @@ export async function GET(request: NextRequest) {
       })
     }
     
-    // No local session - check Drime session
-    const cookieHeader = request.headers.get('cookie')
-    const drimeUser = await checkDrimeSession(cookieHeader)
-    
-    if (drimeUser) {
-      // Create local user and session from Drime data
-      const user = await getOrCreateUserFromDrime(drimeUser)
-      const sessionToken = await createSession(user.id)
-      await setSessionCookie(sessionToken)
-      
-      return NextResponse.json({ 
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          avatarUrl: user.avatarUrl,
-        }
-      })
-    }
-    
-    // No session at all - return login URL for redirect
+    // No local session - return 401
+    // The browser will then try Drime auth directly
     return NextResponse.json({ 
       user: null,
       loginUrl: DRIME_LOGIN_URL,
