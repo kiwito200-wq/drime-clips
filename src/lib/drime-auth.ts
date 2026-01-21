@@ -47,20 +47,40 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
       return { user: null, sessionToken: null }
     }
 
-    // Try multiple endpoints to validate the token and get user info
-    // Method 1: Try /api/v1/auth/external/me
-    let drimeResponse = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
+    // Get XSRF token if available (Laravel CSRF)
+    const xsrfToken = request.cookies.get('XSRF-TOKEN')?.value
+    
+    // Try to validate session by calling Drime API with cookies
+    // Method 1: Send session cookie to /api/user (Laravel will auto-auth from session)
+    let drimeResponse = await fetch(`${DRIME_API_URL}/api/user`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${drimeCookie}`,
-        'Access-External-Token': DRIME_EXTERNAL_TOKEN,
+        'Cookie': `drime_session=${drimeCookie}${xsrfToken ? `; XSRF-TOKEN=${xsrfToken}` : ''}`,
+        'X-XSRF-TOKEN': xsrfToken ? decodeURIComponent(xsrfToken) : '',
         'Accept': 'application/json',
+        'Referer': 'https://sign.drime.cloud',
+        'Origin': 'https://sign.drime.cloud',
       },
+      credentials: 'include',
     })
-    console.log('[Drime Auto-Login] /api/v1/auth/external/me status:', drimeResponse.status)
+    console.log('[Drime Auto-Login] /api/user with cookie status:', drimeResponse.status)
     
     if (!drimeResponse.ok) {
-      // Method 2: Try /api/user (Laravel standard)
+      // Method 2: Try /api/v1/user
+      drimeResponse = await fetch(`${DRIME_API_URL}/api/v1/user`, {
+        method: 'GET',
+        headers: {
+          'Cookie': `drime_session=${drimeCookie}${xsrfToken ? `; XSRF-TOKEN=${xsrfToken}` : ''}`,
+          'X-XSRF-TOKEN': xsrfToken ? decodeURIComponent(xsrfToken) : '',
+          'Accept': 'application/json',
+          'Referer': 'https://sign.drime.cloud',
+        },
+      })
+      console.log('[Drime Auto-Login] /api/v1/user with cookie status:', drimeResponse.status)
+    }
+    
+    if (!drimeResponse.ok) {
+      // Method 3: Try with Bearer token (in case it's a JWT/token)
       drimeResponse = await fetch(`${DRIME_API_URL}/api/user`, {
         method: 'GET',
         headers: {
@@ -68,19 +88,20 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
           'Accept': 'application/json',
         },
       })
-      console.log('[Drime Auto-Login] /api/user status:', drimeResponse.status)
+      console.log('[Drime Auto-Login] /api/user with Bearer status:', drimeResponse.status)
     }
     
     if (!drimeResponse.ok) {
-      // Method 3: Try /api/v1/user
-      drimeResponse = await fetch(`${DRIME_API_URL}/api/v1/user`, {
+      // Method 4: Try /api/v1/auth/external/me with Access-External-Token
+      drimeResponse = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${drimeCookie}`,
+          'Access-External-Token': DRIME_EXTERNAL_TOKEN,
           'Accept': 'application/json',
         },
       })
-      console.log('[Drime Auto-Login] /api/v1/user status:', drimeResponse.status)
+      console.log('[Drime Auto-Login] /api/v1/auth/external/me status:', drimeResponse.status)
     }
 
     if (!drimeResponse.ok) {
