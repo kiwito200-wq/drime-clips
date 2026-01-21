@@ -41,23 +41,27 @@ export async function GET(
       return NextResponse.json({ error: 'Envelope not found' }, { status: 404 })
     }
 
-    // Extract key from URL
+    // Extract key from URL and decode it
     // URL format: https://pub-xxx.r2.dev/pdfs/timestamp-filename.pdf
     // or: https://xxx.r2.cloudflarestorage.com/bucket/pdfs/timestamp-filename.pdf
     let key: string
     try {
       const url = new URL(envelope.pdfUrl)
-      key = url.pathname.startsWith('/') ? url.pathname.slice(1) : url.pathname
+      // Decode the pathname to handle %20 -> space, etc.
+      key = decodeURIComponent(url.pathname)
+      key = key.startsWith('/') ? key.slice(1) : key
+      
       // Remove bucket name if present at start
       const bucketName = process.env.R2_BUCKET_NAME || 'drime-sign'
       if (key.startsWith(bucketName + '/')) {
         key = key.slice(bucketName.length + 1)
       }
     } catch {
-      key = envelope.pdfUrl
+      key = decodeURIComponent(envelope.pdfUrl)
     }
 
-    console.log('[PDF URL] Generating signed URL for key:', key)
+    console.log('[PDF URL] pdfUrl from DB:', envelope.pdfUrl)
+    console.log('[PDF URL] Extracted key:', key)
 
     const client = getS3Client()
     const bucket = process.env.R2_BUCKET_NAME || 'drime-sign'
