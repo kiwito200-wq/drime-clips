@@ -51,7 +51,9 @@ export default function NewDocument() {
         const data = await res.json()
         router.push(`/prepare/${data.envelope.slug}`)
       } else {
-        alert('Upload failed. Please try again.')
+        const errorData = await res.json().catch(() => ({}))
+        console.error('Upload error:', errorData)
+        alert(`Upload failed: ${errorData.error || 'Please try again.'}`)
       }
     } catch (error) {
       console.error('Upload error:', error)

@@ -7,10 +7,19 @@ import { generateSlug } from '@/lib/utils'
 // GET /api/envelopes - List user's envelopes
 export async function GET() {
   try {
-    const user = await getCurrentUser()
+    let user = await getCurrentUser()
     
+    // DEV MODE: Create temporary user if not logged in
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const devEmail = 'dev@drime.cloud'
+      user = await prisma.user.upsert({
+        where: { email: devEmail },
+        update: {},
+        create: {
+          email: devEmail,
+          name: 'Dev User',
+        },
+      })
     }
     
     const envelopes = await prisma.envelope.findMany({
@@ -33,10 +42,19 @@ export async function GET() {
 // POST /api/envelopes - Create new envelope
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    let user = await getCurrentUser()
     
+    // DEV MODE: Create temporary user if not logged in
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      const devEmail = 'dev@drime.cloud'
+      user = await prisma.user.upsert({
+        where: { email: devEmail },
+        update: {},
+        create: {
+          email: devEmail,
+          name: 'Dev User',
+        },
+      })
     }
     
     const formData = await request.formData()

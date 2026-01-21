@@ -33,7 +33,7 @@ export default function Dashboard() {
 
   async function checkAuthAndFetch() {
     try {
-      // First check if we already have a local session
+      // Try to get user (optional in dev mode)
       const localAuthRes = await fetch('/api/auth/me', {
         credentials: 'include',
       })
@@ -42,61 +42,38 @@ export default function Dashboard() {
         const localData = await localAuthRes.json()
         if (localData.user) {
           setUser(localData.user)
-          await fetchEnvelopes()
-          return
-        }
-      }
-      
-      // No local session - try Drime auto-login directly from browser
-      // This way cookies are automatically included
-      console.log('Attempting Drime auto-login from browser...')
-      
-      const drimeRes = await fetch('https://app.drime.cloud/api/v1/cli/loggedUser', {
-        credentials: 'include', // Include cookies for .drime.cloud
-        headers: {
-          'Accept': 'application/json',
-        },
-      })
-      
-      console.log('Drime response status:', drimeRes.status)
-      
-      if (drimeRes.ok) {
-        const drimeData = await drimeRes.json()
-        const drimeUser = drimeData.user || drimeData
-        
-        if (drimeUser && drimeUser.email) {
-          console.log('Got Drime user:', drimeUser.email)
-          
-          // Create local session with this user
-          const sessionRes = await fetch('/api/auth/create-session', {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: drimeUser.email,
-              name: drimeUser.display_name || drimeUser.first_name || drimeUser.name,
-              id: drimeUser.id,
-              avatar: drimeUser.avatar_url || drimeUser.avatar,
-            }),
+        } else {
+          // DEV MODE: Set dev user for display
+          setUser({
+            id: 'dev',
+            email: 'dev@drime.cloud',
+            name: 'Dev User',
+            avatarUrl: null,
           })
-          
-          if (sessionRes.ok) {
-            const sessionData = await sessionRes.json()
-            setUser(sessionData.user)
-            await fetchEnvelopes()
-            return
-          }
         }
+      } else {
+        // DEV MODE: Set dev user for display
+        setUser({
+          id: 'dev',
+          email: 'dev@drime.cloud',
+          name: 'Dev User',
+          avatarUrl: null,
+        })
       }
       
-      // If we get here, redirect to Drime login
-      console.log('No Drime session found, redirecting to login...')
-      window.location.href = 'https://app.drime.cloud/login?redirect=' + encodeURIComponent(window.location.href)
+      // Fetch envelopes (works without auth in dev mode)
+      await fetchEnvelopes()
       
     } catch (error) {
       console.error('Failed to load dashboard:', error)
-      // On error, redirect to Drime login
-      window.location.href = 'https://app.drime.cloud/login?redirect=' + encodeURIComponent(window.location.href)
+      // In dev mode, continue anyway
+      setUser({
+        id: 'dev',
+        email: 'dev@drime.cloud',
+        name: 'Dev User',
+        avatarUrl: null,
+      })
+      await fetchEnvelopes()
     } finally {
       setLoading(false)
     }
