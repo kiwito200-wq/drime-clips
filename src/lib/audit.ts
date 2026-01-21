@@ -551,18 +551,31 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
         }
       } else if (field.type === 'checkbox') {
         if (field.value === 'true') {
-          // Draw checkmark as lines (more reliable than text character)
-          const checkColor = rgb(0.04, 0.65, 0.25) // Green
-          const lineWidth = Math.max(1, Math.min(width, height) * 0.15)
+          // Draw checkmark like DocuSeal - clean green checkmark
+          // SVG path inspiration: M9 11 l3 3 l8 -8 (left-mid → bottom-center → top-right)
+          const checkColor = rgb(0.03, 0.51, 0.25) // DocuSeal green #08823F
+          const size = Math.min(width, height)
+          const lineWidth = Math.max(1.5, size * 0.12)
           
-          // Draw a checkmark using two lines
-          const startX = x + width * 0.15
-          const startY = y + height * 0.5
-          const midX = x + width * 0.4
-          const midY = y + height * 0.2
-          const endX = x + width * 0.85
-          const endY = y + height * 0.8
+          // Center the checkmark in the field
+          const centerX = x + width / 2
+          const centerY = y + height / 2
+          const scale = size * 0.35
           
+          // Draw checkmark path (relative to center)
+          // Start point (left-middle of check)
+          const startX = centerX - scale * 0.8
+          const startY = centerY
+          
+          // Middle point (bottom of check)
+          const midX = centerX - scale * 0.2
+          const midY = centerY - scale * 0.6
+          
+          // End point (top-right of check)
+          const endX = centerX + scale * 0.9
+          const endY = centerY + scale * 0.7
+          
+          // Draw the two lines of the checkmark
           page.drawLine({
             start: { x: startX, y: startY },
             end: { x: midX, y: midY },
@@ -855,7 +868,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 20
-    page.drawText('🔒 VÉRIFICATION DE L\'INTÉGRITÉ', {
+    page.drawText('VERIFICATION DE L\'INTEGRITE', {
       x: margin + 10,
       y,
       size: 11,
@@ -864,7 +877,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 18
-    page.drawText('✓ Document original non modifié (hash SHA-256 vérifié)', {
+    page.drawText('[OK] Document original non modifie (hash SHA-256 verifie)', {
       x: margin + 10,
       y,
       size: 9,
@@ -873,7 +886,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 14
-    page.drawText(`✓ ${audit.verification.allSignaturesValid ? 'Toutes les signatures sont valides' : 'Signatures en attente'}`, {
+    page.drawText(`[OK] ${audit.verification.allSignaturesValid ? 'Toutes les signatures sont valides' : 'Signatures en attente'}`, {
       x: margin + 10,
       y,
       size: 9,
@@ -882,7 +895,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 14
-    page.drawText('✓ Horodatage cryptographique appliqué', {
+    page.drawText('[OK] Horodatage cryptographique applique', {
       x: margin + 10,
       y,
       size: 9,
