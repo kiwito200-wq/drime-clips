@@ -1,5 +1,5 @@
--- CreateTable
-CREATE TABLE "User" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT,
@@ -13,8 +13,8 @@ CREATE TABLE "User" (
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Session" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "Session" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "token" TEXT NOT NULL,
@@ -24,8 +24,8 @@ CREATE TABLE "Session" (
     CONSTRAINT "Session_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Envelope" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "Envelope" (
     "id" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -45,8 +45,8 @@ CREATE TABLE "Envelope" (
     CONSTRAINT "Envelope_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Signer" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "Signer" (
     "id" TEXT NOT NULL,
     "envelopeId" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -67,8 +67,8 @@ CREATE TABLE "Signer" (
     CONSTRAINT "Signer_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Field" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "Field" (
     "id" TEXT NOT NULL,
     "envelopeId" TEXT NOT NULL,
     "signerId" TEXT NOT NULL,
@@ -89,8 +89,8 @@ CREATE TABLE "Field" (
     CONSTRAINT "Field_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "AuditLog" (
+-- CreateTable (idempotent - only creates if doesn't exist)
+CREATE TABLE IF NOT EXISTS "AuditLog" (
     "id" TEXT NOT NULL,
     "envelopeId" TEXT NOT NULL,
     "signerId" TEXT,
@@ -103,80 +103,109 @@ CREATE TABLE "AuditLog" (
     CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+-- CreateIndex (idempotent)
+CREATE UNIQUE INDEX IF NOT EXISTS IF NOT EXISTS "User_email_key" ON "User"("email");
+
+-- CreateIndex (idempotent)
+CREATE UNIQUE INDEX IF NOT EXISTS IF NOT EXISTS "User_drimeUserId_key" ON "User"("drimeUserId");
+
+-- CreateIndex (idempotent)
+CREATE INDEX IF NOT EXISTS IF NOT EXISTS "User_email_idx" ON "User"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "User_drimeUserId_key" ON "User"("drimeUserId");
+CREATE INDEX IF NOT EXISTS "User_drimeUserId_idx" ON "User"("drimeUserId");
 
 -- CreateIndex
-CREATE INDEX "User_email_idx" ON "User"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Session_token_key" ON "Session"("token");
 
 -- CreateIndex
-CREATE INDEX "User_drimeUserId_idx" ON "User"("drimeUserId");
+CREATE INDEX IF NOT EXISTS "Session_token_idx" ON "Session"("token");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Session_token_key" ON "Session"("token");
+CREATE INDEX IF NOT EXISTS "Session_userId_idx" ON "Session"("userId");
 
 -- CreateIndex
-CREATE INDEX "Session_token_idx" ON "Session"("token");
+CREATE UNIQUE INDEX IF NOT EXISTS "Envelope_slug_key" ON "Envelope"("slug");
 
 -- CreateIndex
-CREATE INDEX "Session_userId_idx" ON "Session"("userId");
+CREATE INDEX IF NOT EXISTS "Envelope_userId_idx" ON "Envelope"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Envelope_slug_key" ON "Envelope"("slug");
+CREATE INDEX IF NOT EXISTS "Envelope_status_idx" ON "Envelope"("status");
 
 -- CreateIndex
-CREATE INDEX "Envelope_userId_idx" ON "Envelope"("userId");
+CREATE INDEX IF NOT EXISTS "Envelope_slug_idx" ON "Envelope"("slug");
 
 -- CreateIndex
-CREATE INDEX "Envelope_status_idx" ON "Envelope"("status");
+CREATE UNIQUE INDEX IF NOT EXISTS "Signer_token_key" ON "Signer"("token");
 
 -- CreateIndex
-CREATE INDEX "Envelope_slug_idx" ON "Envelope"("slug");
+CREATE INDEX IF NOT EXISTS "Signer_envelopeId_idx" ON "Signer"("envelopeId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Signer_token_key" ON "Signer"("token");
+CREATE INDEX IF NOT EXISTS "Signer_token_idx" ON "Signer"("token");
 
 -- CreateIndex
-CREATE INDEX "Signer_envelopeId_idx" ON "Signer"("envelopeId");
+CREATE INDEX IF NOT EXISTS "Signer_email_idx" ON "Signer"("email");
 
 -- CreateIndex
-CREATE INDEX "Signer_token_idx" ON "Signer"("token");
+CREATE INDEX IF NOT EXISTS "Field_envelopeId_idx" ON "Field"("envelopeId");
 
 -- CreateIndex
-CREATE INDEX "Signer_email_idx" ON "Signer"("email");
+CREATE INDEX IF NOT EXISTS "Field_signerId_idx" ON "Field"("signerId");
 
 -- CreateIndex
-CREATE INDEX "Field_envelopeId_idx" ON "Field"("envelopeId");
+CREATE INDEX IF NOT EXISTS "AuditLog_envelopeId_idx" ON "AuditLog"("envelopeId");
 
 -- CreateIndex
-CREATE INDEX "Field_signerId_idx" ON "Field"("signerId");
+CREATE INDEX IF NOT EXISTS "AuditLog_action_idx" ON "AuditLog"("action");
 
--- CreateIndex
-CREATE INDEX "AuditLog_envelopeId_idx" ON "AuditLog"("envelopeId");
+-- AddForeignKey (idempotent - only adds if doesn't exist)
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Session_userId_fkey') THEN
+        ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- CreateIndex
-CREATE INDEX "AuditLog_action_idx" ON "AuditLog"("action");
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Envelope_userId_fkey') THEN
+        ALTER TABLE "Envelope" ADD CONSTRAINT "Envelope_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Signer_envelopeId_fkey') THEN
+        ALTER TABLE "Signer" ADD CONSTRAINT "Signer_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "Envelope" ADD CONSTRAINT "Envelope_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Field_envelopeId_fkey') THEN
+        ALTER TABLE "Field" ADD CONSTRAINT "Field_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "Signer" ADD CONSTRAINT "Signer_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Field_signerId_fkey') THEN
+        ALTER TABLE "Field" ADD CONSTRAINT "Field_signerId_fkey" FOREIGN KEY ("signerId") REFERENCES "Signer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "Field" ADD CONSTRAINT "Field_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AuditLog_envelopeId_fkey') THEN
+        ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END $$;
 
--- AddForeignKey
-ALTER TABLE "Field" ADD CONSTRAINT "Field_signerId_fkey" FOREIGN KEY ("signerId") REFERENCES "Signer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_envelopeId_fkey" FOREIGN KEY ("envelopeId") REFERENCES "Envelope"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_signerId_fkey" FOREIGN KEY ("signerId") REFERENCES "Signer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'AuditLog_signerId_fkey') THEN
+        ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_signerId_fkey" FOREIGN KEY ("signerId") REFERENCES "Signer"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;
