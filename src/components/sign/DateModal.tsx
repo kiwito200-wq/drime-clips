@@ -105,7 +105,7 @@ export default function DateModal({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
@@ -130,12 +130,12 @@ export default function DateModal({
               {/* Set Today Button */}
               <button
                 onClick={setToday}
-                className="w-full px-4 py-3 bg-green-50 text-green-700 rounded-xl hover:bg-green-100 transition-colors flex items-center justify-center gap-2 font-medium"
+                className="w-full px-4 py-3 bg-[#08CF65]/10 text-[#08CF65] rounded-xl hover:bg-[#08CF65]/20 transition-colors flex items-center justify-center gap-2 font-medium border border-[#08CF65]/20"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
-                Aujourd&apos;hui
+                Définir à aujourd&apos;hui
               </button>
 
               {/* Date Input */}
@@ -148,7 +148,7 @@ export default function DateModal({
                   value={value}
                   onChange={(e) => setValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  className="w-full px-4 py-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full px-4 py-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-[#08CF65] focus:ring-2 focus:ring-[#08CF65]/20"
                   autoFocus
                 />
               </div>
@@ -176,7 +176,7 @@ export default function DateModal({
                 <button
                   onClick={handleSaveAndNext}
                   disabled={required && !value}
-                  className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-3 text-white bg-[#08CF65] rounded-xl hover:bg-[#06B557] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   Suivant
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +187,7 @@ export default function DateModal({
                 <button
                   onClick={handleSave}
                   disabled={required && !value}
-                  className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-3 text-white bg-[#08CF65] rounded-xl hover:bg-[#06B557] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirmer
                 </button>

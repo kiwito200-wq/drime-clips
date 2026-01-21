@@ -194,7 +194,7 @@ export default function FieldInputModal({
           <div className="p-6 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-[#08CF65]">
                   {config.icon}
                 </div>
                 <div>
@@ -222,12 +222,12 @@ export default function FieldInputModal({
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={placeholder || config.title}
-              className="w-full px-4 py-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+              className="w-full px-4 py-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-[#08CF65] focus:ring-2 focus:ring-[#08CF65]/20"
             />
           </div>
 
           {/* Actions */}
-          <div className="px-5 py-4 border-t border-gray-100 flex items-center gap-3 bg-gray-50">
+          <div className="p-6 border-t border-gray-100 flex items-center gap-3 bg-gray-50">
             <button
               onClick={onClose}
               className="flex-1 px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium"
@@ -238,7 +238,7 @@ export default function FieldInputModal({
               <button
                 onClick={handleSaveAndNext}
                 disabled={!value.trim()}
-                className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 text-white bg-[#08CF65] rounded-xl hover:bg-[#06B557] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 Suivant
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,7 +249,7 @@ export default function FieldInputModal({
               <button
                 onClick={handleSave}
                 disabled={!value.trim()}
-                className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-3 text-white bg-[#08CF65] rounded-xl hover:bg-[#06B557] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Confirmer
               </button>
