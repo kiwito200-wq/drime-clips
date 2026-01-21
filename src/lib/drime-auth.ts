@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from './prisma'
 import { createSession, setSessionCookie } from './auth'
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://staging.drime.cloud'
+const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
 const DRIME_EXTERNAL_TOKEN = process.env.DRIME_EXTERNAL_TOKEN || ''
 
 export interface DrimeUser {

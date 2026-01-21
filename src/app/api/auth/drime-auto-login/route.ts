@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: false,
       error: 'Not logged in on Drime',
-      redirectTo: 'https://staging.drime.cloud/login?redirect=https://sign.drime.cloud/dashboard'
+      redirectTo: 'https://app.drime.cloud/login?redirect=https://sign.drime.cloud/dashboard'
     }, { status: 401 })
   } catch (error) {
     console.error('Drime auto-login error:', error)
