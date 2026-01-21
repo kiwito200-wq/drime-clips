@@ -11,7 +11,7 @@ import SignaturePad from '@/components/sign/SignaturePad'
 import { Field, FieldType, Recipient } from '@/components/sign/types'
 
 interface StepFieldsProps {
-  document: DocumentData
+  documentData: DocumentData
   signers: Signer[]
   fields: SignField[]
   onAddField: (field: Omit<SignField, 'id'>) => void
@@ -23,7 +23,7 @@ interface StepFieldsProps {
 }
 
 export default function StepFields({
-  document,
+  documentData,
   signers,
   fields,
   onAddField,
@@ -107,11 +107,11 @@ export default function StepFields({
   // Fetch signed URL for PDF
   useEffect(() => {
     const fetchPdfUrl = async () => {
-      if (!document.slug) return
+      if (!documentData.slug) return
       
       setLoadingPdf(true)
       try {
-        const res = await fetch(`/api/envelopes/${document.slug}/pdf-url`, {
+        const res = await fetch(`/api/envelopes/${documentData.slug}/pdf-url`, {
           credentials: 'include',
         })
         if (res.ok) {
@@ -127,7 +127,7 @@ export default function StepFields({
       }
     }
     fetchPdfUrl()
-  }, [document.slug])
+  }, [documentData.slug])
 
   // Get recipient color by ID
   const getRecipientColor = useCallback((recipientId: string) => {
@@ -266,7 +266,7 @@ export default function StepFields({
         setDragFieldType(null)
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedFieldId && (document.activeElement as HTMLElement)?.tagName !== 'INPUT') {
+        if (selectedFieldId && (window.document.activeElement as HTMLElement)?.tagName !== 'INPUT') {
           e.preventDefault()
           onRemoveField(selectedFieldId)
           setSelectedFieldId(null)
@@ -280,7 +280,7 @@ export default function StepFields({
 
   if (loadingPdf || !pdfUrl) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-100">
+      <div className="h-[calc(100vh-120px)] flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500">Chargement du document...</p>
@@ -290,40 +290,16 @@ export default function StepFields({
   }
 
   return (
-    <div className="h-[calc(100vh-57px)] flex flex-col bg-gray-100 overflow-hidden">
-      {/* Top Bar */}
-      <header className="h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
-        {/* Left */}
+    <div className="h-[calc(100vh-70px)] flex flex-col bg-gray-100 overflow-hidden">
+      {/* Compact Top Bar - just document name and action button */}
+      <header className="h-12 bg-white border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0">
+        {/* Left - Document info */}
         <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          <div className="flex items-center gap-2 text-sm">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span className="hidden sm:inline">Retour</span>
-          </button>
-          <div className="w-px h-6 bg-gray-200" />
-          <span className="font-medium text-gray-900 truncate max-w-[200px]">{document.name}</span>
-        </div>
-
-        {/* Center - Status */}
-        <div className="hidden lg:flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <div className="flex -space-x-2">
-              {recipients.slice(0, 3).map((recipient, index) => (
-                <div
-                  key={recipient.id}
-                  className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-medium"
-                  style={{ backgroundColor: recipient.color, zIndex: 3 - index }}
-                  title={recipient.name}
-                >
-                  {recipient.name.charAt(0).toUpperCase()}
-                </div>
-              ))}
-            </div>
-            <span>{recipients.length} signataire{recipients.length > 1 ? 's' : ''}</span>
+            <span className="font-medium text-gray-900 truncate max-w-[200px]">{documentData.name}</span>
           </div>
           <div className="w-px h-5 bg-gray-200" />
           <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -331,12 +307,18 @@ export default function StepFields({
           </div>
         </div>
 
-        {/* Right */}
+        {/* Right - Actions */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            Retour
+          </button>
           <button
             onClick={onNext}
             disabled={fields.length === 0 || isLoading}
-            className="px-4 py-2 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-4 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             Continuer
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +329,7 @@ export default function StepFields({
       </header>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Left Sidebar - Page Thumbnails */}
         {pages.length > 0 && (
           <PageThumbnails
@@ -355,7 +337,7 @@ export default function StepFields({
             currentPage={currentPage}
             onPageSelect={(pageIndex) => {
               setCurrentPage(pageIndex)
-              const pageElement = document.querySelector(`[data-page="${pageIndex}"]`)
+              const pageElement = window.document.querySelector(`[data-page="${pageIndex}"]`)
               if (pageElement) {
                 pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
               }
@@ -410,7 +392,7 @@ export default function StepFields({
               animate={{ x: 0 }}
               exit={{ x: 320 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="fixed right-0 top-[114px] bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10"
+              className="absolute right-0 top-0 bottom-0 w-80 bg-white border-l border-gray-200 flex flex-col overflow-hidden z-10"
             >
               <FieldPalette
                 recipients={recipients}
@@ -436,7 +418,7 @@ export default function StepFields({
         {/* Sidebar Toggle */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className={`fixed z-20 bg-white border border-gray-200 rounded-l-lg p-2 shadow-sm transition-all duration-300 ${
+          className={`absolute z-20 bg-white border border-gray-200 rounded-l-lg p-2 shadow-sm transition-all duration-300 ${
             isSidebarCollapsed ? 'right-0' : 'right-80'
           }`}
           style={{ top: '50%', transform: 'translateY(-50%)' }}

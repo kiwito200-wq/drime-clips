@@ -424,7 +424,7 @@ function SendPageContent() {
               transition={{ duration: 0.2 }}
             >
               <StepFields
-                document={document}
+                documentData={document}
                 signers={signers}
                 fields={fields}
                 onAddField={addField}
