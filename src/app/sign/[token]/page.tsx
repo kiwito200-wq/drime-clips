@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import PDFViewer from '@/components/sign/PDFViewer'
@@ -59,20 +59,23 @@ export default function SignPage() {
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
   
   // Convert fields to Field format
-  const internalFields: Field[] = data?.fields.map(f => ({
-    id: f.id,
-    type: f.type as FieldType,
-    recipientId: data.id, // Use signer ID as recipient ID
-    page: f.page,
-    x: f.x,
-    y: f.y,
-    width: f.width,
-    height: f.height,
-    required: f.required,
-    label: f.label || '',
-    placeholder: '',
-    value: fieldValues[f.id] || f.value || undefined,
-  })) || []
+  const internalFields: Field[] = useMemo(() => 
+    data?.fields.map(f => ({
+      id: f.id,
+      type: f.type as FieldType,
+      recipientId: data.id, // Use signer ID as recipient ID
+      page: f.page,
+      x: f.x,
+      y: f.y,
+      width: f.width,
+      height: f.height,
+      required: f.required,
+      label: f.label || '',
+      placeholder: '',
+      value: fieldValues[f.id] || f.value || undefined,
+    })) || [],
+    [data?.fields, data?.id, fieldValues]
+  )
   
   // Fetch signer data
   const fetchSignerData = useCallback(async () => {
@@ -148,11 +151,13 @@ export default function SignPage() {
     if (selectedFieldId) {
       updateFieldValue(selectedFieldId, dataUrl)
       // Auto-scroll to next field
-      scrollToNextField(selectedFieldId)
+      setTimeout(() => {
+        scrollToNextField(selectedFieldId)
+      }, 100)
     }
     setSignaturePadOpen(false)
     setSelectedFieldId(null)
-  }, [selectedFieldId, updateFieldValue])
+  }, [selectedFieldId, updateFieldValue, scrollToNextField])
 
   // Scroll to next unfilled field
   const scrollToNextField = useCallback((currentFieldId: string, currentFieldValues?: Record<string, string>) => {
@@ -164,7 +169,10 @@ export default function SignPage() {
     const nextField = internalFields.slice(currentIndex + 1).find(f => {
       if (!f.required) return false
       const value = values[f.id] || f.value
-      return !value || value.trim() === ''
+      if (typeof value === 'boolean') return !value
+      if (Array.isArray(value)) return value.length === 0
+      if (typeof value === 'string') return !value || value.trim() === ''
+      return !value
     })
     
     if (nextField) {
@@ -188,12 +196,36 @@ export default function SignPage() {
       // If checkbox was checked, scroll to next field
       if (updates.value === 'true') {
         setTimeout(() => {
-          const updatedValues = { ...fieldValues, [fieldId]: newValue }
-          scrollToNextField(fieldId, updatedValues)
+          setFieldValues(prev => {
+            const updatedValues = { ...prev, [fieldId]: newValue }
+            // Call scrollToNextField with updated values
+            const currentIndex = internalFields.findIndex(f => f.id === fieldId)
+            if (currentIndex !== -1) {
+              const nextField = internalFields.slice(currentIndex + 1).find(f => {
+                if (!f.required) return false
+                const value = updatedValues[f.id] || f.value
+                if (typeof value === 'boolean') return !value
+                if (Array.isArray(value)) return value.length === 0
+                if (typeof value === 'string') return !value || value.trim() === ''
+                return !value
+              })
+              if (nextField) {
+                setCurrentPage(nextField.page)
+                setSelectedFieldId(nextField.id)
+                setTimeout(() => {
+                  const fieldElement = document.querySelector(`[data-field-id="${nextField.id}"]`)
+                  if (fieldElement) {
+                    fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  }
+                }, 300)
+              }
+            }
+            return updatedValues
+          })
         }, 300)
       }
     }
-  }, [updateFieldValue, scrollToNextField, fieldValues])
+  }, [updateFieldValue, internalFields])
 
   // Check if all required fields are filled
   const allRequiredFieldsFilled = useCallback(() => {
