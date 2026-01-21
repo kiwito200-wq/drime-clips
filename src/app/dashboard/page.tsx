@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+
+interface User {
+  id: string
+  email: string
+  name: string | null
+  avatarUrl: string | null
+}
 
 interface Envelope {
   id: string
@@ -14,22 +22,47 @@ interface Envelope {
 }
 
 export default function Dashboard() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchEnvelopes()
+    checkAuthAndFetch()
   }, [])
 
-  async function fetchEnvelopes() {
+  async function checkAuthAndFetch() {
     try {
-      const res = await fetch('/api/envelopes')
-      if (res.ok) {
-        const data = await res.json()
+      // Check auth first
+      const authRes = await fetch('/api/auth/me', {
+        credentials: 'include',
+      })
+      
+      if (!authRes.ok) {
+        // Not logged in, redirect to Drime
+        window.location.href = 'https://app.drime.cloud/login?redirect=' + encodeURIComponent(window.location.href)
+        return
+      }
+      
+      const authData = await authRes.json()
+      if (!authData.user) {
+        window.location.href = 'https://app.drime.cloud/login?redirect=' + encodeURIComponent(window.location.href)
+        return
+      }
+      
+      setUser(authData.user)
+      
+      // Fetch envelopes
+      const envelopesRes = await fetch('/api/envelopes', {
+        credentials: 'include',
+      })
+      
+      if (envelopesRes.ok) {
+        const data = await envelopesRes.json()
         setEnvelopes(data.envelopes || [])
       }
     } catch (error) {
-      console.error('Failed to fetch envelopes:', error)
+      console.error('Failed to load dashboard:', error)
     } finally {
       setLoading(false)
     }
@@ -43,6 +76,17 @@ export default function Dashboard() {
       expired: 'bg-red-100 text-red-700',
     }
     return styles[status] || styles.draft
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500">Chargement...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -59,12 +103,35 @@ export default function Dashboard() {
             <span className="text-xl font-bold text-gray-900">Drime Sign</span>
           </div>
           
-          <Link href="/new" className="btn-primary flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Document
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/new" className="btn-primary flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Document
+            </Link>
+            
+            {/* User info */}
+            <div className="flex items-center gap-3 pl-4 border-l">
+              {user?.avatarUrl ? (
+                <img 
+                  src={user.avatarUrl} 
+                  alt={user.name || user.email} 
+                  className="w-9 h-9 rounded-full"
+                />
+              ) : (
+                <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center">
+                  <span className="text-sm font-medium text-gray-600">
+                    {(user?.name || user?.email || '?').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <div className="hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -72,11 +139,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">Documents</h1>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : envelopes.length === 0 ? (
+        {envelopes.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -87,13 +150,13 @@ export default function Dashboard() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">No documents yet</h2>
-            <p className="text-gray-500 mb-6">Get started by uploading your first document</p>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Aucun document</h2>
+            <p className="text-gray-500 mb-6">Commencez par uploader votre premier document</p>
             <Link href="/new" className="btn-primary inline-flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Upload Document
+              Nouveau document
             </Link>
           </motion.div>
         ) : (
@@ -116,9 +179,9 @@ export default function Dashboard() {
                       <div>
                         <h3 className="font-semibold text-gray-900">{envelope.name}</h3>
                         <p className="text-sm text-gray-500">
-                          {new Date(envelope.createdAt).toLocaleDateString()}
+                          {new Date(envelope.createdAt).toLocaleDateString('fr-FR')}
                           {' · '}
-                          {envelope.signers.length} signer{envelope.signers.length !== 1 ? 's' : ''}
+                          {envelope.signers.length} signataire{envelope.signers.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>

@@ -44,6 +44,7 @@ export default function NewDocument() {
       const res = await fetch('/api/envelopes', {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       })
       
       if (res.ok) {
