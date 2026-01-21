@@ -23,22 +23,31 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
   try {
     // Get Drime cookie from request
     // The cookie should be set on .drime.cloud domain with SameSite=None; Secure
+    // Try multiple possible cookie names
     const drimeCookie = request.cookies.get('drime_session')?.value || 
                         request.cookies.get('drime_auth')?.value ||
                         request.cookies.get('auth_token')?.value ||
+                        request.cookies.get('token')?.value ||
+                        request.cookies.get('access_token')?.value ||
                         request.headers.get('authorization')?.replace('Bearer ', '')
+
+    // Log all cookies for debugging
+    const allCookies = request.cookies.getAll()
+    console.log('[Drime Auto-Login] Available cookies:', allCookies.map(c => c.name))
 
     if (!drimeCookie) {
       console.log('[Drime Auto-Login] No Drime cookie found')
       return { user: null, sessionToken: null }
     }
 
+    console.log('[Drime Auto-Login] Found cookie, validating with Drime API...')
+
     if (!DRIME_EXTERNAL_TOKEN) {
       console.error('[Drime Auto-Login] DRIME_EXTERNAL_TOKEN not set')
       return { user: null, sessionToken: null }
     }
 
-    // Call Drime API to validate the cookie/token
+    // Call Drime API to validate the cookie/token using external endpoint
     const drimeResponse = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
       method: 'GET',
       headers: {
@@ -47,6 +56,8 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
         'Accept': 'application/json',
       },
     })
+
+    console.log('[Drime Auto-Login] Drime API response status:', drimeResponse.status)
 
     if (!drimeResponse.ok) {
       console.log('[Drime Auto-Login] Invalid Drime cookie')
