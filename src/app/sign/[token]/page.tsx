@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
 import SignaturePad from '@/components/sign/SignaturePad'
+import DateModal from '@/components/sign/DateModal'
 import { Field, FieldType } from '@/components/sign/types'
 
 interface FieldData {
@@ -56,6 +57,8 @@ export default function SignPage() {
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [signaturePadOpen, setSignaturePadOpen] = useState(false)
   const [signaturePadType, setSignaturePadType] = useState<'signature' | 'initials'>('signature')
+  const [dateModalOpen, setDateModalOpen] = useState(false)
+  const [dateFieldId, setDateFieldId] = useState<string | null>(null)
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
   
   // Convert fields to Field format
@@ -142,6 +145,10 @@ export default function SignPage() {
       setSelectedFieldId(fieldId)
       setSignaturePadType(field.type as 'signature' | 'initials')
       setSignaturePadOpen(true)
+    } else if (field.type === 'date') {
+      // Open date modal for date fields
+      setDateFieldId(fieldId)
+      setDateModalOpen(true)
     }
   }, [internalFields])
 
@@ -188,6 +195,22 @@ export default function SignPage() {
     setSignaturePadOpen(false)
     setSelectedFieldId(null)
   }, [selectedFieldId, updateFieldValue, scrollToNextField, fieldValues])
+
+  // Handle date save
+  const handleDateSave = useCallback((dateValue: string) => {
+    if (dateFieldId) {
+      // Format date for display (dd/mm/yyyy)
+      const formattedDate = dateValue ? new Date(dateValue).toLocaleDateString('fr-FR') : ''
+      updateFieldValue(dateFieldId, formattedDate)
+      // Auto-scroll to next field
+      setTimeout(() => {
+        const updatedValues = { ...fieldValues, [dateFieldId]: formattedDate }
+        scrollToNextField(dateFieldId, updatedValues)
+      }, 100)
+    }
+    setDateModalOpen(false)
+    setDateFieldId(null)
+  }, [dateFieldId, updateFieldValue, scrollToNextField, fieldValues])
 
   // Handle field update (for checkboxes, text fields, etc.)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
@@ -479,6 +502,19 @@ export default function SignPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Date Modal */}
+      <DateModal
+        isOpen={dateModalOpen}
+        onClose={() => {
+          setDateModalOpen(false)
+          setDateFieldId(null)
+        }}
+        onSave={handleDateSave}
+        title="Date"
+        currentValue={dateFieldId ? fieldValues[dateFieldId] : ''}
+        required={dateFieldId ? (internalFields.find(f => f.id === dateFieldId)?.required ?? true) : true}
+      />
     </div>
   )
 }

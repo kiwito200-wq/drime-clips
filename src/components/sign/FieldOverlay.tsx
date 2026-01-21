@@ -117,14 +117,15 @@ function FieldItem({
       // For checkboxes, ALWAYS allow toggle (check/uncheck) like DocuSeal
       if (field.type === 'checkbox') {
         onUpdate({ value: field.value === 'true' ? '' : 'true' })
+      } else if (field.type === 'signature' || field.type === 'initials') {
+        // Open signature pad for signature/initials fields
+        onSign()
+      } else if (field.type === 'date') {
+        // Open date modal for date fields
+        onSign()
       } else if (!isFilled) {
-        if (field.type === 'signature' || field.type === 'initials') {
-          // Only open signature pad for signature/initials fields
-          onSign()
-        } else {
-          // For text fields, date, etc., select the field to enable editing
-          onSelect()
-        }
+        // For text fields, etc., select the field to enable editing
+        onSelect()
       }
     } else if (!isPreviewMode && !isSignMode) {
       onSelect()
