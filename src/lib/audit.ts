@@ -621,16 +621,14 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
       location: 'France',
       contactInfo: 'https://sign.drime.cloud',
       signerName: mainSigner?.name || mainSigner?.email || 'Drime Sign',
-      signerEmail: mainSigner?.email,
     })
     
     console.log('[PDF Gen] Document signed with Drime certificate:', {
-      certificateId: signatureInfo.certificateId,
-      issuer: signatureInfo.issuer,
-      subject: signatureInfo.subject,
+      signedAt: signatureInfo.signedAt,
+      subject: signatureInfo.certificateSubject,
     })
     
-    return { pdfBuffer, pdfHash: signatureInfo.signatureHash }
+    return { pdfBuffer, pdfHash: signatureInfo.documentHash }
   } catch (error) {
     console.error('Failed to generate signed PDF:', error)
     throw error
