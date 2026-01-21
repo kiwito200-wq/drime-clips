@@ -498,7 +498,20 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
           try {
             const base64Data = field.value.split(',')[1]
             const imageBytes = Buffer.from(base64Data, 'base64')
-            const image = await pdfDoc.embedPng(imageBytes)
+            
+            // Try PNG first, then JPEG
+            let image
+            try {
+              image = await pdfDoc.embedPng(imageBytes)
+            } catch {
+              // If PNG fails, try JPEG
+              try {
+                image = await pdfDoc.embedJpg(imageBytes)
+              } catch {
+                console.error('Failed to embed signature as PNG or JPEG')
+                continue
+              }
+            }
             
             page.drawImage(image, {
               x,
@@ -512,14 +525,29 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
         }
       } else if (field.type === 'checkbox') {
         if (field.value === 'true') {
-          // Draw checkmark
-          const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
-          page.drawText('✓', {
-            x: x + width * 0.2,
-            y: y + height * 0.2,
-            size: Math.min(width, height) * 0.8,
-            font,
-            color: rgb(0.04, 0.65, 0.25), // Green
+          // Draw checkmark as lines (more reliable than text character)
+          const checkColor = rgb(0.04, 0.65, 0.25) // Green
+          const lineWidth = Math.max(1, Math.min(width, height) * 0.15)
+          
+          // Draw a checkmark using two lines
+          const startX = x + width * 0.15
+          const startY = y + height * 0.5
+          const midX = x + width * 0.4
+          const midY = y + height * 0.2
+          const endX = x + width * 0.85
+          const endY = y + height * 0.8
+          
+          page.drawLine({
+            start: { x: startX, y: startY },
+            end: { x: midX, y: midY },
+            thickness: lineWidth,
+            color: checkColor,
+          })
+          page.drawLine({
+            start: { x: midX, y: midY },
+            end: { x: endX, y: endY },
+            thickness: lineWidth,
+            color: checkColor,
           })
         }
       } else {

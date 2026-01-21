@@ -175,7 +175,7 @@ export default function StepFields({
       y: Math.max(0, Math.min(y - size.h / 2, 1 - size.h)),
       width: size.w,
       height: size.h,
-      required: type !== 'checkbox' && type !== 'radio',
+      required: true, // All fields are required by default, including checkboxes
       label: '',
     }
 
