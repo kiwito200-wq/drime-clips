@@ -1,26 +1,383 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-export default function Home() {
+interface User {
+  id: string
+  email: string
+  name: string | null
+  avatarUrl: string | null
+}
+
+interface Signer {
+  email: string
+  name: string | null
+  status: string
+}
+
+interface Envelope {
+  id: string
+  slug: string
+  name: string
+  status: string
+  createdAt: string
+  updatedAt: string
+  signers: Signer[]
+  createdBy?: string
+}
+
+const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
+
+// SVG Icons
+const HomeIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+)
+
+const DocumentIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+)
+
+const MailIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+)
+
+const PenIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+  </svg>
+)
+
+const ClockIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const CheckIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+)
+
+const DraftIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+  </svg>
+)
+
+const UploadIcon = () => (
+  <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+  </svg>
+)
+
+export default function DashboardHome() {
   const router = useRouter()
+  const [user, setUser] = useState<User | null>(null)
+  const [envelopes, setEnvelopes] = useState<Envelope[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const fetchEnvelopes = useCallback(async () => {
+    const envelopesRes = await fetch('/api/envelopes', { credentials: 'include' })
+    if (envelopesRes.ok) {
+      const data = await envelopesRes.json()
+      setEnvelopes(data.envelopes || [])
+    }
+  }, [])
+
+  const clearSessionAndRedirect = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = DRIME_LOGIN_URL
+  }, [])
+
+  const checkAuthAndFetch = useCallback(async () => {
+    try {
+      const authRes = await fetch('/api/auth/check', { credentials: 'include' })
+      if (authRes.ok) {
+        const data = await authRes.json()
+        if (data.user) {
+          setUser(data.user)
+          await fetchEnvelopes()
+          setLoading(false)
+          return
+        }
+      }
+      await clearSessionAndRedirect()
+    } catch (error) {
+      console.error('[Dashboard] Auth error:', error)
+      await clearSessionAndRedirect()
+    }
+  }, [fetchEnvelopes, clearSessionAndRedirect])
 
   useEffect(() => {
-    // Always redirect to dashboard - auth is handled there
-    router.replace('/dashboard')
-  }, [router])
+    checkAuthAndFetch()
+  }, [checkAuthAndFetch])
 
-  // Show loading while redirecting
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 bg-[#08CF65] rounded-xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-          <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+  // Calculate stats
+  const stats = {
+    needToSign: envelopes.filter(e => 
+      e.status === 'pending' && e.signers.some(s => s.email === user?.email && s.status === 'pending')
+    ).length,
+    inProgress: envelopes.filter(e => e.status === 'pending').length,
+    drafts: envelopes.filter(e => e.status === 'draft').length,
+    completed: envelopes.filter(e => e.status === 'completed').length,
+  }
+
+  // File upload handling
+  const handleFileUpload = async (file: File) => {
+    if (!file || !file.type.includes('pdf')) {
+      alert('Please upload a PDF file')
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('name', file.name.replace('.pdf', ''))
+
+      const response = await fetch('/api/envelopes', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        router.push(`/send?slug=${data.slug}`)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to upload document')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload document')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileUpload(file)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+  }
+
+  if (loading) {
+    return (
+      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Chargement...</p>
         </div>
-        <p className="text-gray-500">Chargement...</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-screen bg-[#F3F4F6] flex flex-col overflow-hidden">
+      {/* Top bar */}
+      <div className="flex-shrink-0 px-4 pt-4 pb-3">
+        <div className="flex items-center gap-4">
+          {/* Logo area */}
+          <div className="w-52 flex-shrink-0 px-3">
+            <img 
+              src="/drime-logo.png" 
+              alt="Drime" 
+              className="h-8 w-auto"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main content area */}
+      <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
+        {/* Sidebar */}
+        <aside className="w-52 flex-shrink-0 flex flex-col">
+          <div className="space-y-6">
+            {/* Main navigation */}
+            <div>
+              <div className="space-y-1">
+                <Link
+                  href="/"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-[#DCFCE7] text-[#08CF65] font-medium"
+                >
+                  <HomeIcon />
+                  Dashboard
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <DocumentIcon />
+                  My agreements
+                </Link>
+                <Link
+                  href="/dashboard?view=sent"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <MailIcon />
+                  Sent to me
+                </Link>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* Main content - white container */}
+        <main className="flex-1 bg-white rounded-xl flex flex-col min-h-0 border border-gray-200 overflow-auto">
+          {/* Welcome header */}
+          <div className="px-8 py-6 border-b border-gray-100">
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Here&apos;s your document activity summary
+            </p>
+          </div>
+
+          {/* Stats cards */}
+          <div className="px-8 py-6">
+            <div className="grid grid-cols-4 gap-4">
+              {/* Need to sign */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=need_to_sign')}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#F3E8FF] flex items-center justify-center text-[#7E33F7]">
+                    <PenIcon />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.needToSign}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#7E33F7]" />
+                  <span className="text-sm text-gray-600">Need to sign</span>
+                </div>
+              </div>
+
+              {/* In progress */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=in_progress')}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#FFF4E5] flex items-center justify-center text-[#FFAD12]">
+                    <ClockIcon />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.inProgress}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#FFAD12]" />
+                  <span className="text-sm text-gray-600">In progress</span>
+                </div>
+              </div>
+
+              {/* Drafts */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=draft')}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                    <DraftIcon />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.drafts}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-gray-400" />
+                  <span className="text-sm text-gray-600">Drafts</span>
+                </div>
+              </div>
+
+              {/* Completed */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=completed')}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#08CF65]">
+                    <CheckIcon />
+                  </div>
+                </div>
+                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.completed}</div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#08CF65]" />
+                  <span className="text-sm text-gray-600">Signed</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Upload zone */}
+          <div className="px-8 py-6 flex-1">
+            <div
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+              className={`
+                border-2 border-dashed rounded-2xl h-full min-h-[280px] flex flex-col items-center justify-center cursor-pointer transition-all
+                ${isDragging 
+                  ? 'border-[#08CF65] bg-[#DCFCE7]/30' 
+                  : 'border-gray-300 hover:border-[#08CF65] hover:bg-gray-50'
+                }
+                ${isUploading ? 'pointer-events-none opacity-50' : ''}
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+              
+              {isUploading ? (
+                <div className="text-center">
+                  <div className="w-12 h-12 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-gray-600 font-medium">Uploading...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Upload illustration */}
+                  <div className="mb-4 text-gray-400">
+                    <UploadIcon />
+                  </div>
+                  
+                  <h3 className="text-lg font-medium text-gray-800 mb-2">
+                    Drop your document here to get it signed
+                  </h3>
+                  <p className="text-gray-500 text-sm mb-6">
+                    Supported files: PDF
+                  </p>
+                  
+                  <button className="px-6 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white font-medium rounded-lg transition-colors flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Import
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   )

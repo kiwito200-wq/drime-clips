@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 interface User {
   id: string
@@ -29,7 +29,7 @@ interface Envelope {
   thumbnailUrl?: string
 }
 
-type FilterStatus = 'all' | 'need_to_sign' | 'in_progress' | 'completed' | 'rejected'
+type FilterStatus = 'all' | 'need_to_sign' | 'in_progress' | 'completed' | 'rejected' | 'draft'
 type ViewType = 'my_documents' | 'sent_to_me'
 
 const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
@@ -49,6 +49,12 @@ function getProxyUrl(url: string): string {
 }
 
 // SVG Icons
+const HomeIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+)
+
 const DocumentIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -94,12 +100,25 @@ const SearchIcon = () => (
 
 export default function Dashboard() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [viewType, setViewType] = useState<ViewType>('my_documents')
+
+  // Handle URL query params for filtering
+  useEffect(() => {
+    const filter = searchParams.get('filter') as FilterStatus | null
+    const view = searchParams.get('view')
+    if (filter && ['all', 'need_to_sign', 'in_progress', 'completed', 'rejected', 'draft'].includes(filter)) {
+      setFilterStatus(filter)
+    }
+    if (view === 'sent') {
+      setViewType('sent_to_me')
+    }
+  }, [searchParams])
 
   const fetchEnvelopes = useCallback(async () => {
     const envelopesRes = await fetch('/api/envelopes', { credentials: 'include' })
@@ -159,6 +178,8 @@ export default function Dashboard() {
         result = result.filter(e => e.status === 'completed')
       } else if (filterStatus === 'rejected') {
         result = result.filter(e => e.status === 'rejected')
+      } else if (filterStatus === 'draft') {
+        result = result.filter(e => e.status === 'draft')
       }
     }
 
@@ -291,15 +312,6 @@ export default function Dashboard() {
               />
             </div>
           </div>
-          
-          {/* Sign securely button */}
-          <Link 
-            href="/send" 
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors ml-auto"
-          >
-            <PenIcon />
-            Sign securely
-          </Link>
         </div>
       </div>
 
@@ -308,6 +320,19 @@ export default function Dashboard() {
         {/* Sidebar */}
         <aside className="w-52 flex-shrink-0 flex flex-col">
           <div className="space-y-6">
+            {/* Main navigation */}
+            <div>
+              <div className="space-y-1">
+                <Link
+                  href="/"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <HomeIcon />
+                  Dashboard
+                </Link>
+              </div>
+            </div>
+
             {/* Agreements section */}
             <div>
               <p className="text-xs font-medium text-gray-500 px-3 mb-2">Agreements</p>
