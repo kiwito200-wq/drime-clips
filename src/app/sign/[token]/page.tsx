@@ -323,7 +323,7 @@ export default function SignPage() {
   }).length
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col pb-56">
+    <div className="min-h-screen bg-gray-100 flex flex-col pb-48">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
