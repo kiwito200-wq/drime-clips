@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
-const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC\\BGP_Ha\\cE-KY3lDWRHzx'
 
 /**
  * Download a file from Drime and return it as blob
+ * Forwards cookies for authentication (session-based)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Get cookies from the request to forward to Drime API
+    const cookieHeader = request.headers.get('cookie') || ''
+    
+    if (!cookieHeader) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
     const { fileId, fileName } = await request.json()
     
     if (!fileId) {
@@ -22,9 +29,10 @@ export async function POST(request: NextRequest) {
     const response = await fetch(downloadUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${DRIME_API_TOKEN}`,
+        'Cookie': cookieHeader,
         'Accept': 'application/pdf',
       },
+      credentials: 'include',
     })
 
     if (!response.ok) {
