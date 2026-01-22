@@ -21,9 +21,21 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const key = params.path.join('/')
+    let key = params.path.join('/')
     
-    console.log('[PDF Proxy] Fetching from S3:', key)
+    // Strip bucket name from key if present (different URL formats)
+    const bucketNames = ['drimesign', 'drime-sign', process.env.R2_BUCKET_NAME]
+    for (const bucketName of bucketNames) {
+      if (bucketName && key.startsWith(bucketName + '/')) {
+        key = key.slice(bucketName.length + 1)
+        break
+      }
+    }
+    
+    // Decode URL encoding
+    key = decodeURIComponent(key)
+    
+    console.log('[PDF Proxy] Fetching from S3:', key, 'Bucket:', BUCKET)
     
     // Fetch directly from S3/R2 using credentials
     const command = new GetObjectCommand({
