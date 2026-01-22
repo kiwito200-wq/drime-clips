@@ -1,24 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Drime API configuration
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+// Drime API configuration - use staging like auth
+const DRIME_API_URL = 'https://staging.drime.cloud'
 
 /**
  * Proxy to Drime API to get user's files
- * Forwards cookies for authentication (session-based)
+ * Forwards drime_session cookie for authentication
+ * Uses pagination (25 per page)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get cookies from the request to forward to Drime API
+    // Get cookies from the request
     const cookieHeader = request.headers.get('cookie') || ''
     
-    if (!cookieHeader) {
-      console.error('[Drime Files] No cookies provided')
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    // Check if we have drime_session cookie
+    const hasDrimeSession = cookieHeader.includes('drime_session')
+    
+    if (!hasDrimeSession) {
+      console.error('[Drime Files] No drime_session cookie')
+      return NextResponse.json({ error: 'Not authenticated with Drime' }, { status: 401 })
     }
 
-    // Use file-entriesAll endpoint to get all files at once
-    const apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entriesAll`
+    // Get pagination params
+    const { searchParams } = new URL(request.url)
+    const page = searchParams.get('page') || '1'
+    const perPage = searchParams.get('perPage') || '25'
+    const folderId = searchParams.get('folderId') || ''
+
+    // Build Drime API URL with pagination
+    let apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?page=${page}&perPage=${perPage}`
+    if (folderId) {
+      apiUrl += `&parentId=${folderId}`
+    }
+    // Only get files (not folders) and filter by PDF type
+    apiUrl += '&type=file'
 
     console.log('[Drime Files] Fetching from:', apiUrl)
 
@@ -27,9 +42,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Cookie': cookieHeader,
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
       },
-      credentials: 'include',
     })
 
     if (!response.ok) {
@@ -40,9 +53,11 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
     
-    // Handle different response formats
-    const entries = Array.isArray(data) ? data : (data.data || [])
-    console.log('[Drime Files] Got', entries.length, 'entries')
+    // Handle paginated response format
+    const entries = data.data || []
+    const pagination = data.pagination || { currentPage: 1, lastPage: 1, total: entries.length }
+    
+    console.log('[Drime Files] Got', entries.length, 'entries, page', pagination.currentPage, 'of', pagination.lastPage)
 
     // Filter to only return PDF files
     const pdfFiles = entries.filter((file: any) => {
@@ -57,7 +72,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ 
       files: pdfFiles,
-      total: pdfFiles.length,
+      total: pagination.total,
+      currentPage: pagination.currentPage,
+      lastPage: pagination.lastPage,
+      hasMore: pagination.currentPage < pagination.lastPage,
     })
   } catch (error) {
     console.error('[Drime Files] Error:', error)

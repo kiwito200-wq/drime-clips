@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+// Use staging like auth
+const DRIME_API_URL = 'https://staging.drime.cloud'
 
 /**
  * Download a file from Drime and return it as blob
- * Forwards cookies for authentication (session-based)
+ * Forwards drime_session cookie for authentication
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get cookies from the request to forward to Drime API
+    // Get cookies from the request
     const cookieHeader = request.headers.get('cookie') || ''
     
-    if (!cookieHeader) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    // Check if we have drime_session cookie
+    if (!cookieHeader.includes('drime_session')) {
+      return NextResponse.json({ error: 'Not authenticated with Drime' }, { status: 401 })
     }
 
     const { fileId, fileName } = await request.json()
@@ -32,7 +34,6 @@ export async function POST(request: NextRequest) {
         'Cookie': cookieHeader,
         'Accept': 'application/pdf',
       },
-      credentials: 'include',
     })
 
     if (!response.ok) {

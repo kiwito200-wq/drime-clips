@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface DrimeFile {
   id: string
@@ -23,23 +23,41 @@ interface DrimeFilePickerProps {
 export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFilePickerProps) {
   const [files, setFiles] = useState<DrimeFile[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [downloading, setDownloading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      fetchFiles()
+      // Reset state when opening
+      setFiles([])
+      setCurrentPage(1)
+      setHasMore(false)
+      fetchFiles(1)
     }
   }, [isOpen])
 
-  const fetchFiles = async () => {
-    setLoading(true)
+  const fetchFiles = useCallback(async (page: number) => {
+    if (page === 1) {
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
     setError(null)
+    
     try {
-      const res = await fetch('/api/drime/files', { credentials: 'include' })
+      const res = await fetch(`/api/drime/files?page=${page}&perPage=25`, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setFiles(data.files || [])
+        if (page === 1) {
+          setFiles(data.files || [])
+        } else {
+          setFiles(prev => [...prev, ...(data.files || [])])
+        }
+        setCurrentPage(data.currentPage || page)
+        setHasMore(data.hasMore || false)
       } else {
         setError('Failed to load files from Drime')
       }
@@ -47,6 +65,13 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       setError('Failed to connect to Drime')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [])
+
+  const loadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchFiles(currentPage + 1)
     }
   }
 
@@ -137,7 +162,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               <p className="text-gray-900 font-medium mb-1">Error</p>
               <p className="text-gray-500 text-sm">{error}</p>
               <button 
-                onClick={fetchFiles}
+                onClick={() => fetchFiles(1)}
                 className="mt-4 text-[#08CF65] text-sm font-medium hover:underline"
               >
                 Try again
@@ -193,6 +218,24 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                   )}
                 </button>
               ))}
+              
+              {/* Load more button */}
+              {hasMore && (
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="w-full py-3 text-center text-sm text-[#08CF65] font-medium hover:bg-[#08CF65]/5 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loadingMore ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+                      Chargement...
+                    </span>
+                  ) : (
+                    'Charger plus de fichiers'
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>
