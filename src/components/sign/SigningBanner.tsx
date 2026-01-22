@@ -215,6 +215,74 @@ export default function SigningBanner({
               Commencer →
             </button>
           </div>
+        ) : showConfirmation ? (
+          <>
+            {/* Confirmation step - styled like a field */}
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <span className="text-sm font-medium text-gray-900">Confirmation</span>
+              <span className="text-xs text-gray-400">Dernière étape</span>
+            </div>
+            
+            {/* Content */}
+            <div className="px-4 py-4">
+              <p className="text-sm text-gray-700 mb-4 text-center">
+                Confirmez votre signature pour la rendre officielle
+              </p>
+              
+              {/* Modern toggle checkbox like Transfr */}
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <button
+                  type="button"
+                  onClick={() => setAgreedToTerms(!agreedToTerms)}
+                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                    agreedToTerms ? 'bg-[#08CF65]' : 'bg-gray-200'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                      agreedToTerms ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+                <span className="text-sm text-gray-600 leading-tight">
+                  J&apos;accepte les{' '}
+                  <a href="https://drime.cloud/terms-of-services" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
+                    CGU
+                  </a>
+                  {' '}et la{' '}
+                  <a href="https://drime.cloud/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
+                    Politique de confidentialité
+                  </a>
+                </span>
+              </label>
+            </div>
+            
+            {/* Navigation */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+              <button
+                onClick={() => { setShowConfirmation(false); setAgreedToTerms(false) }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Retour
+              </button>
+              
+              <button
+                onClick={() => { if (agreedToTerms) onComplete() }}
+                disabled={!agreedToTerms || isCompleting}
+                className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors disabled:cursor-not-allowed"
+              >
+                {isCompleting ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Signature...
+                  </span>
+                ) : (
+                  'Confirmer →'
+                )}
+              </button>
+            </div>
+          </>
         ) : (
           <>
             {/* Header */}
@@ -511,63 +579,6 @@ export default function SigningBanner({
           </>
         )}
         
-        {/* Confirmation step */}
-        {showConfirmation && (
-          <div className="p-5">
-            <div className="text-center mb-4">
-              <div className="w-12 h-12 bg-[#7E33F7]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-[#7E33F7]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">Confirmez votre signature</h3>
-              <p className="text-gray-500 text-sm">pour la rendre officielle</p>
-            </div>
-            
-            <label className="flex items-start gap-3 mb-4 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 w-5 h-5 rounded border-gray-300 text-[#08CF65] focus:ring-[#08CF65] cursor-pointer"
-              />
-              <span className="text-sm text-gray-600 leading-tight">
-                J&apos;accepte les{' '}
-                <a href="https://drime.cloud/terms-of-services" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
-                  Conditions d&apos;utilisation
-                </a>
-                {' '}et la{' '}
-                <a href="https://drime.cloud/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
-                  Politique de confidentialité
-                </a>
-                {' '}de Drime
-              </span>
-            </label>
-            
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setShowConfirmation(false); setAgreedToTerms(false) }}
-                className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-medium rounded-xl hover:bg-gray-200 transition-colors"
-              >
-                Retour
-              </button>
-              <button
-                onClick={() => { if (agreedToTerms) onComplete() }}
-                disabled={!agreedToTerms || isCompleting}
-                className="flex-1 py-2.5 bg-[#08CF65] text-white font-medium rounded-xl hover:bg-[#06B557] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isCompleting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Signature...
-                  </span>
-                ) : (
-                  'Confirmer la signature'
-                )}
-              </button>
-            </div>
-          </div>
-        )}
       </motion.div>
     </div>
   )
