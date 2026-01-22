@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
       // Always read as arrayBuffer first and check for PDF magic bytes
       const arrayBuffer = await fileEntryRes.arrayBuffer()
       const bytes = new Uint8Array(arrayBuffer.slice(0, 5))
-      const header = String.fromCharCode(...bytes)
+      const header = String.fromCharCode.apply(null, Array.from(bytes))
       
       console.log('[Drime Download] Response first bytes:', header)
       
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
             if (directRes.ok) {
               const ab = await directRes.arrayBuffer()
               const b = new Uint8Array(ab.slice(0, 5))
-              if (String.fromCharCode(...b).startsWith('%PDF')) {
+              if (String.fromCharCode.apply(null, Array.from(b)).startsWith('%PDF')) {
                 return new NextResponse(ab, {
                   headers: {
                     'Content-Type': 'application/pdf',
