@@ -409,9 +409,9 @@ function SendPageContent() {
       <header className="bg-white border-b">
         <div className="max-w-5xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Close */}
+            {/* Close - go back to previous page */}
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.back()}
               className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

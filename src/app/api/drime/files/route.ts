@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+// Use staging for auth but app.drime.cloud for files API
+const DRIME_FILES_API_URL = process.env.DRIME_FILES_API_URL || 'https://app.drime.cloud'
+const DRIME_AUTH_API_URL = process.env.DRIME_API_URL || 'https://staging.drime.cloud'
 
 /**
  * Proxy to Drime API to get user's files
@@ -17,31 +19,45 @@ export async function GET(request: NextRequest) {
 
     // Get query params for filtering
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get('type') || 'pdf' // Default to PDF files
     const folderId = searchParams.get('folderId') || ''
 
-    // Build Drime API URL
-    let apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?perPage=50`
-    if (type) {
-      apiUrl += `&type=${type}`
-    }
+    // Build Drime API URL - use /drive/file-entries endpoint
+    // Try app.drime.cloud first (production API)
+    let apiUrl = `${DRIME_FILES_API_URL}/api/v1/drive/file-entries?perPage=100`
     if (folderId) {
       apiUrl += `&folderId=${folderId}`
     }
 
     console.log('[Drime Files] Fetching from:', apiUrl)
 
-    const response = await fetch(apiUrl, {
+    let response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Cookie': cookieHeader,
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
       },
     })
 
+    // If app.drime.cloud fails, try staging
+    if (!response.ok && DRIME_FILES_API_URL !== DRIME_AUTH_API_URL) {
+      console.log('[Drime Files] app.drime.cloud failed, trying staging...')
+      apiUrl = `${DRIME_AUTH_API_URL}/api/v1/drive/file-entries?perPage=100`
+      if (folderId) {
+        apiUrl += `&folderId=${folderId}`
+      }
+      
+      response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Cookie': cookieHeader,
+          'Accept': 'application/json',
+        },
+      })
+    }
+
     if (!response.ok) {
-      console.error('[Drime Files] API error:', response.status)
+      const errorText = await response.text()
+      console.error('[Drime Files] API error:', response.status, errorText)
       return NextResponse.json({ error: 'Failed to fetch files from Drime' }, { status: response.status })
     }
 
@@ -52,7 +68,8 @@ export async function GET(request: NextRequest) {
     const pdfFiles = (data.data || []).filter((file: any) => {
       const ext = file.extension?.toLowerCase() || ''
       const mime = file.mime?.toLowerCase() || ''
-      return ext === 'pdf' || mime === 'application/pdf'
+      const fileName = file.file_name?.toLowerCase() || file.name?.toLowerCase() || ''
+      return ext === 'pdf' || mime === 'application/pdf' || fileName.endsWith('.pdf')
     })
 
     return NextResponse.json({ 
