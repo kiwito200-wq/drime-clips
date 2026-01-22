@@ -110,42 +110,80 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Step 3: Fallback - try direct URL pattern
-    // Drime might serve files at /storage/{path}
-    console.log('[Drime Download] Trying direct storage URL...')
+    // Step 3: Try to get file entry directly by ID
+    console.log('[Drime Download] Getting file entry by ID:', fileId)
     
-    // Get file info to find storage path
-    const fileInfoRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries?ids=${fileId}`, {
+    const fileEntryRes = await fetch(`${DRIME_API_URL}/api/v1/file-entries/${fileId}`, {
       method: 'GET',
       headers,
     })
     
-    if (fileInfoRes.ok) {
-      const fileData = await fileInfoRes.json()
-      console.log('[Drime Download] File info:', JSON.stringify(fileData).substring(0, 300))
+    if (fileEntryRes.ok) {
+      const fileData = await fileEntryRes.json()
+      console.log('[Drime Download] File entry:', JSON.stringify(fileData).substring(0, 500))
       
-      const file = fileData.data?.[0] || fileData[0]
-      if (file?.url || file?.file_url) {
-        const directUrl = file.url || file.file_url
-        console.log('[Drime Download] Trying direct URL:', directUrl)
+      const file = fileData.fileEntry || fileData.file || fileData
+      
+      // Look for any URL field
+      const possibleUrls = [
+        file?.url,
+        file?.file_url,
+        file?.download_url,
+        file?.path ? `${DRIME_API_URL}/storage/${file.path}` : null,
+        file?.hash ? `${DRIME_API_URL}/drive/s/${file.hash}` : null,
+      ].filter(Boolean)
+      
+      console.log('[Drime Download] Possible URLs:', possibleUrls)
+      
+      for (const url of possibleUrls) {
+        console.log('[Drime Download] Trying URL:', url)
+        const directRes = await fetch(url as string, { redirect: 'follow' })
+        console.log('[Drime Download] Response:', directRes.status, directRes.headers.get('content-type'))
         
-        const directRes = await fetch(directUrl, { redirect: 'follow' })
         if (directRes.ok) {
-          const arrayBuffer = await directRes.arrayBuffer()
-          console.log('[Drime Download] Direct download size:', arrayBuffer.byteLength, 'bytes')
-          
-          return new NextResponse(arrayBuffer, {
-            headers: {
-              'Content-Type': 'application/pdf',
-              'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
-              'Content-Length': String(arrayBuffer.byteLength),
-            },
-          })
+          const contentType = directRes.headers.get('content-type') || ''
+          if (contentType.includes('pdf') || contentType.includes('octet-stream')) {
+            const arrayBuffer = await directRes.arrayBuffer()
+            console.log('[Drime Download] Success! Size:', arrayBuffer.byteLength, 'bytes')
+            
+            return new NextResponse(arrayBuffer, {
+              headers: {
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
+                'Content-Length': String(arrayBuffer.byteLength),
+              },
+            })
+          }
         }
+      }
+    } else {
+      const errorText = await fileEntryRes.text()
+      console.error('[Drime Download] Failed to get file entry:', fileEntryRes.status, errorText.substring(0, 200))
+    }
+
+    // Step 4: Last resort - try preview URL pattern
+    console.log('[Drime Download] Trying preview URL pattern...')
+    const previewUrl = `${DRIME_API_URL}/api/v1/file-entries/${fileId}/preview`
+    const previewRes = await fetch(previewUrl, { headers, redirect: 'follow' })
+    console.log('[Drime Download] Preview response:', previewRes.status, previewRes.headers.get('content-type'))
+    
+    if (previewRes.ok) {
+      const contentType = previewRes.headers.get('content-type') || ''
+      if (contentType.includes('pdf') || contentType.includes('octet-stream')) {
+        const arrayBuffer = await previewRes.arrayBuffer()
+        console.log('[Drime Download] Preview download size:', arrayBuffer.byteLength, 'bytes')
+        
+        return new NextResponse(arrayBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
+            'Content-Length': String(arrayBuffer.byteLength),
+          },
+        })
       }
     }
 
-    return NextResponse.json({ error: 'Failed to download file from Drime' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to download file from Drime - no valid download URL found' }, { status: 500 })
   } catch (error) {
     console.error('[Drime Download] Error:', error)
     return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
