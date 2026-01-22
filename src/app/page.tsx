@@ -325,50 +325,50 @@ export default function DashboardHome() {
           {/* Stats - HelloSign style with vertical dividers */}
           <div className="px-8 pb-6">
             <div className="flex bg-white border-l border-gray-200">
-              {/* Waiting for signature (from others) */}
+              {/* Waiting for signature (from others) = In progress */}
               <Link 
                 href="/dashboard?filter=in_progress" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.waitingForOthers}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#FFC733]" />
+                  <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
                   <span className="text-sm text-gray-700">Waiting for signature</span>
                 </div>
               </Link>
 
-              {/* Waiting for your signature */}
+              {/* Waiting for your signature = Need to sign (purple) */}
               <Link 
                 href="/dashboard?filter=need_to_sign" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.needToSign}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#FFC733]" />
+                  <span className="w-3 h-3 rounded-full bg-[#7E33F7]" />
                   <span className="text-sm text-gray-700">Waiting for your signature</span>
                 </div>
               </Link>
 
-              {/* Drafts */}
+              {/* Drafts = gray */}
               <Link 
                 href="/dashboard?filter=draft" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.drafts}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#ADB5BD]" />
+                  <span className="w-3 h-3 rounded-full bg-gray-400" />
                   <span className="text-sm text-gray-700">Drafts</span>
                 </div>
               </Link>
 
-              {/* Signed */}
+              {/* Signed = Approved (green) */}
               <Link 
                 href="/dashboard?filter=completed" 
                 className="flex-1 py-4 px-5 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.completed}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#51D474]" />
+                  <span className="w-3 h-3 rounded-full bg-[#08CF65]" />
                   <span className="text-sm text-gray-700">Signed</span>
                 </div>
               </Link>

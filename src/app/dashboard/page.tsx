@@ -91,12 +91,6 @@ const XIcon = () => (
   </svg>
 )
 
-const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="11" cy="11" r="8" />
-    <path d="m21 21-4.3-4.3" />
-  </svg>
-)
 
 function DashboardContent() {
   const router = useRouter()
@@ -272,12 +266,39 @@ function DashboardContent() {
     return colors[Math.abs(hash) % colors.length]
   }
 
+  // Skeleton loading for smoother transitions
   if (loading) {
     return (
-      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Chargement...</p>
+      <div className="h-screen bg-[#F3F4F6] flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 px-4 pt-4 pb-3">
+          <div className="flex items-center gap-4">
+            <div className="w-52 flex-shrink-0 px-3">
+              <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+            <div className="flex-1 max-w-xl">
+              <div className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
+          <aside className="w-52 flex-shrink-0">
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </aside>
+          <main className="flex-1 bg-white rounded-xl border border-gray-200 p-6">
+            <div className="space-y-4">
+              <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-gray-100 rounded animate-pulse" />
+              <div className="space-y-3 mt-8">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="h-14 bg-gray-100 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            </div>
+          </main>
         </div>
       </div>
     )
@@ -299,16 +320,22 @@ function DashboardContent() {
           
           {/* Search bar - white with stroke */}
           <div className="flex-1 max-w-xl">
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                <SearchIcon />
-              </span>
+            <div className="relative flex items-center">
+              <svg 
+                className="absolute left-3 w-4 h-4 text-gray-400 pointer-events-none" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor" 
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
               />
             </div>
           </div>
