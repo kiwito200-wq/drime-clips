@@ -3,10 +3,17 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
+import dynamic from 'next/dynamic'
 import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
 import SigningBanner from '@/components/sign/SigningBanner'
 import { Field, FieldType } from '@/components/sign/types'
+
+// Dynamic import of Lottie to avoid SSR issues
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
+
+// Import the animation data
+import signatureAnimation from '../../../../public/signature-animation.json'
 
 interface FieldData {
   id: string
@@ -273,27 +280,55 @@ export default function SignPage() {
   // Completed state
   if (completed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
+      <div className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-4">
+        {/* Animated signature using Lottie */}
+        <div className="relative mb-8">
+          <div className="w-[500px] h-[400px] flex items-center justify-center">
+            <Lottie
+              animationData={signatureAnimation}
+              loop={false}
+              style={{ width: 500, height: 400, opacity: 0.3 }}
+            />
+          </div>
+          
+          {/* Checkmark and text overlay */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', delay: 1.5, stiffness: 200 }}
+              className="w-20 h-20 bg-[#08CF65] rounded-full flex items-center justify-center mb-6 shadow-lg"
+            >
+              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </motion.div>
+            
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.8, duration: 0.4 }}
+              className="text-4xl font-bold text-[#7E33F7] mb-4"
+            >
+              Merci !
+            </motion.h1>
+          </div>
+        </div>
+        
+        {/* Thank you message */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-xl p-12 text-center max-w-md"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2, duration: 0.4 }}
+          className="text-center max-w-md"
         >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', delay: 0.2 }}
-            className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
-          >
-            <svg className="w-12 h-12 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </motion.div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Signature complète !</h1>
-          <p className="text-gray-500 mb-6">
-            Merci d&apos;avoir signé <strong>&ldquo;{data?.envelope.name}&rdquo;</strong>.
-            <br />Vous recevrez une copie par email une fois que tous les signataires auront signé.
+          <p className="text-gray-700 text-lg mb-2">
+            Merci d&apos;avoir signé <strong className="text-gray-900">&ldquo;{data?.envelope.name}&rdquo;</strong>.
           </p>
+          <p className="text-gray-500 mb-8">
+            Vous recevrez une copie par email une fois que tous les signataires auront signé.
+          </p>
+          
           <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
