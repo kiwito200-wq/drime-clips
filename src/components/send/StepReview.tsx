@@ -238,7 +238,7 @@ export default function StepReview({
         <button
           onClick={() => onSend(emailMessage || undefined)}
           disabled={isLoading}
-          className="px-8 py-3 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-[#1e293b] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>

@@ -309,16 +309,13 @@ export default function SigningBanner({
                         <div className="relative">
                           <button
                             onClick={(e) => { e.stopPropagation(); setShowFontDropdown(!showFontDropdown) }}
-                            className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm rounded-xl px-3 py-2 border border-gray-200 cursor-pointer transition-colors"
+                            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
                           >
-                            <span 
-                              className="min-w-[80px]"
-                              style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}
-                            >
+                            <span style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}>
                               {SIGNATURE_FONTS[selectedFont].label}
                             </span>
                             <svg 
-                              className={`w-4 h-4 text-gray-400 transition-transform ${showFontDropdown ? 'rotate-180' : ''}`} 
+                              className={`w-3 h-3 text-gray-400 transition-transform ${showFontDropdown ? 'rotate-180' : ''}`} 
                               fill="none" 
                               viewBox="0 0 24 24" 
                               stroke="currentColor"
@@ -328,19 +325,19 @@ export default function SigningBanner({
                           </button>
                           {showFontDropdown && (
                             <div 
-                              className="absolute top-full left-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[100]"
+                              className="absolute bottom-full left-0 mb-1 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[150px] z-[100]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {SIGNATURE_FONTS.map((font, i) => (
                                 <button
                                   key={font.name}
                                   onClick={() => { setSelectedFont(i); setShowFontDropdown(false) }}
-                                  className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors flex items-center ${
+                                  className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center ${
                                     selectedFont === i ? 'bg-[#08CF65]/10 text-[#08CF65]' : 'text-gray-700'
                                   }`}
                                 >
                                   <span 
-                                    className="text-lg"
+                                    className="text-base"
                                     style={{ fontFamily: `"${font.name}", cursive` }}
                                   >
                                     {font.label}

@@ -8,30 +8,29 @@ function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const selfSignUrl = searchParams.get('selfSign')
-  const documentName = searchParams.get('name') || 'document'
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
-      {/* Animated signature background */}
-      <div className="relative mb-8">
-        {/* SVG signature animation */}
+      {/* Animated signature background - Lumin style */}
+      <div className="relative mb-6">
+        {/* SVG signature animation - simple flowing stroke from bottom-left to top-right */}
         <motion.svg
-          viewBox="0 0 300 200"
-          className="w-80 h-56 text-[#7E33F7]/20"
+          viewBox="0 0 400 300"
+          className="w-[400px] h-[300px]"
           initial="hidden"
           animate="visible"
         >
-          {/* Signature path - stylized cursive signature */}
+          {/* Simple elegant signature stroke - from bottom-left going up to top-right with one loop */}
           <motion.path
-            d="M 30 120 
-               Q 50 60, 80 100 
-               T 130 90 
-               Q 150 85, 160 95
-               Q 180 110, 200 80
-               Q 220 50, 240 90
-               Q 260 120, 270 100"
+            d="M 50 250 
+               Q 80 200, 120 220
+               Q 180 250, 220 180
+               Q 250 120, 300 150
+               Q 340 170, 350 100
+               Q 360 50, 380 80"
             fill="none"
-            stroke="currentColor"
+            stroke="#7E33F7"
+            strokeOpacity="0.15"
             strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -41,18 +40,21 @@ function SuccessContent() {
                 pathLength: 1,
                 opacity: 1,
                 transition: {
-                  pathLength: { duration: 2, ease: "easeInOut" },
-                  opacity: { duration: 0.5 }
+                  pathLength: { duration: 1.5, ease: "easeOut" },
+                  opacity: { duration: 0.3 }
                 }
               }
             }}
           />
-          {/* Check mark */}
+          {/* Small checkmark/flourish at the end */}
           <motion.path
-            d="M 200 130 L 230 160 L 280 90"
+            d="M 320 180 
+               Q 340 200, 360 160
+               Q 380 120, 390 140"
             fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
+            stroke="#7E33F7"
+            strokeOpacity="0.15"
+            strokeWidth="3"
             strokeLinecap="round"
             strokeLinejoin="round"
             variants={{
@@ -61,20 +63,21 @@ function SuccessContent() {
                 pathLength: 1,
                 opacity: 1,
                 transition: {
-                  pathLength: { duration: 0.5, ease: "easeOut", delay: 1.8 },
-                  opacity: { duration: 0.3, delay: 1.8 }
+                  pathLength: { duration: 0.5, ease: "easeOut", delay: 1.3 },
+                  opacity: { duration: 0.2, delay: 1.3 }
                 }
               }
             }}
           />
         </motion.svg>
 
-        {/* "All done" text overlay */}
+        {/* "Terminé !" text overlay */}
         <motion.h1
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.5, duration: 0.5 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
           className="absolute inset-0 flex items-center justify-center text-5xl font-bold text-[#7E33F7]"
+          style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
         >
           Terminé !
         </motion.h1>
@@ -84,7 +87,7 @@ function SuccessContent() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1 }}
+        transition={{ delay: 0.8 }}
         className="text-center mb-8"
       >
         <p className="text-xl font-semibold text-gray-900 mb-2">
@@ -101,20 +104,20 @@ function SuccessContent() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.2 }}
+        transition={{ delay: 1 }}
         className="flex flex-col items-center gap-4"
       >
         {selfSignUrl ? (
           <button
             onClick={() => router.push(selfSignUrl)}
-            className="px-8 py-3 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-[#1e293b] transition-colors"
+            className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
           >
             Signer mon document
           </button>
         ) : (
           <button
             onClick={() => router.push('/dashboard/agreements')}
-            className="px-8 py-3 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-[#1e293b] transition-colors"
+            className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
           >
             Voir mes documents
           </button>
