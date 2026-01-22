@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=MonteCarlo&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5,6 +7,23 @@
 :root {
   --primary: #08CF65;
   --primary-dark: #06B557;
+}
+
+/* Signature fonts */
+.font-montecarlo {
+  font-family: 'MonteCarlo', cursive;
+}
+
+.font-dancing {
+  font-family: var(--font-dancing), 'Dancing Script', cursive;
+}
+
+.font-great-vibes {
+  font-family: var(--font-great-vibes), 'Great Vibes', cursive;
+}
+
+.font-allura {
+  font-family: var(--font-allura), 'Allura', cursive;
 }
 
 body {

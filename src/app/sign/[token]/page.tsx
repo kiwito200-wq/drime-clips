@@ -2,12 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
-import SignaturePad from '@/components/sign/SignaturePad'
-import DateModal from '@/components/sign/DateModal'
-import FieldInputModal from '@/components/sign/FieldInputModal'
+import SigningBanner from '@/components/sign/SigningBanner'
 import { Field, FieldType } from '@/components/sign/types'
 
 interface FieldData {
@@ -56,21 +54,15 @@ export default function SignPage() {
   
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
-  const [signaturePadOpen, setSignaturePadOpen] = useState(false)
-  const [signaturePadType, setSignaturePadType] = useState<'signature' | 'initials'>('signature')
-  const [dateModalOpen, setDateModalOpen] = useState(false)
-  const [dateFieldId, setDateFieldId] = useState<string | null>(null)
-  const [textModalOpen, setTextModalOpen] = useState(false)
-  const [textFieldId, setTextFieldId] = useState<string | null>(null)
-  const [textFieldType, setTextFieldType] = useState<FieldType>('text')
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
+  const [showWelcome, setShowWelcome] = useState(true)
   
   // Convert fields to Field format
   const internalFields: Field[] = useMemo(() => 
     data?.fields.map(f => ({
       id: f.id,
       type: f.type as FieldType,
-      recipientId: data.id, // Use signer ID as recipient ID
+      recipientId: data.id,
       page: f.page,
       x: f.x,
       y: f.y,
@@ -108,7 +100,6 @@ export default function SignPage() {
         } else if (field.type === 'email') {
           initialValues[field.id] = signerData.email
         }
-        // Date fields are NOT auto-filled - user must choose
       })
       setFieldValues(initialValues)
       
@@ -137,165 +128,84 @@ export default function SignPage() {
   // Update field value
   const updateFieldValue = useCallback((fieldId: string, value: string) => {
     setFieldValues(prev => ({ ...prev, [fieldId]: value }))
-    setSelectedFieldId(null)
   }, [])
 
-  // Handle field sign
-  const handleSignField = useCallback((fieldId: string) => {
-    const field = internalFields.find(f => f.id === fieldId)
-    if (!field) return
-    
-    if (field.type === 'signature' || field.type === 'initials') {
-      setSelectedFieldId(fieldId)
-      setSignaturePadType(field.type as 'signature' | 'initials')
-      setSignaturePadOpen(true)
-    } else if (field.type === 'date') {
-      // Open date modal for date fields
-      setDateFieldId(fieldId)
-      setDateModalOpen(true)
-    } else if (field.type === 'text' || field.type === 'name' || field.type === 'email') {
-      // Open text input modal for text/name/email fields
-      setTextFieldId(fieldId)
-      setTextFieldType(field.type as FieldType)
-      setTextModalOpen(true)
-    }
-  }, [internalFields])
-
-  // Scroll to next unfilled field
-  const scrollToNextField = useCallback((currentFieldId: string, currentFieldValues?: Record<string, string>) => {
-    const values = currentFieldValues || fieldValues
-    const currentIndex = internalFields.findIndex(f => f.id === currentFieldId)
-    if (currentIndex === -1) return
-    
-    // Find next unfilled required field
-    const nextField = internalFields.slice(currentIndex + 1).find(f => {
-      if (!f.required) return false
-      const value = values[f.id] || f.value
-      if (typeof value === 'boolean') return !value
-      if (Array.isArray(value)) return value.length === 0
-      if (typeof value === 'string') return !value || value.trim() === ''
-      return !value
-    })
-    
-    if (nextField) {
-      setCurrentPage(nextField.page)
-      setSelectedFieldId(nextField.id)
-      // Scroll to field after a short delay
+  // Handle field change from banner - scroll to that field
+  const handleFieldChange = useCallback((index: number) => {
+    setCurrentFieldIndex(index)
+    const field = internalFields[index]
+    if (field) {
+      setCurrentPage(field.page)
+      setSelectedFieldId(field.id)
+      
+      // Scroll to field
       setTimeout(() => {
-        const fieldElement = document.querySelector(`[data-field-id="${nextField.id}"]`)
+        const fieldElement = document.querySelector(`[data-field-id="${field.id}"]`)
         if (fieldElement) {
           fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
-      }, 300)
-    }
-  }, [internalFields, fieldValues])
-
-  // Handle signature save
-  const handleSignatureSave = useCallback((dataUrl: string) => {
-    if (selectedFieldId) {
-      updateFieldValue(selectedFieldId, dataUrl)
-      // Auto-scroll to next field with updated values
-      setTimeout(() => {
-        // Pass the updated value explicitly since state might not be updated yet
-        const updatedValues = { ...fieldValues, [selectedFieldId]: dataUrl }
-        scrollToNextField(selectedFieldId, updatedValues)
       }, 100)
     }
-    setSignaturePadOpen(false)
-    setSelectedFieldId(null)
-  }, [selectedFieldId, updateFieldValue, scrollToNextField, fieldValues])
+  }, [internalFields])
 
-  // Handle date save
-  const handleDateSave = useCallback((dateValue: string) => {
-    if (dateFieldId) {
-      // Format date for display (dd/mm/yyyy)
-      const formattedDate = dateValue ? new Date(dateValue).toLocaleDateString('fr-FR') : ''
-      updateFieldValue(dateFieldId, formattedDate)
-      // Auto-scroll to next field
-      setTimeout(() => {
-        const updatedValues = { ...fieldValues, [dateFieldId]: formattedDate }
-        scrollToNextField(dateFieldId, updatedValues)
-      }, 100)
-    }
-    setDateModalOpen(false)
-    setDateFieldId(null)
-  }, [dateFieldId, updateFieldValue, scrollToNextField, fieldValues])
+  // Handle value change from banner
+  const handleValueChange = useCallback((fieldId: string, value: string) => {
+    updateFieldValue(fieldId, value)
+    
+    // Auto-scroll to next unfilled field after a short delay
+    setTimeout(() => {
+      const currentIndex = internalFields.findIndex(f => f.id === fieldId)
+      if (currentIndex < internalFields.length - 1) {
+        const nextField = internalFields[currentIndex + 1]
+        if (nextField) {
+          setCurrentPage(nextField.page)
+          setSelectedFieldId(nextField.id)
+          setTimeout(() => {
+            const fieldElement = document.querySelector(`[data-field-id="${nextField.id}"]`)
+            if (fieldElement) {
+              fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }
+          }, 100)
+        }
+      }
+    }, 200)
+  }, [internalFields, updateFieldValue])
 
-  // Handle text input save
-  const handleTextSave = useCallback((textValue: string) => {
-    if (textFieldId) {
-      updateFieldValue(textFieldId, textValue)
-      // Auto-scroll to next field
-      setTimeout(() => {
-        const updatedValues = { ...fieldValues, [textFieldId]: textValue }
-        scrollToNextField(textFieldId, updatedValues)
-      }, 100)
-    }
-    setTextModalOpen(false)
-    setTextFieldId(null)
-  }, [textFieldId, updateFieldValue, scrollToNextField, fieldValues])
-
-  // Handle field update (for checkboxes)
+  // Handle update from FieldOverlay (for clicking on fields directly)
   const handleUpdateField = useCallback((fieldId: string, updates: Partial<Field>) => {
     if (updates.value !== undefined) {
-      const newValue = String(updates.value)
-      updateFieldValue(fieldId, newValue)
-      // Always scroll to next unfilled field after checkbox is CHECKED
-      if (newValue === 'true') {
-        setTimeout(() => {
-          const updatedValues = { ...fieldValues, [fieldId]: newValue }
-          scrollToNextField(fieldId, updatedValues)
-        }, 200)
-      }
+      updateFieldValue(fieldId, String(updates.value))
     }
-  }, [updateFieldValue, fieldValues, scrollToNextField])
+  }, [updateFieldValue])
 
-  // Check if a field is filled (handles different field types)
-  const isFieldFilled = useCallback((fieldId: string, fieldType: string): boolean => {
-    const value = fieldValues[fieldId]
-    if (!value) return false
-    
-    // For checkbox, check if value is 'true'
-    if (fieldType === 'checkbox') {
-      return value === 'true'
+  // Handle clicking on a field in the PDF - jump to that field in the banner
+  const handleSignField = useCallback((fieldId: string) => {
+    const index = internalFields.findIndex(f => f.id === fieldId)
+    if (index !== -1) {
+      setCurrentFieldIndex(index)
+      setSelectedFieldId(fieldId)
     }
-    
-    // For other fields, check if value is not empty
-    return value.trim() !== ''
-  }, [fieldValues])
-
-  // Check if all required fields are filled
-  const allRequiredFieldsFilled = useCallback(() => {
-    if (!data) return false
-    return data.fields.every(field => {
-      if (!field.required) return true
-      return isFieldFilled(field.id, field.type)
-    })
-  }, [data, isFieldFilled])
-
-  // Get unfilled required fields
-  const unfilledRequiredFields = useCallback(() => {
-    if (!data) return []
-    return data.fields.filter(field => {
-      if (!field.required) return false
-      return !isFieldFilled(field.id, field.type)
-    })
-  }, [data, isFieldFilled])
+  }, [internalFields])
 
   // Complete signing
   async function handleComplete() {
-    if (!allRequiredFieldsFilled()) {
-      const unfilled = unfilledRequiredFields()
-      alert(`Veuillez remplir tous les champs requis (${unfilled.length} restants)`)
-      // Scroll to first unfilled field
-      if (unfilled.length > 0) {
-        setCurrentPage(unfilled[0].page)
-        setTimeout(() => {
-          const fieldElement = document.querySelector(`[data-field-id="${unfilled[0].id}"]`)
-          if (fieldElement) {
-            fieldElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }
-        }, 300)
+    const allFilled = internalFields.every(f => {
+      if (!f.required) return true
+      const value = fieldValues[f.id]
+      if (f.type === 'checkbox') return value === 'true'
+      return value && value.trim() !== ''
+    })
+    
+    if (!allFilled) {
+      const unfilledIndex = internalFields.findIndex(f => {
+        if (!f.required) return false
+        const value = fieldValues[f.id]
+        if (f.type === 'checkbox') return value !== 'true'
+        return !value || value.trim() === ''
+      })
+      
+      if (unfilledIndex !== -1) {
+        handleFieldChange(unfilledIndex)
       }
       return
     }
@@ -322,10 +232,19 @@ export default function SignPage() {
     }
   }
 
-  // Get recipient color (for FieldOverlay)
+  // Get recipient color
   const getRecipientColor = useCallback((recipientId: string) => {
     return data?.color || '#EF4444'
   }, [data])
+
+  // Start signing - dismiss welcome
+  const startSigning = useCallback(() => {
+    setShowWelcome(false)
+    // Scroll to first field
+    if (internalFields.length > 0) {
+      handleFieldChange(0)
+    }
+  }, [internalFields, handleFieldChange])
 
   // Loading state
   if (loading) {
@@ -391,156 +310,137 @@ export default function SignPage() {
     )
   }
 
-  const unfilledCount = unfilledRequiredFields().length
-  const totalRequired = data?.fields.filter(f => f.required).length || 0
-  const filledCount = totalRequired - unfilledCount
+  const requiredFields = internalFields.filter(f => f.required)
+  const filledCount = requiredFields.filter(f => {
+    const value = fieldValues[f.id]
+    if (f.type === 'checkbox') return value === 'true'
+    return value && value.trim() !== ''
+  }).length
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="min-h-screen bg-gray-100 flex flex-col pb-64">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-50">
+      <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 bg-[#08CF65] rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="flex items-center gap-2">
+              <svg className="w-6 h-6 text-[#08CF65]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
               </svg>
-            </div>
-            <div>
-              <h1 className="font-semibold text-gray-900">{data?.envelope.name}</h1>
-              <p className="text-sm text-gray-500">Veuillez signer le document</p>
+              <span className="font-semibold text-gray-900">Drime Sign</span>
             </div>
           </div>
           
-          {/* Progress */}
-          <div className="hidden md:flex items-center gap-4">
-            <div className="text-sm text-gray-500">
-              {filledCount}/{totalRequired} champs complétés
-            </div>
-            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-[#08CF65] transition-all duration-300"
-                style={{ width: `${totalRequired > 0 ? (filledCount / totalRequired) * 100 : 0}%` }}
-              />
-            </div>
+          <div className="text-center flex-1 px-4">
+            <p className="text-sm text-gray-600 truncate">
+              <span className="font-medium">Signature:</span> {data?.envelope.name}
+            </p>
           </div>
           
-          <button
-            onClick={handleComplete}
-            disabled={submitting || !allRequiredFieldsFilled()}
-            className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              download
+              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-            )}
-            Terminer la signature
-          </button>
+              Télécharger
+            </a>
+          )}
         </div>
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex">
-        {/* PDF Viewer */}
-        <div className="flex-1 overflow-auto">
-          {pdfUrl ? (
-            <PDFViewer
-              fileUrl={pdfUrl}
-              onPagesLoaded={handlePagesLoaded}
-              scale={scale}
-              onScaleChange={setScale}
-              currentPage={currentPage}
-              onPageChange={setCurrentPage}
-              isDrawMode={false}
-              onDraw={() => {}}
-              onDrop={() => {}}
-              isDragging={false}
-            >
-              {/* Render FieldOverlay for each page */}
-              {pages.map((_, pageIndex) => (
-                <FieldOverlay
-                  key={pageIndex}
-                  pageIndex={pageIndex}
-                  fields={internalFields.filter(f => f.page === pageIndex)}
-                  selectedFieldId={selectedFieldId}
-                  onSelectField={setSelectedFieldId}
-                  onUpdateField={handleUpdateField}
-                  onDeleteField={() => {}} // Not deletable in sign mode
-                  getRecipientColor={getRecipientColor}
-                  isPreviewMode={false}
-                  isSignMode={true}
-                  onSignField={handleSignField}
-                  scale={scale}
-                />
-              ))}
-            </PDFViewer>
-          ) : (
-            <div className="flex items-center justify-center h-96">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-500">Chargement du PDF...</p>
-              </div>
+      <div className="flex-1 overflow-auto">
+        {pdfUrl ? (
+          <PDFViewer
+            fileUrl={pdfUrl}
+            onPagesLoaded={handlePagesLoaded}
+            scale={scale}
+            onScaleChange={setScale}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            isDrawMode={false}
+            onDraw={() => {}}
+            onDrop={() => {}}
+            isDragging={false}
+          >
+            {/* Render FieldOverlay for each page */}
+            {pages.map((_, pageIndex) => (
+              <FieldOverlay
+                key={pageIndex}
+                pageIndex={pageIndex}
+                fields={internalFields.filter(f => f.page === pageIndex)}
+                selectedFieldId={selectedFieldId}
+                onSelectField={setSelectedFieldId}
+                onUpdateField={handleUpdateField}
+                onDeleteField={() => {}}
+                getRecipientColor={getRecipientColor}
+                isPreviewMode={false}
+                isSignMode={true}
+                onSignField={handleSignField}
+                scale={scale}
+              />
+            ))}
+          </PDFViewer>
+        ) : (
+          <div className="flex items-center justify-center h-96">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-gray-500">Chargement du PDF...</p>
             </div>
-          )}
-        </div>
-
-        {/* Sidebar removed - cleaner signing experience */}
+          </div>
+        )}
       </div>
 
-      {/* Signature Pad Modal */}
-      <AnimatePresence>
-        {signaturePadOpen && (
-          <SignaturePad
-            isOpen={signaturePadOpen}
-            onClose={() => setSignaturePadOpen(false)}
-            onSave={handleSignatureSave}
-            title={signaturePadType === 'initials' ? 'Ajoutez vos initiales' : 'Ajoutez votre signature'}
-          />
-        )}
-      </AnimatePresence>
+      {/* Welcome overlay */}
+      {showWelcome && data && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#1a1a1a] text-white rounded-2xl p-8 max-w-md mx-4 text-center"
+          >
+            <div className="w-16 h-16 bg-[#08CF65] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold mb-2">
+              Prêt à signer votre document ?
+            </h2>
+            <p className="text-gray-400 mb-6">
+              Nous allons vous guider à travers {internalFields.length} champ{internalFields.length > 1 ? 's' : ''} à remplir.
+            </p>
+            <button
+              onClick={startSigning}
+              className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              Commencer la signature
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+            </button>
+          </motion.div>
+        </div>
+      )}
 
-      {/* Date Modal */}
-      <DateModal
-        isOpen={dateModalOpen}
-        onClose={() => {
-          setDateModalOpen(false)
-          setDateFieldId(null)
-        }}
-        onSave={handleDateSave}
-        title="Date"
-        currentValue={dateFieldId ? fieldValues[dateFieldId] : ''}
-        required={dateFieldId ? (internalFields.find(f => f.id === dateFieldId)?.required ?? true) : true}
-      />
-
-      {/* Text Input Modal */}
-      <FieldInputModal
-        isOpen={textModalOpen}
-        onClose={() => {
-          setTextModalOpen(false)
-          setTextFieldId(null)
-        }}
-        onSave={handleTextSave}
-        fieldType={textFieldType}
-        placeholder={textFieldId ? (internalFields.find(f => f.id === textFieldId)?.label || '') : ''}
-        defaultValue={textFieldId ? (fieldValues[textFieldId] || '') : ''}
-      />
+      {/* Signing Banner - fixed at bottom */}
+      {!showWelcome && internalFields.length > 0 && (
+        <SigningBanner
+          fields={internalFields}
+          fieldValues={fieldValues}
+          currentFieldIndex={currentFieldIndex}
+          onFieldChange={handleFieldChange}
+          onValueChange={handleValueChange}
+          onComplete={handleComplete}
+          isCompleting={submitting}
+          signerName={data?.name || ''}
+          signerEmail={data?.email || ''}
+        />
+      )}
     </div>
   )
-}
-
-// Get field label
-function getFieldLabel(type: string): string {
-  const labels: Record<string, string> = {
-    signature: 'Signature',
-    initials: 'Initiales',
-    date: 'Date',
-    text: 'Texte',
-    checkbox: 'Case',
-    name: 'Nom',
-    email: 'Email',
-  }
-  return labels[type] || type
 }

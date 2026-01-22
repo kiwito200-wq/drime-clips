@@ -1,10 +1,28 @@
 import type { Metadata } from 'next'
-import { Schibsted_Grotesk } from 'next/font/google'
+import { Schibsted_Grotesk, Dancing_Script, Great_Vibes, Allura } from 'next/font/google'
 import './globals.css'
 
 const schibsted = Schibsted_Grotesk({ 
   subsets: ['latin'],
   variable: '--font-schibsted',
+})
+
+// Signature fonts for typed signatures
+const dancingScript = Dancing_Script({
+  subsets: ['latin'],
+  variable: '--font-dancing',
+})
+
+const greatVibes = Great_Vibes({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-great-vibes',
+})
+
+const allura = Allura({
+  weight: '400',
+  subsets: ['latin'],
+  variable: '--font-allura',
 })
 
 export const metadata: Metadata = {
@@ -19,7 +37,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={schibsted.className}>{children}</body>
+      <body className={`${schibsted.className} ${dancingScript.variable} ${greatVibes.variable} ${allura.variable}`}>
+        {children}
+      </body>
     </html>
   )
 }
