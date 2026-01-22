@@ -36,8 +36,7 @@ export async function GET(request: NextRequest) {
     if (folderId) {
       apiUrl += `&parentId=${folderId}`
     }
-    // Only get files (not folders) and filter by PDF type
-    apiUrl += '&type=file'
+    // Don't filter by type - let the API return everything and we filter PDFs
 
     console.log('[Drime Files] Fetching from:', apiUrl)
 
@@ -73,11 +72,18 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
     
-    // Handle paginated response format
-    const entries = data.data || []
-    const pagination = data.pagination || { currentPage: 1, lastPage: 1, total: entries.length }
+    // Debug: log raw response structure
+    console.log('[Drime Files] Raw response keys:', Object.keys(data))
+    console.log('[Drime Files] Raw data sample:', JSON.stringify(data).substring(0, 500))
     
-    console.log('[Drime Files] Got', entries.length, 'entries, page', pagination.currentPage, 'of', pagination.lastPage)
+    // Handle paginated response format - might be data.data or just data
+    const entries = Array.isArray(data) ? data : (data.data || data.fileEntries || [])
+    const pagination = data.pagination || data.meta || { currentPage: 1, lastPage: 1, total: entries.length }
+    
+    console.log('[Drime Files] Got', entries.length, 'total entries')
+    if (entries.length > 0) {
+      console.log('[Drime Files] First entry sample:', JSON.stringify(entries[0]).substring(0, 300))
+    }
 
     // Filter to only return PDF files
     const pdfFiles = entries.filter((file: any) => {
