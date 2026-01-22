@@ -684,7 +684,11 @@ function AgreementsContent() {
                     <h3 className="font-semibold text-gray-900">Notification</h3>
                     <Tooltip content="Marquer tout comme lu" position="left">
                       <button 
-                        onClick={() => setReadNotifications(notifications.map(n => n.id))}
+                        onClick={() => {
+                          const allIds = notifications.map(n => n.id)
+                          localStorage.setItem('readNotifications', JSON.stringify(allIds))
+                          setReadNotifications(allIds)
+                        }}
                         className="text-gray-400 hover:text-gray-600"
                       >
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -758,7 +762,10 @@ function AgreementsContent() {
                           <div 
                             key={notification.id} 
                             onClick={() => {
-                              setReadNotifications(prev => [...prev, notification.id])
+                              // Save to localStorage immediately before navigation
+                              const newReadNotifs = [...readNotifications, notification.id]
+                              localStorage.setItem('readNotifications', JSON.stringify(newReadNotifs))
+                              setReadNotifications(newReadNotifs)
                               setShowNotifications(false)
                               router.push(`/view/${notification.slug}`)
                             }}
@@ -800,7 +807,10 @@ function AgreementsContent() {
                           <div 
                             key={notification.id} 
                             onClick={() => {
-                              setReadNotifications(prev => [...prev, notification.id])
+                              // Save to localStorage immediately before navigation
+                              const newReadNotifs = [...readNotifications, notification.id]
+                              localStorage.setItem('readNotifications', JSON.stringify(newReadNotifs))
+                              setReadNotifications(newReadNotifs)
                               setShowNotifications(false)
                               router.push(`/view/${notification.slug}`)
                             }}

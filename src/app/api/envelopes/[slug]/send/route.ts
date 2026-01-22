@@ -91,10 +91,14 @@ export async function POST(request: NextRequest, { params }: Params) {
       userAgent: request.headers.get('user-agent') || undefined,
     })
 
-    // Send emails to all signers in parallel
-    console.log(`[SEND] Sending emails to ${envelope.signers.length} signers`)
+    // Send emails to all signers SEQUENTIALLY with delay to avoid rate limiting
+    // Resend allows only 2 requests per second
+    console.log(`[SEND] Sending emails to ${envelope.signers.length} signers (sequential with delay)`)
     
-    const emailPromises = envelope.signers.map(async (signer) => {
+    const signerLinks: { email: string; name: string | null; signUrl: string; emailSent: boolean }[] = []
+    
+    for (let i = 0; i < envelope.signers.length; i++) {
+      const signer = envelope.signers[i]
       const signUrl = `${APP_URL}/sign/${signer.token}`
       
       // Check if this is self-signing (signer email = owner email)
@@ -104,6 +108,11 @@ export async function POST(request: NextRequest, { params }: Params) {
       
       if (!isSelfSign) {
         try {
+          // Add delay between emails to avoid rate limiting (600ms = safe for 2/sec limit)
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 600))
+          }
+          
           console.log(`[SEND] Sending email to: ${signer.email}`)
           // Send email to external signer
           const emailResult = await sendSignatureRequestEmail({
@@ -118,7 +127,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           })
           
           emailSent = emailResult.success
-          console.log(`[SEND] Email to ${signer.email}: ${emailSent ? 'SUCCESS' : 'FAILED'}`)
+          console.log(`[SEND] Email to ${signer.email}: ${emailSent ? 'SUCCESS' : 'FAILED'}`, emailResult.error ? `- Error: ${JSON.stringify(emailResult.error)}` : '')
           
           // Log email sent event
           if (emailSent) {
@@ -133,15 +142,14 @@ export async function POST(request: NextRequest, { params }: Params) {
         console.log(`[SEND] Skipping self-sign email for: ${signer.email}`)
       }
       
-      return {
+      signerLinks.push({
         email: signer.email,
         name: signer.name,
         signUrl,
         emailSent,
-      }
-    })
+      })
+    }
     
-    const signerLinks = await Promise.all(emailPromises)
     console.log(`[SEND] Completed sending emails. Results:`, signerLinks.map(s => ({ email: s.email, sent: s.emailSent })))
 
     // Check if this is self-signing only

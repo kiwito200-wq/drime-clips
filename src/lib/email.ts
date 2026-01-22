@@ -121,6 +121,13 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
     })
 
     console.log('[Email] Signature request sent to:', to, result)
+    
+    // Check if there's an error in the response (rate limit, etc.)
+    if (result.error) {
+      console.error('[Email] API error for', to, ':', result.error)
+      return { success: false, error: result.error }
+    }
+    
     return { success: true, id: result.data?.id }
   } catch (error) {
     console.error('[Email] Failed to send signature request:', error)
