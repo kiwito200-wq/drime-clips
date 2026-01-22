@@ -257,14 +257,14 @@ export default function DashboardHome() {
               <p className="text-xs font-medium text-gray-500 px-3 mb-2">Agreements</p>
               <div className="space-y-1">
                 <Link
-                  href="/dashboard"
+                  href="/dashboard/agreements"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <DocumentIcon />
                   My agreements
                 </Link>
                 <Link
-                  href="/dashboard?view=sent"
+                  href="/dashboard/agreements?view=sent"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <MailIcon />
@@ -278,28 +278,28 @@ export default function DashboardHome() {
               <p className="text-xs font-medium text-gray-500 px-3 mb-2">Filtered by status</p>
               <div className="space-y-1">
                 <Link
-                  href="/dashboard?filter=need_to_sign"
+                  href="/dashboard/agreements?filter=need_to_sign"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <PenIcon />
                   Need to sign
                 </Link>
                 <Link
-                  href="/dashboard?filter=in_progress"
+                  href="/dashboard/agreements?filter=in_progress"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <ClockIcon />
                   In progress
                 </Link>
                 <Link
-                  href="/dashboard?filter=completed"
+                  href="/dashboard/agreements?filter=completed"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <CheckIcon />
                   Approved
                 </Link>
                 <Link
-                  href="/dashboard?filter=rejected"
+                  href="/dashboard/agreements?filter=rejected"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
                 >
                   <XIcon />
@@ -327,7 +327,7 @@ export default function DashboardHome() {
             <div className="flex bg-white border-l border-gray-200">
               {/* Waiting for signature (from others) = In progress */}
               <Link 
-                href="/dashboard?filter=in_progress" 
+                href="/dashboard/agreements?filter=in_progress" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.waitingForOthers}</div>
@@ -339,7 +339,7 @@ export default function DashboardHome() {
 
               {/* Waiting for your signature = Need to sign (purple) */}
               <Link 
-                href="/dashboard?filter=need_to_sign" 
+                href="/dashboard/agreements?filter=need_to_sign" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.needToSign}</div>
@@ -351,7 +351,7 @@ export default function DashboardHome() {
 
               {/* Drafts = gray */}
               <Link 
-                href="/dashboard?filter=draft" 
+                href="/dashboard/agreements?filter=draft" 
                 className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.drafts}</div>
@@ -363,7 +363,7 @@ export default function DashboardHome() {
 
               {/* Signed = Approved (green) */}
               <Link 
-                href="/dashboard?filter=completed" 
+                href="/dashboard/agreements?filter=completed" 
                 className="flex-1 py-4 px-5 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.completed}</div>
