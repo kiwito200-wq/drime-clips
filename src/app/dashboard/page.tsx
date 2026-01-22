@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
@@ -105,10 +105,7 @@ export default function DashboardHome() {
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [notifications, setNotifications] = useState([
-    { id: '1', type: 'general', title: 'Document approuvé', message: 'Convention de formation a été approuvé', time: '8 janv. 2026', read: false },
-    { id: '2', type: 'general', title: 'Document signé', message: 'Cerfa Thomas BÊCHE-1... a été approuvé', time: '8 janv. 2026', read: false },
-  ])
+  const [readNotifications, setReadNotifications] = useState<string[]>([])
   const [notificationTab, setNotificationTab] = useState<'general' | 'invitations' | 'requests'>('general')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importDropdownRef = useRef<HTMLDivElement>(null)
@@ -179,6 +176,76 @@ export default function DashboardHome() {
     drafts: envelopes.filter(e => e.status === 'draft').length,
     completed: envelopes.filter(e => e.status === 'completed').length,
   }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('fr-FR', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Generate notifications from real envelope data
+  const notifications = useMemo(() => {
+    const notifs: Array<{
+      id: string
+      type: 'general' | 'invitation'
+      action: 'completed' | 'signed' | 'invited' | 'pending'
+      title: string
+      slug: string
+      time: string
+      read: boolean
+    }> = []
+
+    envelopes.forEach(envelope => {
+      // Completed documents
+      if (envelope.status === 'completed') {
+        notifs.push({
+          id: `completed-${envelope.id}`,
+          type: 'general',
+          action: 'completed',
+          title: envelope.name,
+          slug: envelope.slug,
+          time: envelope.updatedAt,
+          read: readNotifications.includes(`completed-${envelope.id}`)
+        })
+      }
+
+      // Documents where someone signed
+      envelope.signers.forEach(signer => {
+        if (signer.status === 'signed') {
+          notifs.push({
+            id: `signed-${envelope.id}-${signer.email}`,
+            type: 'general',
+            action: 'signed',
+            title: envelope.name,
+            slug: envelope.slug,
+            time: envelope.updatedAt,
+            read: readNotifications.includes(`signed-${envelope.id}-${signer.email}`)
+          })
+        }
+      })
+
+      // Documents sent to me (invitations)
+      if (envelope.signers.some(s => s.email === user?.email && s.status === 'pending') && envelope.createdBy !== user?.email) {
+        notifs.push({
+          id: `invited-${envelope.id}`,
+          type: 'invitation',
+          action: 'invited',
+          title: envelope.name,
+          slug: envelope.slug,
+          time: envelope.createdAt,
+          read: readNotifications.includes(`invited-${envelope.id}`)
+        })
+      }
+    })
+
+    // Sort by time, most recent first
+    return notifs.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+  }, [envelopes, readNotifications, user?.email])
 
   // File upload handling
   const handleFileUpload = async (file: File) => {
@@ -349,7 +416,11 @@ export default function DashboardHome() {
                           : 'text-gray-500 hover:text-gray-700'
                       }`}
                     >
-                      Invitations <span className="text-gray-400">0</span>
+                      Invitations {notifications.filter(n => n.type === 'invitation' && !n.read).length > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 bg-[#7E33F7] text-white text-xs rounded-full">
+                          {notifications.filter(n => n.type === 'invitation' && !n.read).length}
+                        </span>
+                      )}
                     </button>
                     <button
                       onClick={() => setNotificationTab('requests')}
@@ -367,21 +438,31 @@ export default function DashboardHome() {
                   <div className="max-h-80 overflow-y-auto">
                     {notificationTab === 'general' && (
                       <>
-                        <p className="px-4 py-2 text-xs text-gray-500">Plus tôt</p>
+                        {notifications.filter(n => n.type === 'general').length > 0 && (
+                          <p className="px-4 py-2 text-xs text-gray-500">Plus tôt</p>
+                        )}
                         {notifications.filter(n => n.type === 'general').map(notification => (
-                          <div key={notification.id} className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer">
+                          <div 
+                            key={notification.id} 
+                            onClick={() => {
+                              setReadNotifications(prev => [...prev, notification.id])
+                              setShowNotifications(false)
+                              router.push(`/view/${notification.slug}`)
+                            }}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                          >
                             <div className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-xs font-semibold text-[#08CF65] flex-shrink-0">
                               {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
-                                <span className="font-medium">{notification.title}</span> a été approuvé
+                                <span className="font-medium">{notification.title}</span> {notification.action === 'completed' ? 'a été approuvé' : 'a été signé'}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                 <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                 </svg>
-                                Drime Sign | {notification.time}
+                                Drime Sign | {formatDateTime(notification.time)}
                               </p>
                             </div>
                             {!notification.read && (
@@ -398,7 +479,45 @@ export default function DashboardHome() {
                       </>
                     )}
                     {notificationTab === 'invitations' && (
-                      <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune invitation</p>
+                      <>
+                        {notifications.filter(n => n.type === 'invitation').length > 0 && (
+                          <p className="px-4 py-2 text-xs text-gray-500">Invitations en attente</p>
+                        )}
+                        {notifications.filter(n => n.type === 'invitation').map(notification => (
+                          <div 
+                            key={notification.id} 
+                            onClick={() => {
+                              setReadNotifications(prev => [...prev, notification.id])
+                              setShowNotifications(false)
+                              router.push(`/view/${notification.slug}`)
+                            }}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                          >
+                            <div className="w-9 h-9 rounded-full bg-[#F3E8FF] flex items-center justify-center text-xs font-semibold text-[#7E33F7] flex-shrink-0">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">
+                                <span className="font-medium">{notification.title}</span> - signature requise
+                              </p>
+                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                <svg className="w-3 h-3 text-[#7E33F7]" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                                Drime Sign | {formatDateTime(notification.time)}
+                              </p>
+                            </div>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-[#7E33F7] rounded-full flex-shrink-0 mt-2" />
+                            )}
+                          </div>
+                        ))}
+                        {notifications.filter(n => n.type === 'invitation').length === 0 && (
+                          <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune invitation</p>
+                        )}
+                      </>
                     )}
                     {notificationTab === 'requests' && (
                       <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune demande</p>
@@ -434,19 +553,6 @@ export default function DashboardHome() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 bg-red-100 rounded flex items-center justify-center">
-                            <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                          </div>
-                          <span className="text-sm text-gray-700">PDF - Pro</span>
-                        </div>
-                        <a href="https://drime.cloud/fr/pricing" className="text-xs text-[#08CF65] hover:underline">Mettre à niveau</a>
-                      </div>
-                      <p className="text-xs text-gray-500 pl-8">0/30 documents pour votre Workspace</p>
-                      
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-2">
                           <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
                             <svg className="w-4 h-4 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -456,11 +562,14 @@ export default function DashboardHome() {
                         </div>
                         <a href="https://drime.cloud/fr/pricing" className="text-xs text-[#08CF65] hover:underline">Mettre à niveau</a>
                       </div>
-                      <p className="text-xs text-gray-500 pl-8">2/5 acuerdos para tu Workspace</p>
+                      <p className="text-xs text-gray-500 pl-8">2/5 signatures pour votre Workspace</p>
                     </div>
-                    <button className="w-full mt-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    <a 
+                      href="https://app.drime.cloud/account-settings#billing" 
+                      className="block w-full mt-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-center"
+                    >
                       Voir et gérer la souscription
-                    </button>
+                    </a>
                   </div>
 
                   {/* Menu items */}
