@@ -498,8 +498,8 @@ function AgreementsContent() {
             <div>
               <div className="space-y-1">
                 <Link
-                  href="/"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                  href="/dashboard"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <HomeIcon />
                   Dashboard
@@ -515,8 +515,8 @@ function AgreementsContent() {
                   onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'my_documents' && filterStatus === 'all'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <DocumentIcon />
@@ -526,8 +526,8 @@ function AgreementsContent() {
                   onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'sent_to_me'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <MailIcon />
@@ -544,8 +544,8 @@ function AgreementsContent() {
                   onClick={() => setFilterStatus('need_to_sign')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'need_to_sign'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <PenIcon />
@@ -555,8 +555,8 @@ function AgreementsContent() {
                   onClick={() => setFilterStatus('in_progress')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'in_progress'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <ClockIcon />
@@ -566,8 +566,8 @@ function AgreementsContent() {
                   onClick={() => setFilterStatus('completed')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'completed'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <CheckIcon />
@@ -577,8 +577,8 @@ function AgreementsContent() {
                   onClick={() => setFilterStatus('rejected')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'rejected'
-                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
-                      : 'text-gray-700 hover:bg-white'
+                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
                   <XIcon />
@@ -793,39 +793,51 @@ function AgreementsContent() {
         </main>
       </div>
 
-      {/* Rename Modal */}
+      {/* Rename Modal - Transfr style */}
       {renameModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRenameModalOpen(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setRenameModalOpen(null)}
+        >
+          <div 
+            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900">Rename document</h3>
-              <button onClick={() => setRenameModalOpen(null)} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <button 
+                onClick={() => setRenameModalOpen(null)} 
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent"
-              placeholder="Document name"
-              autoFocus
-            />
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => setRenameModalOpen(null)}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitRename}
-                className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Rename
-              </button>
+            <div className="p-6">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-[10px] text-sm focus:outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20"
+                placeholder="Document name"
+                autoFocus
+              />
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setRenameModalOpen(null)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitRename}
+                  className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Rename
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -833,83 +845,114 @@ function AgreementsContent() {
 
       {/* Due Date Modal - Transfr style */}
       {dueDateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}
+        >
+          <div 
+            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-900">Change due date</h3>
-              <button onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }} className="text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <button 
+                onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }} 
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Expiration</label>
-            <div className="relative" ref={dueDateDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowDueDateDropdown(!showDueDateDropdown)}
-                className="w-full border border-gray-200 rounded-[10px] px-3 py-2.5 text-sm outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20 transition-colors cursor-pointer hover:border-gray-300 bg-white text-left flex items-center justify-between"
-              >
-                <span>{selectedDueDate === 1 ? '1 day' : `${selectedDueDate} days`}</span>
-                <svg className={`w-4 h-4 transition-transform ${showDueDateDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              {showDueDateDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-[10px] border border-gray-200 shadow-lg py-1 z-[60]">
-                  {[
-                    { value: 1, label: '1 day' },
-                    { value: 3, label: '3 days' },
-                    { value: 5, label: '5 days' },
-                    { value: 7, label: '7 days' },
-                    { value: 15, label: '15 days' },
-                    { value: 30, label: '30 days' },
-                    { value: 60, label: '60 days' },
-                  ].map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => {
-                        setSelectedDueDate(option.value)
-                        setShowDueDateDropdown(false)
-                      }}
-                      className={`w-full flex items-center px-3 py-2 text-sm text-left transition-colors ${
-                        selectedDueDate === option.value
-                          ? 'bg-[#08CF65]/10 text-[#08CF65] font-medium'
-                          : 'text-gray-900 hover:bg-[#F5F5F5]'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <button
-                onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitDueDate}
-                className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                Save
-              </button>
+            <div className="p-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Expiration</label>
+              <div className="relative" ref={dueDateDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowDueDateDropdown(!showDueDateDropdown)}
+                  className="w-full border border-gray-200 rounded-[10px] px-3 py-2.5 text-sm outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20 transition-colors cursor-pointer hover:border-gray-300 bg-white text-left flex items-center justify-between"
+                >
+                  <span>{selectedDueDate === 1 ? '1 day' : `${selectedDueDate} days`}</span>
+                  <svg className={`w-4 h-4 transition-transform ${showDueDateDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showDueDateDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-1 z-[60]">
+                    {[
+                      { value: 1, label: '1 day' },
+                      { value: 3, label: '3 days' },
+                      { value: 5, label: '5 days' },
+                      { value: 7, label: '7 days' },
+                      { value: 15, label: '15 days' },
+                      { value: 30, label: '30 days' },
+                      { value: 60, label: '60 days' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setSelectedDueDate(option.value)
+                          setShowDueDateDropdown(false)
+                        }}
+                        className={`w-full flex items-center px-3 py-2 text-sm text-left transition-colors ${
+                          selectedDueDate === option.value
+                            ? 'bg-[#08CF65]/10 text-[#08CF65] font-medium'
+                            : 'text-gray-900 hover:bg-[#F5F5F5]'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitDueDate}
+                  className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Signing Order Modal */}
+      {/* Signing Order Modal - Transfr style */}
       {signingOrderModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSigningOrderModal(null)}>
-          <div className="bg-white rounded-xl w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+          onClick={() => setSigningOrderModal(null)}
+        >
+          <div 
+            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900">Signing order</h3>
+              <button
+                onClick={() => setSigningOrderModal(null)}
+                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
             <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Signing order</h3>
-              
               <div className="space-y-0">
                 {/* Sender */}
                 <div className="flex items-center gap-4">
@@ -991,13 +1034,6 @@ function AgreementsContent() {
                 </div>
               </div>
             </div>
-            
-            <button
-              onClick={() => setSigningOrderModal(null)}
-              className="w-full py-4 bg-[#1F2937] hover:bg-[#374151] text-white text-sm font-medium rounded-b-xl transition-colors"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}
