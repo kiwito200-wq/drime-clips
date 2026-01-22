@@ -331,8 +331,8 @@ function FieldItem({
         )}
       </div>
 
-      {/* Selection Controls */}
-      {isSelected && !isPreviewMode && (
+      {/* Selection Controls - only show in edit mode, not in sign mode */}
+      {isSelected && !isPreviewMode && !isSignMode && (
         <>
           {/* Delete Button */}
           <button
