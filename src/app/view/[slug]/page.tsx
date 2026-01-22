@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import PDFViewer from '@/components/sign/PDFViewer'
 
@@ -35,6 +35,10 @@ export default function ViewDocumentPage() {
   const [scale, setScale] = useState(1)
   const [currentPage, setCurrentPage] = useState(0)
   const [pages, setPages] = useState<{ width: number; height: number }[]>([])
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState('')
+  const [isSavingName, setIsSavingName] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   const fetchEnvelope = useCallback(async () => {
     try {
@@ -69,6 +73,48 @@ export default function ViewDocumentPage() {
   const handlePagesLoaded = useCallback((loadedPages: { width: number; height: number }[]) => {
     setPages(loadedPages)
   }, [])
+
+  // Handle name editing
+  const startEditingName = useCallback(() => {
+    if (envelope) {
+      setEditedName(envelope.name)
+      setIsEditingName(true)
+      setTimeout(() => nameInputRef.current?.focus(), 50)
+    }
+  }, [envelope])
+
+  const saveName = useCallback(async () => {
+    if (!envelope || editedName.trim() === '' || editedName === envelope.name) {
+      setIsEditingName(false)
+      return
+    }
+
+    setIsSavingName(true)
+    try {
+      const res = await fetch(`/api/envelopes/${slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editedName.trim() }),
+      })
+
+      if (res.ok) {
+        setEnvelope(prev => prev ? { ...prev, name: editedName.trim() } : null)
+      }
+    } catch (err) {
+      console.error('Failed to save name:', err)
+    } finally {
+      setIsSavingName(false)
+      setIsEditingName(false)
+    }
+  }, [slug, envelope, editedName])
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveName()
+    } else if (e.key === 'Escape') {
+      setIsEditingName(false)
+    }
+  }, [saveName])
 
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { label: string; color: string }> = {
@@ -136,7 +182,34 @@ export default function ViewDocumentPage() {
               </svg>
             </button>
             <div>
-              <h1 className="font-semibold text-gray-900">{envelope.name}</h1>
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={nameInputRef}
+                    type="text"
+                    value={editedName}
+                    onChange={(e) => setEditedName(e.target.value)}
+                    onBlur={saveName}
+                    onKeyDown={handleNameKeyDown}
+                    disabled={isSavingName}
+                    className="font-semibold text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 -ml-1 min-w-[200px]"
+                  />
+                  {isSavingName && (
+                    <div className="w-4 h-4 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+              ) : (
+                <h1 
+                  onClick={startEditingName}
+                  className="font-semibold text-gray-900 cursor-pointer hover:text-[#08CF65] transition-colors flex items-center gap-2 group"
+                  title="Cliquez pour renommer"
+                >
+                  {envelope.name}
+                  <svg className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </h1>
+              )}
               <p className="text-sm text-gray-500">
                 Créé le {formatDate(envelope.createdAt)}
               </p>

@@ -852,14 +852,14 @@ function AgreementsContent() {
                           <div className="absolute right-0 top-8 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px]">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleView(envelope) }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <ViewIcon />
                               View
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleAddRecipients(envelope) }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <AddRecipientsIcon />
                               Add recipients
@@ -867,7 +867,7 @@ function AgreementsContent() {
                             {envelope.status !== 'completed' && (
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleChangeDueDate(envelope) }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                               >
                                 <CalendarIcon />
                                 Change due date
@@ -875,14 +875,14 @@ function AgreementsContent() {
                             )}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleAuditTrail(envelope) }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <AuditIcon />
                               Audit trail
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRename(envelope) }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <RenameIcon />
                               Rename

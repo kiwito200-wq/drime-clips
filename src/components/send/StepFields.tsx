@@ -249,10 +249,10 @@ export default function StepFields({
     }
   }, [signingFieldId, handleUpdateField])
 
-  // Add recipient
+  // Add recipient - go back to step 2 (signers step)
   const addRecipient = useCallback(() => {
-    // Not implemented in this step - signers are added in step 2
-  }, [])
+    onBack()
+  }, [onBack])
 
   // Update recipient
   const updateRecipient = useCallback((id: string, updates: Partial<Recipient>) => {
