@@ -194,7 +194,7 @@ export default function SigningBanner({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl border border-gray-200"
       >
         {/* Welcome state */}
         {!hasStarted ? (
@@ -325,8 +325,7 @@ export default function SigningBanner({
                           </button>
                           {showFontDropdown && (
                             <div 
-                              className="fixed bottom-[230px] left-1/2 -translate-x-1/2 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px]"
-                              style={{ zIndex: 99999 }}
+                              className="absolute left-0 bottom-full mb-2 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[99999]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {SIGNATURE_FONTS.map((font, i) => (
