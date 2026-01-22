@@ -402,11 +402,16 @@ export default function DashboardHome() {
                   {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                     <h3 className="font-semibold text-gray-900">Notification</h3>
-                    <button className="text-gray-400 hover:text-gray-600">
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                      </svg>
-                    </button>
+                    <Tooltip content="Marquer tout comme lu" position="left">
+                      <button 
+                        onClick={() => setReadNotifications(notifications.map(n => n.id))}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </button>
+                    </Tooltip>
                   </div>
 
                   {/* Tabs */}

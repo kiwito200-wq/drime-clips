@@ -44,9 +44,14 @@ const STEPS = [
   { id: 4, label: 'Envoyer' },
 ]
 
+// Drime official accent colors
 const SIGNER_COLORS = [
-  '#EF4444', '#3B82F6', '#10B981', '#F59E0B', 
-  '#8B5CF6', '#EC4899', '#06B6D4', '#F97316',
+  '#7E33F7', // Purple
+  '#FFAD12', // Orange
+  '#ED3757', // Red/Pink
+  '#08CF65', // Green
+  '#4F46E5', // Blue/Indigo
+  '#00B7FF', // Cyan
 ]
 
 function SendPageContent() {

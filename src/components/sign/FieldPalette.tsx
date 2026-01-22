@@ -137,10 +137,11 @@ export default function FieldPalette({
                       className={`
                         p-3 rounded-lg border-2 cursor-pointer transition-all
                         ${selectedRecipientId === recipient.id
-                          ? 'border-gray-900 bg-gray-50'
+                          ? 'bg-gray-50'
                           : 'border-gray-200 hover:border-gray-300'
                         }
                       `}
+                      style={selectedRecipientId === recipient.id ? { borderColor: recipient.color } : undefined}
                       onClick={() => onSelectRecipient(recipient.id)}
                     >
                       <div className="flex items-center gap-3">
