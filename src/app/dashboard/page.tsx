@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 interface User {
   id: string
@@ -68,6 +69,12 @@ const CheckIcon = () => (
 const XIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
+const SearchIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
   </svg>
 )
 
@@ -158,8 +165,8 @@ export default function Dashboard() {
     if (status === 'pending' && needsMySignature) {
       return { 
         label: 'Need to sign', 
-        bgColor: 'bg-[#E3E0FF]',
-        textColor: 'text-[#160F57]',
+        bgColor: 'bg-[#E8E4FF]',
+        textColor: 'text-[#5B47CD]',
         icon: <PenIcon />
       }
     }
@@ -167,8 +174,8 @@ export default function Dashboard() {
     if (status === 'completed') {
       return { 
         label: 'Approved', 
-        bgColor: 'bg-[#F2FCEE]',
-        textColor: 'text-[#0B200B]',
+        bgColor: 'bg-[#DCFCE7]',
+        textColor: 'text-[#166534]',
         icon: <CheckIcon />
       }
     }
@@ -176,8 +183,8 @@ export default function Dashboard() {
     if (status === 'pending') {
       return { 
         label: 'In progress', 
-        bgColor: 'bg-[#FFF5E6]',
-        textColor: 'text-[#663D00]',
+        bgColor: 'bg-[#FFF3E0]',
+        textColor: 'text-[#E65100]',
         icon: <ClockIcon />
       }
     }
@@ -185,8 +192,8 @@ export default function Dashboard() {
     if (status === 'rejected') {
       return { 
         label: 'Rejected', 
-        bgColor: 'bg-[#FFEDED]',
-        textColor: 'text-[#BF0B00]',
+        bgColor: 'bg-[#FFEBEE]',
+        textColor: 'text-[#C62828]',
         icon: <XIcon />
       }
     }
@@ -230,7 +237,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F3F4F6] flex items-center justify-center">
+      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-gray-500 text-sm">Chargement...</p>
@@ -240,10 +247,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] p-4">
-      <div className="flex gap-4">
+    <div className="h-screen bg-[#F3F4F6] p-4 flex flex-col overflow-hidden">
+      <div className="flex gap-4 flex-1 min-h-0">
         {/* Sidebar */}
-        <aside className="w-52 flex-shrink-0">
+        <aside className="w-52 flex-shrink-0 flex flex-col">
+          {/* Logo */}
+          <div className="px-3 py-4 mb-4">
+            <img 
+              src="/drime-logo.png" 
+              alt="Drime" 
+              className="h-8 w-auto"
+            />
+          </div>
+
           <div className="space-y-6">
             {/* Agreements section */}
             <div>
@@ -253,7 +269,7 @@ export default function Dashboard() {
                   onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'my_documents' && filterStatus === 'all'
-                      ? 'bg-[#E1DFFF] text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -264,7 +280,7 @@ export default function Dashboard() {
                   onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'sent_to_me'
-                      ? 'bg-[#E1DFFF] text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -282,7 +298,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('need_to_sign')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'need_to_sign'
-                      ? 'bg-white text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -293,7 +309,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('in_progress')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'in_progress'
-                      ? 'bg-white text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -304,7 +320,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('completed')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'completed'
-                      ? 'bg-white text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -315,7 +331,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('rejected')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'rejected'
-                      ? 'bg-white text-gray-900 font-medium'
+                      ? 'bg-[#DCFCE7] text-[#166534] font-medium'
                       : 'text-gray-900 hover:bg-white'
                   }`}
                 >
@@ -328,36 +344,52 @@ export default function Dashboard() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 bg-white rounded-xl overflow-hidden">
-          {/* Header */}
-          <div className="px-10 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-semibold text-gray-900">
-                {viewType === 'my_documents' ? 'My agreements' : 'Sent to me'}
-              </h1>
-              <span className="text-sm text-gray-500 flex items-center gap-1.5">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Visible only to you
-              </span>
+        <main className="flex-1 bg-white rounded-xl flex flex-col min-h-0">
+          {/* Header with search */}
+          <div className="px-10 pt-6 pb-4 flex-shrink-0">
+            {/* Search bar */}
+            <div className="relative mb-6">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-gray-400">
+                <SearchIcon />
+              </div>
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-[#F3F4F6] border-0 rounded-lg text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#08CF65] transition-all"
+              />
             </div>
 
-            <div className="flex items-center gap-3">
-              <Link 
-                href="/send" 
-                className="flex items-center gap-2 px-4 py-2 bg-[#1C333D] hover:bg-[#152830] text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                <PenIcon />
-                Sign securely
-              </Link>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {viewType === 'my_documents' ? 'My agreements' : 'Sent to me'}
+                </h1>
+                <span className="text-sm text-gray-500 flex items-center gap-1.5">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Visible only to you
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Link 
+                  href="/send" 
+                  className="flex items-center gap-2 px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <PenIcon />
+                  Sign securely
+                </Link>
+              </div>
             </div>
           </div>
 
-          {/* List container */}
-          <div className="px-10">
+          {/* List container - scrollable */}
+          <div className="flex-1 overflow-y-auto px-10 pb-6">
             {/* Column headers */}
-            <div className="flex items-center py-2.5 border-b border-gray-200 text-sm text-gray-600">
+            <div className="flex items-center py-2.5 border-b border-gray-200 text-sm text-gray-600 sticky top-0 bg-white">
               <div className="flex-1 pl-2">Name</div>
               <div className="w-32">Status</div>
               <div className="w-32">Recipients</div>
