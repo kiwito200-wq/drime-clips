@@ -57,6 +57,17 @@ export async function uploadPdf(
   return { url, hash }
 }
 
+export async function uploadThumbnail(
+  buffer: Buffer,
+  filename: string
+): Promise<string> {
+  const key = `thumbnails/${Date.now()}-${filename}.png`
+  
+  await r2.uploadFile(key, buffer, 'image/png')
+  
+  return `${process.env.R2_PUBLIC_URL}/${key}`
+}
+
 export async function getSignedDownloadUrl(key: string): Promise<string> {
   return r2.getSignedUrl(key)
 }

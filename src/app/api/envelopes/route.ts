@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { uploadPdf } from '@/lib/storage'
+import { uploadPdf, uploadThumbnail } from '@/lib/storage'
 import { generateSlug } from '@/lib/utils'
 
 // GET /api/envelopes - List user's envelopes
@@ -26,7 +26,7 @@ export async function GET() {
       where: { userId: user.id },
       include: {
         signers: {
-          select: { email: true, status: true },
+          select: { email: true, name: true, status: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const name = formData.get('name') as string
+    const thumbnailBlob = formData.get('thumbnail') as Blob | null
     
     if (!file || !name) {
       return NextResponse.json({ error: 'File and name are required' }, { status: 400 })
@@ -69,9 +70,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 })
     }
     
-    // Upload to R2
+    // Upload PDF to R2
     const buffer = Buffer.from(await file.arrayBuffer())
     const { url, hash } = await uploadPdf(buffer, file.name)
+    
+    // Upload thumbnail if provided
+    let thumbnailUrl: string | undefined
+    if (thumbnailBlob) {
+      try {
+        const thumbnailBuffer = Buffer.from(await thumbnailBlob.arrayBuffer())
+        thumbnailUrl = await uploadThumbnail(thumbnailBuffer, file.name)
+      } catch (e) {
+        console.error('Failed to upload thumbnail:', e)
+      }
+    }
     
     // Create envelope
     const envelope = await prisma.envelope.create({
@@ -81,6 +93,7 @@ export async function POST(request: NextRequest) {
         name,
         pdfUrl: url,
         pdfHash: hash,
+        thumbnailUrl,
       },
     })
     

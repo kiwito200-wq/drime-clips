@@ -65,6 +65,7 @@ model Envelope {
   // PDF storage
   pdfUrl          String
   pdfHash         String    // SHA-256 hash of original PDF
+  thumbnailUrl    String?   // First page thumbnail
   finalPdfUrl     String?   // Signed PDF
   finalPdfHash    String?
   

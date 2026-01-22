@@ -127,6 +127,17 @@ function SendPageContent() {
       formData.append('file', file)
       formData.append('name', name)
       
+      // Generate thumbnail client-side
+      try {
+        const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
+        const thumbnail = await generatePdfThumbnail(file, 128)
+        if (thumbnail) {
+          formData.append('thumbnail', thumbnail)
+        }
+      } catch (e) {
+        console.error('Thumbnail generation failed:', e)
+      }
+      
       const res = await fetch('/api/envelopes', {
         method: 'POST',
         body: formData,
