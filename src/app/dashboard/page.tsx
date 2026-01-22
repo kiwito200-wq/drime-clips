@@ -158,15 +158,15 @@ export default function Dashboard() {
     return result
   }, [envelopes, viewType, filterStatus, searchQuery, user?.email])
 
-  // Using Drime color palette
+  // Using Drime color palette: #FFAD12 (orange), #7E33F7 (purple), #ED3757 (red), #00B7FF (blue), #08CF65 (green)
   const getStatusBadge = (status: string, signers: Signer[]) => {
     const needsMySignature = signers.some(s => s.email === user?.email && s.status === 'pending')
     
     if (status === 'pending' && needsMySignature) {
       return { 
         label: 'Need to sign', 
-        bgColor: 'bg-[#EDE9FE]',
-        textColor: 'text-[#7C3AED]',
+        bgColor: 'bg-[#F3E8FF]',
+        textColor: 'text-[#7E33F7]',
         icon: <PenIcon />
       }
     }
@@ -174,8 +174,8 @@ export default function Dashboard() {
     if (status === 'completed') {
       return { 
         label: 'Approved', 
-        bgColor: 'bg-[#D1FAE5]',
-        textColor: 'text-[#059669]',
+        bgColor: 'bg-[#DCFCE7]',
+        textColor: 'text-[#08CF65]',
         icon: <CheckIcon />
       }
     }
@@ -183,8 +183,8 @@ export default function Dashboard() {
     if (status === 'pending') {
       return { 
         label: 'In progress', 
-        bgColor: 'bg-[#FEF3C7]',
-        textColor: 'text-[#D97706]',
+        bgColor: 'bg-[#FFF4E5]',
+        textColor: 'text-[#FFAD12]',
         icon: <ClockIcon />
       }
     }
@@ -192,8 +192,8 @@ export default function Dashboard() {
     if (status === 'rejected') {
       return { 
         label: 'Rejected', 
-        bgColor: 'bg-[#FEE2E2]',
-        textColor: 'text-[#DC2626]',
+        bgColor: 'bg-[#FFEEF0]',
+        textColor: 'text-[#ED3757]',
         icon: <XIcon />
       }
     }
@@ -222,13 +222,11 @@ export default function Dashboard() {
   // Avatar colors based on initials - using Drime accent colors
   const getAvatarColor = (str: string) => {
     const colors = [
-      'bg-[#C4B5FD]', // light purple
-      'bg-[#FCD34D]', // yellow/orange
-      'bg-[#FCA5A5]', // light red
-      'bg-[#6EE7B7]', // light green
-      'bg-[#FDA4AF]', // light pink
-      'bg-[#93C5FD]', // light blue
-      'bg-[#67E8F9]', // light cyan
+      'bg-[#E9D5FF]', // light purple from #7E33F7
+      'bg-[#FFE4B5]', // light orange from #FFAD12
+      'bg-[#FFD4DB]', // light red from #ED3757
+      'bg-[#BBFDE0]', // light green from #08CF65
+      'bg-[#B8E8FF]', // light blue from #00B7FF
     ]
     let hash = 0
     for (let i = 0; i < str.length; i++) {
@@ -302,7 +300,7 @@ export default function Dashboard() {
                   onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'my_documents' && filterStatus === 'all'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >
@@ -313,7 +311,7 @@ export default function Dashboard() {
                   onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     viewType === 'sent_to_me'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >
@@ -331,7 +329,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('need_to_sign')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'need_to_sign'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >
@@ -342,7 +340,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('in_progress')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'in_progress'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >
@@ -353,7 +351,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('completed')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'completed'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >
@@ -364,7 +362,7 @@ export default function Dashboard() {
                   onClick={() => setFilterStatus('rejected')}
                   className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     filterStatus === 'rejected'
-                      ? 'bg-[#D1FAE5] text-[#059669] font-medium'
+                      ? 'bg-[#DCFCE7] text-[#08CF65] font-medium'
                       : 'text-gray-700 hover:bg-white'
                   }`}
                 >

@@ -16,15 +16,8 @@ export async function generatePdfThumbnail(file: File, size: number = 150): Prom
     // Dynamically import pdfjs only when needed
     const pdfjs = await import('pdfjs-dist')
     
-    // Set up worker - try multiple sources
-    try {
-      // Try using the bundled worker via dynamic import
-      const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.mjs')
-      pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker.default
-    } catch {
-      // Fallback to CDN with specific version
-      pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
-    }
+    // Use CDN worker - this is the most reliable approach
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
     
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise
