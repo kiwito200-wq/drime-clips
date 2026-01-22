@@ -19,12 +19,12 @@ function SuccessContent() {
   return (
     <div className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-4">
       {/* Animated signature using Lottie */}
-      <div className="relative mb-4">
-        <div className="w-[320px] h-[280px] flex items-center justify-center">
+      <div className="relative mb-8">
+        <div className="w-[500px] h-[400px] flex items-center justify-center">
           <Lottie
             animationData={signatureAnimation}
             loop={false}
-            style={{ width: 320, height: 280 }}
+            style={{ width: 500, height: 400 }}
           />
         </div>
 
@@ -33,7 +33,7 @@ function SuccessContent() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 1.2, duration: 0.4 }}
-          className="absolute inset-0 flex items-center justify-center text-5xl font-bold text-[#7E33F7]"
+          className="absolute inset-0 flex items-center justify-center text-6xl font-bold text-[#7E33F7]"
         >
           Terminé !
         </motion.h1>

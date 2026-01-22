@@ -325,7 +325,8 @@ export default function SigningBanner({
                           </button>
                           {showFontDropdown && (
                             <div 
-                              className="absolute left-0 bottom-full mb-1 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[9999]"
+                              className="fixed bottom-[230px] left-1/2 -translate-x-1/2 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px]"
+                              style={{ zIndex: 99999 }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               {SIGNATURE_FONTS.map((font, i) => (
@@ -333,11 +334,11 @@ export default function SigningBanner({
                                   key={font.name}
                                   onClick={() => { setSelectedFont(i); setShowFontDropdown(false) }}
                                   className={`w-full px-3 py-2 text-left hover:bg-gray-50 transition-colors flex items-center ${
-                                    selectedFont === i ? 'bg-[#08CF65]/10 text-[#08CF65]' : 'text-gray-700'
+                                    selectedFont === i ? 'bg-[#08CF65]/10' : ''
                                   }`}
                                 >
                                   <span 
-                                    className="text-base"
+                                    className="text-base text-gray-900"
                                     style={{ fontFamily: `"${font.name}", cursive` }}
                                   >
                                     {font.label}
