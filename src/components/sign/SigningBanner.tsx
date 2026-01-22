@@ -230,28 +230,30 @@ export default function SigningBanner({
                 Confirmez votre signature pour la rendre officielle
               </p>
               
-              {/* Modern toggle checkbox like Transfr */}
+              {/* Styled checkbox like Drime/Transfr login */}
               <label className="flex items-center gap-3 cursor-pointer group">
                 <button
                   type="button"
                   onClick={() => setAgreedToTerms(!agreedToTerms)}
-                  className={`relative w-11 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                    agreedToTerms ? 'bg-[#08CF65]' : 'bg-gray-200'
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                    agreedToTerms 
+                      ? 'bg-[#08CF65] border-[#08CF65]' 
+                      : 'bg-white border-gray-300 hover:border-gray-400'
                   }`}
                 >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                      agreedToTerms ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
+                  {agreedToTerms && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </button>
                 <span className="text-sm text-gray-600 leading-tight">
                   J&apos;accepte les{' '}
-                  <a href="https://drime.cloud/terms-of-services" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
+                  <a href="https://drime.cloud/terms-of-services" target="_blank" rel="noopener noreferrer" className="text-[#08CF65] hover:underline">
                     CGU
                   </a>
                   {' '}et la{' '}
-                  <a href="https://drime.cloud/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#7E33F7] hover:underline">
+                  <a href="https://drime.cloud/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#08CF65] hover:underline">
                     Politique de confidentialité
                   </a>
                 </span>
