@@ -67,9 +67,9 @@ const CheckIcon = () => (
   </svg>
 )
 
-const DraftIcon = () => (
+const XIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
   </svg>
 )
 
@@ -126,10 +126,12 @@ export default function DashboardHome() {
 
   // Calculate stats
   const stats = {
+    waitingForOthers: envelopes.filter(e => 
+      e.status === 'pending' && !e.signers.some(s => s.email === user?.email && s.status === 'pending')
+    ).length,
     needToSign: envelopes.filter(e => 
       e.status === 'pending' && e.signers.some(s => s.email === user?.email && s.status === 'pending')
     ).length,
-    inProgress: envelopes.filter(e => e.status === 'pending').length,
     drafts: envelopes.filter(e => e.status === 'draft').length,
     completed: envelopes.filter(e => e.status === 'completed').length,
   }
@@ -219,7 +221,7 @@ export default function DashboardHome() {
 
       {/* Main content area */}
       <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
-        {/* Sidebar */}
+        {/* Sidebar - Full navigation */}
         <aside className="w-52 flex-shrink-0 flex flex-col">
           <div className="space-y-6">
             {/* Main navigation */}
@@ -232,6 +234,13 @@ export default function DashboardHome() {
                   <HomeIcon />
                   Dashboard
                 </Link>
+              </div>
+            </div>
+
+            {/* Agreements section */}
+            <div>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Agreements</p>
+              <div className="space-y-1">
                 <Link
                   href="/dashboard"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
@@ -248,84 +257,111 @@ export default function DashboardHome() {
                 </Link>
               </div>
             </div>
+
+            {/* Filtered by status */}
+            <div>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Filtered by status</p>
+              <div className="space-y-1">
+                <Link
+                  href="/dashboard?filter=need_to_sign"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <PenIcon />
+                  Need to sign
+                </Link>
+                <Link
+                  href="/dashboard?filter=in_progress"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <ClockIcon />
+                  In progress
+                </Link>
+                <Link
+                  href="/dashboard?filter=completed"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <CheckIcon />
+                  Approved
+                </Link>
+                <Link
+                  href="/dashboard?filter=rejected"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-white transition-colors"
+                >
+                  <XIcon />
+                  Rejected
+                </Link>
+              </div>
+            </div>
           </div>
         </aside>
 
         {/* Main content - white container */}
         <main className="flex-1 bg-white rounded-xl flex flex-col min-h-0 border border-gray-200 overflow-auto">
           {/* Welcome header */}
-          <div className="px-8 py-6 border-b border-gray-100">
+          <div className="px-8 py-6">
             <h1 className="text-2xl font-semibold text-gray-900">
               Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
             </h1>
             <p className="text-gray-500 mt-1">
-              Here&apos;s your document activity summary
+              Summary of your documents from the last 30 days
             </p>
           </div>
 
-          {/* Stats cards */}
-          <div className="px-8 py-6">
-            <div className="grid grid-cols-4 gap-4">
-              {/* Need to sign */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=need_to_sign')}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#F3E8FF] flex items-center justify-center text-[#7E33F7]">
-                    <PenIcon />
-                  </div>
+          {/* Stats - HelloSign style with vertical dividers */}
+          <div className="px-8 pb-6">
+            <div className="flex bg-white">
+              {/* Waiting for signature (from others) */}
+              <Link 
+                href="/dashboard?filter=in_progress" 
+                className="flex-1 py-4 px-4 border-l border-gray-200 first:border-l-0 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.waitingForOthers}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
+                  <span className="text-sm text-gray-700">Waiting for signature</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.needToSign}</div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#7E33F7]" />
-                  <span className="text-sm text-gray-600">Need to sign</span>
-                </div>
-              </div>
+              </Link>
 
-              {/* In progress */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=in_progress')}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#FFF4E5] flex items-center justify-center text-[#FFAD12]">
-                    <ClockIcon />
-                  </div>
+              {/* Waiting for your signature */}
+              <Link 
+                href="/dashboard?filter=need_to_sign" 
+                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.needToSign}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
+                  <span className="text-sm text-gray-700">Waiting for your signature</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.inProgress}</div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#FFAD12]" />
-                  <span className="text-sm text-gray-600">In progress</span>
-                </div>
-              </div>
+              </Link>
 
               {/* Drafts */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=draft')}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                    <DraftIcon />
-                  </div>
+              <Link 
+                href="/dashboard?filter=draft" 
+                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.drafts}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#ADB5BD]" />
+                  <span className="text-sm text-gray-700">Drafts</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.drafts}</div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-gray-400" />
-                  <span className="text-sm text-gray-600">Drafts</span>
-                </div>
-              </div>
+              </Link>
 
-              {/* Completed */}
-              <div className="bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer" onClick={() => router.push('/dashboard?filter=completed')}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#DCFCE7] flex items-center justify-center text-[#08CF65]">
-                    <CheckIcon />
-                  </div>
+              {/* Signed */}
+              <Link 
+                href="/dashboard?filter=completed" 
+                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.completed}</div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-[#51D474]" />
+                  <span className="text-sm text-gray-700">Signed</span>
                 </div>
-                <div className="text-3xl font-bold text-gray-900 mb-1">{stats.completed}</div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#08CF65]" />
-                  <span className="text-sm text-gray-600">Signed</span>
-                </div>
-              </div>
+              </Link>
             </div>
           </div>
 
           {/* Upload zone */}
-          <div className="px-8 py-6 flex-1">
+          <div className="px-8 pb-8 flex-1">
             <div
               onDrop={handleDrop}
               onDragOver={handleDragOver}
