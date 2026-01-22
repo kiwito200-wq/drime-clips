@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC\\BGP_Ha\\cE-KY3lDWRHzx'
 
 /**
  * Download a file from Drime and return it as blob
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookieHeader = request.headers.get('cookie')
-    
-    if (!cookieHeader?.includes('drime_session')) {
-      return NextResponse.json({ error: 'Not authenticated with Drime' }, { status: 401 })
-    }
-
     const { fileId, fileName } = await request.json()
     
     if (!fileId) {
@@ -20,7 +15,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Get download URL from Drime
-    // The download endpoint typically returns the file directly or a signed URL
     const downloadUrl = `${DRIME_API_URL}/api/v1/drive/file-entries/${fileId}/download`
     
     console.log('[Drime Download] Downloading from:', downloadUrl)
@@ -28,12 +22,14 @@ export async function POST(request: NextRequest) {
     const response = await fetch(downloadUrl, {
       method: 'GET',
       headers: {
-        'Cookie': cookieHeader,
+        'Authorization': `Bearer ${DRIME_API_TOKEN}`,
+        'Accept': 'application/pdf',
       },
     })
 
     if (!response.ok) {
-      console.error('[Drime Download] API error:', response.status)
+      const errorText = await response.text()
+      console.error('[Drime Download] API error:', response.status, errorText)
       return NextResponse.json({ error: 'Failed to download file from Drime' }, { status: response.status })
     }
 
