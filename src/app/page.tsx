@@ -157,7 +157,8 @@ export default function DashboardHome() {
 
       if (response.ok) {
         const data = await response.json()
-        router.push(`/send?slug=${data.slug}`)
+        // Redirect to step 2 (signers) since document is already uploaded
+        router.push(`/send?slug=${data.envelope.slug}`)
       } else {
         const error = await response.json()
         alert(error.error || 'Failed to upload document')
@@ -192,12 +193,26 @@ export default function DashboardHome() {
     if (file) handleFileUpload(file)
   }
 
+  // Show skeleton instead of spinner for smoother transition
   if (loading) {
     return (
-      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Chargement...</p>
+      <div className="h-screen bg-[#F3F4F6] flex flex-col overflow-hidden">
+        <div className="flex-shrink-0 px-4 pt-4 pb-3">
+          <div className="flex items-center gap-4">
+            <div className="w-52 flex-shrink-0 px-3">
+              <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+        <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
+          <aside className="w-52 flex-shrink-0">
+            <div className="space-y-2">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className="h-10 bg-gray-200 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          </aside>
+          <main className="flex-1 bg-white rounded-xl border border-gray-200" />
         </div>
       </div>
     )
@@ -309,15 +324,15 @@ export default function DashboardHome() {
 
           {/* Stats - HelloSign style with vertical dividers */}
           <div className="px-8 pb-6">
-            <div className="flex bg-white">
+            <div className="flex bg-white border-l border-gray-200">
               {/* Waiting for signature (from others) */}
               <Link 
                 href="/dashboard?filter=in_progress" 
-                className="flex-1 py-4 px-4 border-l border-gray-200 first:border-l-0 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.waitingForOthers}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
+                  <span className="w-3 h-3 rounded-full bg-[#FFC733]" />
                   <span className="text-sm text-gray-700">Waiting for signature</span>
                 </div>
               </Link>
@@ -325,11 +340,11 @@ export default function DashboardHome() {
               {/* Waiting for your signature */}
               <Link 
                 href="/dashboard?filter=need_to_sign" 
-                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.needToSign}</div>
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
+                  <span className="w-3 h-3 rounded-full bg-[#FFC733]" />
                   <span className="text-sm text-gray-700">Waiting for your signature</span>
                 </div>
               </Link>
@@ -337,7 +352,7 @@ export default function DashboardHome() {
               {/* Drafts */}
               <Link 
                 href="/dashboard?filter=draft" 
-                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-4 px-5 border-r border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.drafts}</div>
                 <div className="flex items-center gap-2">
@@ -349,7 +364,7 @@ export default function DashboardHome() {
               {/* Signed */}
               <Link 
                 href="/dashboard?filter=completed" 
-                className="flex-1 py-4 px-4 border-l border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                className="flex-1 py-4 px-5 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.completed}</div>
                 <div className="flex items-center gap-2">
