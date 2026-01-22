@@ -37,6 +37,7 @@ export default function SigningBanner({
 }: SigningBannerProps) {
   const currentField = fields[currentFieldIndex]
   const totalFields = fields.length
+  const [hasStarted, setHasStarted] = useState(false)
   
   const filledCount = fields.filter(f => {
     const value = fieldValues[f.id]
@@ -163,220 +164,239 @@ export default function SigningBanner({
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden"
+        className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
       >
-        {/* Header */}
-        <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-white font-medium">
-              {currentField.label || getFieldLabel(currentField.type)}
-            </span>
-            {currentField.required && <span className="text-gray-400 text-sm">(requis)</span>}
-            {!currentField.required && <span className="text-gray-500 text-sm">(optionnel)</span>}
+        {/* Welcome state */}
+        {!hasStarted ? (
+          <div className="p-5 text-center">
+            <div className="w-12 h-12 bg-[#08CF65] rounded-full flex items-center justify-center mx-auto mb-3">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="font-semibold text-gray-900 mb-1">Prêt à signer ?</h3>
+            <p className="text-gray-500 text-sm mb-4">{totalFields} champ{totalFields > 1 ? 's' : ''} à remplir</p>
+            <button
+              onClick={() => setHasStarted(true)}
+              className="w-full py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors"
+            >
+              Commencer →
+            </button>
           </div>
-          <span className="text-gray-400 text-sm">{currentFieldIndex + 1} / {totalFields}</span>
-        </div>
-        
-        {/* Content */}
-        <div className="px-4 pb-3">
-          {/* Signature / Initials */}
-          {(currentField.type === 'signature' || currentField.type === 'initials') && (
-            <div>
-              {signatureMode === 'type' ? (
-                /* Type directly in the preview box */
-                <div 
-                  className="relative bg-white rounded-lg border-2 border-amber-400 h-20 flex items-center justify-center cursor-text mb-2"
-                  onClick={() => inputRef.current?.focus()}
-                >
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={typedSignature}
-                    onChange={(e) => setTypedSignature(e.target.value)}
-                    placeholder="Tapez ici..."
-                    className="absolute inset-0 w-full h-full text-center text-3xl bg-transparent border-none outline-none italic text-gray-900"
-                    style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}
-                    autoFocus
-                  />
-                </div>
-              ) : (
-                /* Draw canvas */
-                <div className="relative mb-2">
-                  <canvas
-                    ref={canvasRef}
-                    className="w-full h-20 bg-white rounded-lg border-2 border-amber-400 cursor-crosshair"
-                    style={{ touchAction: 'none' }}
-                  />
-                  {hasDrawn && (
-                    <button
-                      onClick={() => { signaturePadRef.current?.clear(); setHasDrawn(false) }}
-                      className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-500 hover:text-gray-700"
+        ) : (
+          <>
+            {/* Header */}
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">
+                  {currentField.label || getFieldLabel(currentField.type)}
+                </span>
+                {currentField.required && <span className="text-gray-400 text-sm">(requis)</span>}
+                {!currentField.required && <span className="text-gray-400 text-sm">(optionnel)</span>}
+              </div>
+              <span className="text-gray-400 text-sm">{currentFieldIndex + 1} / {totalFields}</span>
+            </div>
+            
+            {/* Content */}
+            <div className="px-4 py-3">
+              {/* Signature / Initials */}
+              {(currentField.type === 'signature' || currentField.type === 'initials') && (
+                <div>
+                  {signatureMode === 'type' ? (
+                    <div 
+                      className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 flex items-center justify-center cursor-text mb-3"
+                      onClick={() => inputRef.current?.focus()}
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={typedSignature}
+                        onChange={(e) => setTypedSignature(e.target.value)}
+                        placeholder="Tapez ici..."
+                        className="absolute inset-0 w-full h-full text-center text-3xl bg-transparent border-none outline-none italic text-gray-900 placeholder-gray-400"
+                        style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <div className="relative mb-3">
+                      <canvas
+                        ref={canvasRef}
+                        className="w-full h-20 bg-gray-50 rounded-xl border-2 border-[#08CF65] cursor-crosshair"
+                        style={{ touchAction: 'none' }}
+                      />
+                      {hasDrawn && (
+                        <button
+                          onClick={() => { signaturePadRef.current?.clear(); setHasDrawn(false) }}
+                          className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-500 hover:text-gray-700"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   )}
+                  
+                  {/* Controls row */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 text-xs">Police:</span>
+                      <select
+                        value={selectedFont}
+                        onChange={(e) => setSelectedFont(Number(e.target.value))}
+                        className="bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 border border-gray-200"
+                      >
+                        {SIGNATURE_FONTS.map((font, i) => (
+                          <option key={font.name} value={i}>{font.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setSignatureMode('type')}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          signatureMode === 'type' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Taper
+                      </button>
+                      <button
+                        onClick={() => setSignatureMode('draw')}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          signatureMode === 'draw' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Dessiner
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
               
-              {/* Controls row */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-400 text-xs">Police:</span>
-                  <select
-                    value={selectedFont}
-                    onChange={(e) => setSelectedFont(Number(e.target.value))}
-                    className="bg-gray-800 text-white text-xs rounded px-2 py-1 border border-gray-600"
-                  >
-                    {SIGNATURE_FONTS.map((font, i) => (
-                      <option key={font.name} value={i}>{font.label}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div className="flex gap-1">
+              {/* Checkbox */}
+              {currentField.type === 'checkbox' && (
+                <div className="flex items-center gap-3 py-2">
                   <button
-                    onClick={() => setSignatureMode('type')}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      signatureMode === 'type' ? 'bg-white text-gray-900' : 'bg-gray-700 text-gray-300'
+                    onClick={() => onValueChange(currentField.id, fieldValues[currentField.id] === 'true' ? '' : 'true')}
+                    className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-all ${
+                      fieldValues[currentField.id] === 'true'
+                        ? 'bg-[#08CF65] border-[#08CF65]'
+                        : 'bg-white border-gray-300 hover:border-[#08CF65]'
                     }`}
                   >
-                    Taper
+                    {fieldValues[currentField.id] === 'true' && (
+                      <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
                   </button>
+                  <span className="text-gray-600 text-sm">
+                    Cliquez pour {fieldValues[currentField.id] === 'true' ? 'décocher' : 'cocher'}
+                  </span>
+                </div>
+              )}
+              
+              {/* Date */}
+              {currentField.type === 'date' && (
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={dateValue}
+                    onChange={(e) => setDateValue(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 text-sm focus:outline-none"
+                  />
                   <button
-                    onClick={() => setSignatureMode('draw')}
-                    className={`px-3 py-1 rounded text-xs font-medium ${
-                      signatureMode === 'draw' ? 'bg-white text-gray-900' : 'bg-gray-700 text-gray-300'
-                    }`}
+                    onClick={() => setDateValue(new Date().toISOString().split('T')[0])}
+                    className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-xl hover:bg-gray-200 transition-colors"
                   >
-                    Dessiner
+                    Aujourd&apos;hui
                   </button>
                 </div>
+              )}
+              
+              {/* Text / Name / Email */}
+              {['text', 'name', 'email'].includes(currentField.type) && (
+                <input
+                  type={currentField.type === 'email' ? 'email' : 'text'}
+                  value={textValue}
+                  onChange={(e) => setTextValue(e.target.value)}
+                  placeholder={
+                    currentField.type === 'name' ? 'Votre nom complet' :
+                    currentField.type === 'email' ? 'votre@email.com' : 'Tapez ici...'
+                  }
+                  className="w-full px-3 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 focus:outline-none"
+                  autoFocus
+                />
+              )}
+            </div>
+            
+            {/* Progress bar */}
+            <div className="px-4 pb-2">
+              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-[#08CF65]"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(filledCount / totalFields) * 100}%` }}
+                  transition={{ duration: 0.3 }}
+                />
               </div>
             </div>
-          )}
-          
-          {/* Checkbox */}
-          {currentField.type === 'checkbox' && (
-            <div className="flex items-center gap-3 py-2">
+            
+            {/* Navigation */}
+            <div className="px-4 pb-3 flex items-center justify-between">
               <button
-                onClick={() => onValueChange(currentField.id, fieldValues[currentField.id] === 'true' ? '' : 'true')}
-                className={`w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-all ${
-                  fieldValues[currentField.id] === 'true'
-                    ? 'bg-[#08CF65] border-[#08CF65]'
-                    : 'bg-white border-gray-300'
-                }`}
+                onClick={handleBack}
+                disabled={currentFieldIndex === 0}
+                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
               >
-                {fieldValues[currentField.id] === 'true' && (
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
+                ← Précédent
               </button>
-              <span className="text-gray-300 text-sm">
-                Cliquez pour {fieldValues[currentField.id] === 'true' ? 'décocher' : 'cocher'}
-              </span>
-            </div>
-          )}
-          
-          {/* Date */}
-          {currentField.type === 'date' && (
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={dateValue}
-                onChange={(e) => setDateValue(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg bg-white border-2 border-amber-400 text-gray-900 text-sm"
-              />
-              <button
-                onClick={() => setDateValue(new Date().toISOString().split('T')[0])}
-                className="px-3 py-2 bg-gray-700 text-gray-200 text-sm rounded-lg hover:bg-gray-600"
-              >
-                Auj.
-              </button>
-            </div>
-          )}
-          
-          {/* Text / Name / Email */}
-          {['text', 'name', 'email'].includes(currentField.type) && (
-            <input
-              type={currentField.type === 'email' ? 'email' : 'text'}
-              value={textValue}
-              onChange={(e) => setTextValue(e.target.value)}
-              placeholder={
-                currentField.type === 'name' ? 'Votre nom complet' :
-                currentField.type === 'email' ? 'votre@email.com' : 'Tapez ici...'
-              }
-              className="w-full px-3 py-2 rounded-lg bg-white border-2 border-amber-400 text-gray-900"
-              autoFocus
-            />
-          )}
-        </div>
-        
-        {/* Progress bar */}
-        <div className="px-4 pb-2">
-          <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-            <motion.div 
-              className="h-full bg-amber-400"
-              initial={{ width: 0 }}
-              animate={{ width: `${(filledCount / totalFields) * 100}%` }}
-              transition={{ duration: 0.3 }}
-            />
-          </div>
-        </div>
-        
-        {/* Navigation */}
-        <div className="px-4 pb-3 flex items-center justify-between">
-          <button
-            onClick={handleBack}
-            disabled={currentFieldIndex === 0}
-            className="px-4 py-2 rounded-lg bg-gray-700 text-gray-300 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-600"
-          >
-            ← Précédent
-          </button>
-          
-          {/* Progress dots */}
-          <div className="flex gap-1">
-            {fields.map((f, i) => {
-              const isFilled = f.type === 'checkbox' 
-                ? fieldValues[f.id] === 'true'
-                : fieldValues[f.id] && fieldValues[f.id].trim() !== ''
               
-              return (
+              {/* Progress dots */}
+              <div className="flex gap-1">
+                {fields.map((f, i) => {
+                  const isFilled = f.type === 'checkbox' 
+                    ? fieldValues[f.id] === 'true'
+                    : fieldValues[f.id] && fieldValues[f.id].trim() !== ''
+                  
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => onFieldChange(i)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        i === currentFieldIndex
+                          ? 'bg-[#08CF65] scale-125'
+                          : isFilled
+                            ? 'bg-[#08CF65]/60'
+                            : 'bg-gray-300'
+                      }`}
+                    />
+                  )
+                })}
+              </div>
+              
+              {isLastField ? (
                 <button
-                  key={f.id}
-                  onClick={() => onFieldChange(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === currentFieldIndex
-                      ? 'bg-[#08CF65] scale-125'
-                      : isFilled
-                        ? 'bg-[#08CF65]/60'
-                        : 'bg-gray-600'
-                  }`}
-                />
-              )
-            })}
-          </div>
-          
-          {isLastField ? (
-            <button
-              onClick={() => { handleNext(); setTimeout(onComplete, 100) }}
-              disabled={!isValid() || isCompleting}
-              className="px-4 py-2 rounded-lg bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557]"
-            >
-              {isCompleting ? '...' : 'Finaliser →'}
-            </button>
-          ) : (
-            <button
-              onClick={handleNext}
-              disabled={currentField.required && !isValid()}
-              className="px-4 py-2 rounded-lg bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557]"
-            >
-              Suivant →
-            </button>
-          )}
-        </div>
+                  onClick={() => { handleNext(); setTimeout(onComplete, 100) }}
+                  disabled={!isValid() || isCompleting}
+                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                >
+                  {isCompleting ? '...' : 'Finaliser →'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleNext}
+                  disabled={currentField.required && !isValid()}
+                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                >
+                  Suivant →
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </motion.div>
     </div>
   )

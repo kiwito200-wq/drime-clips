@@ -55,7 +55,6 @@ export default function SignPage() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
-  const [showWelcome, setShowWelcome] = useState(true)
   
   // Convert fields to Field format and sort by position (page first, then Y position top to bottom)
   const internalFields: Field[] = useMemo(() => {
@@ -242,15 +241,6 @@ export default function SignPage() {
     return data?.color || '#EF4444'
   }, [data])
 
-  // Start signing - dismiss welcome
-  const startSigning = useCallback(() => {
-    setShowWelcome(false)
-    // Scroll to first field
-    if (internalFields.length > 0) {
-      handleFieldChange(0)
-    }
-  }, [internalFields, handleFieldChange])
-
   // Loading state
   if (loading) {
     return (
@@ -400,40 +390,8 @@ export default function SignPage() {
         )}
       </div>
 
-      {/* Welcome overlay */}
-      {showWelcome && data && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl p-6 max-w-sm mx-4 text-center shadow-2xl"
-          >
-            <div className="w-14 h-14 bg-[#08CF65] rounded-full flex items-center justify-center mx-auto mb-3">
-              <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">
-              Prêt à signer ?
-            </h2>
-            <p className="text-gray-500 text-sm mb-4">
-              {internalFields.length} champ{internalFields.length > 1 ? 's' : ''} à remplir
-            </p>
-            <button
-              onClick={startSigning}
-              className="w-full py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-            >
-              Commencer
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </button>
-          </motion.div>
-        </div>
-      )}
-
       {/* Signing Banner - fixed at bottom */}
-      {!showWelcome && internalFields.length > 0 && (
+      {internalFields.length > 0 && (
         <SigningBanner
           fields={internalFields}
           fieldValues={fieldValues}
