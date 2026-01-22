@@ -29,204 +29,224 @@ interface DocumentData {
   pdfUrl: string | null
   envelopeId: string | null
   slug: string | null
+  thumbnailUrl?: string | null
 }
 
 interface StepReviewProps {
   document: DocumentData
   signers: Signer[]
   fields: SignField[]
+  dueDate?: Date | null
   onBack: () => void
   onSend: (message?: string) => void
   isLoading: boolean
-}
-
-const FIELD_LABELS: Record<string, string> = {
-  signature: 'Signature',
-  initials: 'Initiales',
-  date: 'Date',
-  text: 'Texte',
-  checkbox: 'Case à cocher',
-  name: 'Nom',
-  email: 'Email',
 }
 
 export default function StepReview({
   document,
   signers,
   fields,
+  dueDate,
   onBack,
   onSend,
   isLoading,
 }: StepReviewProps) {
-  const [message, setMessage] = useState('')
-  const [sendCopy, setSendCopy] = useState(true)
+  const [emailSubject, setEmailSubject] = useState(`Vous avez été invité à signer ${document.name}`)
+  const [emailMessage, setEmailMessage] = useState('')
+  const [isEmailExpanded, setIsEmailExpanded] = useState(true)
 
-  // Get fields by signer
-  const getFieldsBySigner = (signerId: string) => fields.filter(f => f.signerId === signerId)
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+  }
+
+  // Format due date
+  const formatDueDate = (date: Date) => {
+    return new Intl.DateTimeFormat('fr-FR', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    }).format(date)
+  }
+
+  // Get initials from name/email
+  const getInitials = (name: string, email: string) => {
+    if (name && name.trim()) {
+      const parts = name.trim().split(' ')
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase()
+      }
+      return name.slice(0, 2).toUpperCase()
+    }
+    return email.slice(0, 2).toUpperCase()
+  }
 
   return (
-    <div className="max-w-2xl mx-auto py-12 px-4">
+    <div className="max-w-3xl mx-auto py-8 px-4">
+      {/* Agreement info */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
+        className="bg-white rounded-xl border border-gray-200 p-5 mb-4"
       >
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Vérifier et envoyer
-        </h1>
-        <p className="text-gray-500">
-          Vérifiez les détails avant d&apos;envoyer le document
-        </p>
+        <h2 className="text-sm font-medium text-gray-500 mb-4">Informations</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {/* Thumbnail */}
+            <div className="w-12 h-14 bg-gray-100 rounded border border-gray-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {document.thumbnailUrl ? (
+                <img src={document.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">{document.name}</p>
+              <p className="text-sm text-gray-500">
+                {document.file ? formatFileSize(document.file.size) : 'PDF'}
+              </p>
+            </div>
+          </div>
+          {dueDate && (
+            <div className="text-right">
+              <p className="text-xs text-gray-500">Date limite</p>
+              <p className="font-medium text-gray-900">{formatDueDate(dueDate)}</p>
+            </div>
+          )}
+        </div>
       </motion.div>
 
-      {/* Document summary */}
+      {/* Custom email */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="bg-white rounded-xl border border-gray-200 mb-4 overflow-hidden"
+      >
+        <button
+          onClick={() => setIsEmailExpanded(!isEmailExpanded)}
+          className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-medium text-gray-900">Email personnalisé</h2>
+            <span className="text-xs px-2 py-0.5 bg-[#08CF65]/10 text-[#08CF65] rounded-full font-medium">
+              Optionnel
+            </span>
+          </div>
+          <svg 
+            className={`w-5 h-5 text-gray-400 transition-transform ${isEmailExpanded ? 'rotate-180' : ''}`} 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        
+        {isEmailExpanded && (
+          <div className="px-5 pb-5 space-y-4">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-gray-500">Objet de l&apos;email</label>
+                <span className="text-xs text-gray-400">{emailSubject.length}/350</span>
+              </div>
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value.slice(0, 350))}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65]/20 focus:border-[#08CF65] outline-none transition-all text-gray-900"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-gray-500">Message</label>
+                <span className="text-xs text-gray-400">{emailMessage.length}/2000</span>
+              </div>
+              <textarea
+                value={emailMessage}
+                onChange={(e) => setEmailMessage(e.target.value.slice(0, 2000))}
+                placeholder="Ajoutez un message personnalisé..."
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65]/20 focus:border-[#08CF65] outline-none resize-none transition-all text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        )}
+      </motion.div>
+
+      {/* List of recipients */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
+        className="bg-white rounded-xl border border-gray-200 p-5 mb-8"
       >
-        <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Document
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-16 bg-red-100 rounded-lg flex items-center justify-center">
-            <svg className="w-7 h-7 text-red-500" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/>
-            </svg>
-          </div>
-          <div>
-            <p className="font-medium text-gray-900">{document.name}</p>
-            <p className="text-sm text-gray-500">{fields.length} champ{fields.length !== 1 ? 's' : ''} à remplir</p>
-          </div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-medium text-gray-500">Liste des destinataires</h2>
+          <button className="text-sm text-[#08CF65] hover:text-[#07b858] font-medium">
+            Ordre de signature
+          </button>
         </div>
-      </motion.div>
 
-      {/* Signers summary */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
-      >
-        <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-          </svg>
-          Signataires ({signers.length})
-        </h2>
-        <div className="space-y-4">
-          {signers.map((signer, index) => {
-            const signerFields = getFieldsBySigner(signer.id)
-            return (
-              <div key={signer.id} className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg">
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+        <div className="bg-gray-50 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-sm text-gray-600">Personnes qui doivent signer</p>
+            <span className="text-xs text-gray-400">-</span>
+            <p className="text-xs text-gray-400">Signent en même temps</p>
+          </div>
+          
+          <div className="flex items-center gap-2 flex-wrap">
+            {signers.map((signer, index) => (
+              <div
+                key={signer.id}
+                className="group relative"
+              >
+                <div
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-medium cursor-pointer transition-transform hover:scale-110"
                   style={{ backgroundColor: signer.color }}
+                  title={`${signer.name || signer.email}`}
                 >
-                  {(signer.name || signer.email).charAt(0).toUpperCase()}
+                  {getInitials(signer.name, signer.email)}
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{signer.name || 'Sans nom'}</p>
-                  <p className="text-sm text-gray-500">{signer.email}</p>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {signerFields.map(field => (
-                      <span
-                        key={field.id}
-                        className="text-xs px-2 py-1 rounded-full"
-                        style={{
-                          backgroundColor: `${signer.color}20`,
-                          color: signer.color,
-                        }}
-                      >
-                        {FIELD_LABELS[field.type] || field.type}
-                      </span>
-                    ))}
-                  </div>
+                {/* Tooltip */}
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  {signer.name || signer.email}
                 </div>
-                <span className="text-sm text-gray-400">#{index + 1}</span>
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
       </motion.div>
 
-      {/* Message */}
+      {/* Navigation buttons */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
-      >
-        <h2 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-          </svg>
-          Message (optionnel)
-        </h2>
-        <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder="Ajoutez un message personnalisé pour les signataires..."
-          rows={3}
-          className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none resize-none"
-        />
-      </motion.div>
-
-      {/* Options */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="bg-white rounded-xl border border-gray-200 p-6 mb-8"
-      >
-        <label className="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={sendCopy}
-            onChange={(e) => setSendCopy(e.target.checked)}
-            className="w-5 h-5 rounded border-gray-300 text-[#08CF65] focus:ring-[#08CF65]"
-          />
-          <div>
-            <p className="font-medium text-gray-900">M&apos;envoyer une copie</p>
-            <p className="text-sm text-gray-500">Recevoir une copie du document signé par email</p>
-          </div>
-        </label>
-      </motion.div>
-
-      {/* Navigation */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="flex items-center justify-between"
+        transition={{ delay: 0.15 }}
+        className="flex items-center justify-center gap-4"
       >
         <button
           onClick={onBack}
-          className="px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+          className="px-8 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors min-w-[140px]"
         >
           Retour
         </button>
         <button
-          onClick={() => onSend(message || undefined)}
+          onClick={() => onSend(emailMessage || undefined)}
           disabled={isLoading}
-          className="btn-primary px-8 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-8 py-3 bg-[#0F172A] text-white rounded-xl font-medium hover:bg-[#1e293b] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Envoi en cours...
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Envoi...
             </>
           ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Envoyer pour signature
-            </>
+            'Envoyer'
           )}
         </button>
       </motion.div>

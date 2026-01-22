@@ -427,12 +427,16 @@ function SendPageContent() {
       if (res.ok) {
         const data = await res.json()
         
-        // If self-sign, redirect to signing page instead of dashboard
+        // Redirect to success page
+        const successParams = new URLSearchParams()
+        successParams.set('name', document.name)
+        
+        // If self-sign, add the signing URL to redirect to
         if (data.isSelfSign && data.selfSignUrl) {
-          router.push(data.selfSignUrl)
-        } else {
-          router.push(`/dashboard?sent=${document.slug}`)
+          successParams.set('selfSign', data.selfSignUrl)
         }
+        
+        router.push(`/send/success?${successParams.toString()}`)
       } else {
         const error = await res.json()
         alert(error.error || 'Échec de l\'envoi')
