@@ -57,6 +57,7 @@ export default function SigningBanner({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [textValue, setTextValue] = useState('')
   const [dateValue, setDateValue] = useState('')
+  const [showFontDropdown, setShowFontDropdown] = useState(false)
   
   // Reset when field changes
   useEffect(() => {
@@ -79,6 +80,15 @@ export default function SigningBanner({
       setDateValue(fieldValues[currentField.id] || '')
     }
   }, [currentField?.id, currentField?.type, signerName, signerEmail, fieldValues])
+  
+  // Close font dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowFontDropdown(false)
+    if (showFontDropdown) {
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [showFontDropdown])
   
   // Initialize signature pad
   useEffect(() => {
@@ -297,18 +307,36 @@ export default function SigningBanner({
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-xs">Police:</span>
                         <div className="relative">
-                          <select
-                            value={selectedFont}
-                            onChange={(e) => setSelectedFont(Number(e.target.value))}
-                            className="appearance-none bg-white text-gray-700 text-xs rounded-lg px-3 py-1.5 pr-7 border border-gray-200 cursor-pointer hover:border-gray-300 focus:outline-none focus:border-[#08CF65] focus:ring-1 focus:ring-[#08CF65]/20"
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowFontDropdown(!showFontDropdown) }}
+                            className="flex items-center gap-2 bg-white text-gray-700 text-xs rounded-lg px-3 py-1.5 border border-gray-200 cursor-pointer hover:border-gray-300 focus:outline-none focus:border-[#08CF65]"
                           >
-                            {SIGNATURE_FONTS.map((font, i) => (
-                              <option key={font.name} value={i}>{font.label}</option>
-                            ))}
-                          </select>
-                          <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
+                            <span style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}>
+                              {SIGNATURE_FONTS[selectedFont].label}
+                            </span>
+                            <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          {showFontDropdown && (
+                            <div 
+                              className="absolute bottom-full left-0 mb-1 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[140px] z-50"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {SIGNATURE_FONTS.map((font, i) => (
+                                <button
+                                  key={font.name}
+                                  onClick={() => { setSelectedFont(i); setShowFontDropdown(false) }}
+                                  className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 transition-colors ${
+                                    selectedFont === i ? 'bg-gray-50 text-[#08CF65]' : 'text-gray-700'
+                                  }`}
+                                  style={{ fontFamily: `"${font.name}", cursive` }}
+                                >
+                                  {font.label}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -317,7 +345,7 @@ export default function SigningBanner({
                     <div className="flex gap-1">
                       <button
                         onClick={() => setSignatureMode('type')}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           signatureMode === 'type' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -325,7 +353,7 @@ export default function SigningBanner({
                       </button>
                       <button
                         onClick={() => setSignatureMode('draw')}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           signatureMode === 'draw' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -333,7 +361,7 @@ export default function SigningBanner({
                       </button>
                       <button
                         onClick={() => setSignatureMode('upload')}
-                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                           signatureMode === 'upload' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >

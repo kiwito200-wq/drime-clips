@@ -318,9 +318,8 @@ export default function SignPage() {
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="w-full px-4 py-3 flex items-center justify-between">
           {/* Left - Logo */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center">
             <img src="/drime-logo.png" alt="Drime Sign" className="h-6" />
-            <span className="font-semibold text-gray-900">Drime Sign</span>
           </div>
           
           {/* Center - Document name */}
