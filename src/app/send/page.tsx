@@ -110,7 +110,14 @@ function SendPageContent() {
             label: f.label || '',
           })))
         }
-        setCurrentStep(2)
+        // Determine which step to show based on progress
+        if (envelope.signers?.length > 0) {
+          // Has signers, go to fields step
+          setCurrentStep(3)
+        } else {
+          // No signers yet, go to signers step
+          setCurrentStep(2)
+        }
       }
     } catch (error) {
       console.error('Failed to load envelope:', error)
@@ -290,6 +297,32 @@ function SendPageContent() {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
   }, [])
 
+  const saveFieldsInBackground = useCallback(async () => {
+    if (!document.slug || fields.length === 0) return false
+    
+    try {
+      // Map temporary signer IDs to actual database IDs
+      const fieldsWithCorrectSignerIds = fields.map(field => {
+        const signer = signers.find(s => s.id === field.signerId)
+        return {
+          ...field,
+          signerId: signer?.id || field.signerId,
+        }
+      })
+      
+      const res = await fetch(`/api/envelopes/${document.slug}/fields`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: fieldsWithCorrectSignerIds }),
+        credentials: 'include',
+      })
+      return res.ok
+    } catch (error) {
+      console.error('Failed to auto-save fields:', error)
+      return false
+    }
+  }, [document.slug, fields, signers])
+
   const saveFields = useCallback(async () => {
     if (!document.slug) return false
     
@@ -319,6 +352,17 @@ function SendPageContent() {
       setIsLoading(false)
     }
   }, [document.slug, fields, signers])
+
+  // Auto-save fields when they change (debounced)
+  useEffect(() => {
+    if (currentStep !== 3 || !document.slug || fields.length === 0) return
+    
+    const timeoutId = setTimeout(() => {
+      saveFieldsInBackground()
+    }, 1500) // Save 1.5 seconds after last change
+    
+    return () => clearTimeout(timeoutId)
+  }, [fields, currentStep, document.slug, saveFieldsInBackground])
 
   // Envoyer
   const sendDocument = useCallback(async (message?: string, forceAutoSign?: boolean) => {

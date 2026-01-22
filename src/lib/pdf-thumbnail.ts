@@ -1,6 +1,6 @@
 /**
  * Generate a thumbnail from the first page of a PDF
- * Uses canvas to render the first page
+ * Uses pdfjs-dist without worker for maximum compatibility
  * @param file - The PDF file
  * @param size - Thumbnail size (default 150px)
  * @returns A Blob containing the PNG thumbnail, or null if failed
@@ -13,14 +13,24 @@ export async function generatePdfThumbnail(file: File, size: number = 150): Prom
   }
 
   try {
-    // Dynamically import pdfjs only when needed
+    // Dynamically import pdfjs
     const pdfjs = await import('pdfjs-dist')
     
-    // Use CDN worker - this is the most reliable approach
-    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+    // Disable worker for maximum compatibility (works for small-medium PDFs)
+    pdfjs.GlobalWorkerOptions.workerSrc = ''
     
     const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise
+    
+    // Use getDocument with disableWorker option
+    const loadingTask = pdfjs.getDocument({
+      data: arrayBuffer,
+      // @ts-ignore - disableWorker exists but might not be in types
+      disableWorker: true,
+      // @ts-ignore
+      isEvalSupported: false,
+    })
+    
+    const pdf = await loadingTask.promise
     const page = await pdf.getPage(1)
     
     const viewport = page.getViewport({ scale: 1 })
@@ -37,19 +47,26 @@ export async function generatePdfThumbnail(file: File, size: number = 150): Prom
       return null
     }
     
+    // Fill with white background
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, canvas.width, canvas.height)
+    
     await page.render({
       canvasContext: context,
       viewport: scaledViewport,
     }).promise
     
+    // Cleanup
+    page.cleanup()
+    pdf.destroy()
+    
     return new Promise<Blob | null>((resolve) => {
       canvas.toBlob((blob) => {
         resolve(blob)
-      }, 'image/png', 0.9)
+      }, 'image/png', 0.85)
     })
   } catch (error) {
     console.error('[PDF Thumbnail] Error generating thumbnail:', error)
-    // Return null instead of throwing - thumbnails are optional
     return null
   }
 }

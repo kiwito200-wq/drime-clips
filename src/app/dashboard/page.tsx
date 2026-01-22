@@ -72,8 +72,9 @@ const XIcon = () => (
 )
 
 const SearchIcon = () => (
-  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
   </svg>
 )
 
@@ -213,7 +214,8 @@ export default function Dashboard() {
 
   const handleDocumentClick = (envelope: Envelope) => {
     if (envelope.status === 'draft') {
-      router.push(`/prepare/${envelope.slug}`)
+      // Continue editing in the same flow as creation
+      router.push(`/send?slug=${envelope.slug}`)
     } else {
       router.push(`/view/${envelope.slug}`)
     }
@@ -263,7 +265,7 @@ export default function Dashboard() {
           {/* Search bar - white with stroke */}
           <div className="flex-1 max-w-xl">
             <div className="relative">
-              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                 <SearchIcon />
               </div>
               <input
@@ -271,7 +273,7 @@ export default function Dashboard() {
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
+                className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
               />
             </div>
           </div>
