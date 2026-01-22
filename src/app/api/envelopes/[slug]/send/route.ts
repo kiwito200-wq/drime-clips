@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { sendSignatureRequestEmail } from '@/lib/email'
 import { logAuditEvent } from '@/lib/audit'
+import { notifyInvitation } from '@/lib/notifications'
 
 interface Params {
   params: {
@@ -148,6 +149,18 @@ export async function POST(request: NextRequest, { params }: Params) {
         signUrl,
         emailSent,
       })
+      
+      // Create notification for invited user (if they have an account)
+      if (!isSelfSign) {
+        await notifyInvitation(
+          signer.email,
+          envelope.id,
+          envelope.slug,
+          envelope.name,
+          user.email,
+          user.name || undefined
+        )
+      }
     }
     
     console.log(`[SEND] Completed sending emails. Results:`, signerLinks.map(s => ({ email: s.email, sent: s.emailSent })))

@@ -31,9 +31,43 @@ model User {
   // Relations
   envelopes       Envelope[]
   sessions        Session[]
+  notifications   Notification[]
   
   @@index([email])
   @@index([drimeUserId])
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id              String    @id @default(cuid())
+  userId          String
+  
+  type            String    // invitation, signed, completed, reminder, rejected
+  title           String
+  message         String?
+  
+  // Link to related document
+  envelopeId      String?
+  envelopeSlug    String?
+  
+  // Sender info (for invitations)
+  senderEmail     String?
+  senderName      String?
+  
+  read            Boolean   @default(false)
+  readAt          DateTime?
+  
+  createdAt       DateTime  @default(now())
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
 }
 
 model Session {

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { logAuditEvent, generateSignatureHash, generateSignedPdf, generateAuditTrailPdf } from '@/lib/audit'
 import { sendCompletedEmail } from '@/lib/email'
 import { r2 } from '@/lib/storage'
+import { notifySigned, notifyCompleted } from '@/lib/notifications'
 import crypto from 'crypto'
 
 interface Params {
@@ -108,6 +109,16 @@ export async function POST(request: NextRequest, { params }: Params) {
       fieldsCount: Object.keys(fieldValues || {}).length,
     })
     
+    // Notify document owner that someone signed
+    await notifySigned(
+      signer.envelope.userId,
+      signer.envelope.id,
+      signer.envelope.slug,
+      signer.envelope.name,
+      signer.email,
+      signer.name || undefined
+    )
+    
     // Check if all signers have signed
     const allSigners = signer.envelope.signers
     const signedCount = allSigners.filter(s => s.id === signer.id || s.status === 'signed').length
@@ -164,6 +175,25 @@ export async function POST(request: NextRequest, { params }: Params) {
         })
         
         console.log('[Complete] Envelope updated as completed')
+        
+        // Notify all signers and owner that document is complete
+        const userIdsToNotify = new Set<string>()
+        userIdsToNotify.add(signer.envelope.userId) // Owner
+        
+        // Find user IDs for signers who have accounts
+        for (const s of allSigners) {
+          const signerUser = await prisma.user.findUnique({ where: { email: s.email } })
+          if (signerUser) {
+            userIdsToNotify.add(signerUser.id)
+          }
+        }
+        
+        await notifyCompleted(
+          Array.from(userIdsToNotify),
+          signer.envelope.id,
+          signer.envelope.slug,
+          signer.envelope.name
+        )
       } catch (pdfError: any) {
         console.error('[Complete] Failed to generate PDFs:', pdfError?.message || pdfError)
         console.error('[Complete] Stack:', pdfError?.stack)
