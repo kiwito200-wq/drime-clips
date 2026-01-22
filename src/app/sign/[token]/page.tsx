@@ -236,9 +236,9 @@ export default function SignPage() {
     }
   }
 
-  // Get recipient color
+  // Get recipient color - use Drime purple as default
   const getRecipientColor = useCallback((recipientId: string) => {
-    return data?.color || '#EF4444'
+    return data?.color || '#7E33F7'
   }, [data])
 
   // Loading state
