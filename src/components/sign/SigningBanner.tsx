@@ -325,7 +325,7 @@ export default function SigningBanner({
                           </button>
                           {showFontDropdown && (
                             <div 
-                              className="fixed left-1/2 -translate-x-1/2 bottom-[200px] bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[9999]"
+                              className="absolute left-0 bottom-full mb-1 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[9999]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {SIGNATURE_FONTS.map((font, i) => (
