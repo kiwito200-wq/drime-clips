@@ -13,11 +13,15 @@ export async function GET(request: NextRequest) {
     // Get cookies from the request
     const cookieHeader = request.headers.get('cookie') || ''
     
+    // Debug: log all cookies received
+    console.log('[Drime Files] Cookies received:', cookieHeader.substring(0, 500))
+    
     // Check if we have drime_session cookie
     const hasDrimeSession = cookieHeader.includes('drime_session')
+    console.log('[Drime Files] Has drime_session:', hasDrimeSession)
     
     if (!hasDrimeSession) {
-      console.error('[Drime Files] No drime_session cookie')
+      console.error('[Drime Files] No drime_session cookie found in:', cookieHeader.substring(0, 200))
       return NextResponse.json({ error: 'Not authenticated with Drime' }, { status: 401 })
     }
 
