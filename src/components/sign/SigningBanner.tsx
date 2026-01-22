@@ -309,7 +309,7 @@ export default function SigningBanner({
                         <div className="relative">
                           <button
                             onClick={(e) => { e.stopPropagation(); setShowFontDropdown(!showFontDropdown) }}
-                            className="flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-medium rounded-lg px-3 py-1.5 cursor-pointer transition-colors"
+                            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-gray-600 text-xs font-medium rounded-lg px-3 py-1.5 border border-gray-200 cursor-pointer transition-colors"
                           >
                             <span style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}>
                               {SIGNATURE_FONTS[selectedFont].label}
@@ -325,7 +325,7 @@ export default function SigningBanner({
                           </button>
                           {showFontDropdown && (
                             <div 
-                              className="absolute bottom-full left-0 mb-1 bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[150px] z-[100]"
+                              className="fixed left-1/2 -translate-x-1/2 bottom-[200px] bg-white rounded-xl border border-gray-200 shadow-xl py-1.5 min-w-[160px] z-[9999]"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {SIGNATURE_FONTS.map((font, i) => (

@@ -11,27 +11,28 @@ function SuccessContent() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4">
-      {/* Animated signature background - Lumin style */}
-      <div className="relative mb-6">
-        {/* SVG signature animation - simple flowing stroke from bottom-left to top-right */}
+      {/* Animated signature - Lumin style */}
+      <div className="relative mb-4">
+        {/* SVG signature animation - exact Lumin style: simple stroke from bottom going up with a loop */}
         <motion.svg
-          viewBox="0 0 400 300"
-          className="w-[400px] h-[300px]"
+          viewBox="0 0 300 250"
+          className="w-[300px] h-[250px]"
           initial="hidden"
           animate="visible"
         >
-          {/* Simple elegant signature stroke - from bottom-left going up to top-right with one loop */}
+          {/* Main signature stroke - starts from bottom left, goes up and curves with a loop at the top */}
           <motion.path
-            d="M 50 250 
-               Q 80 200, 120 220
-               Q 180 250, 220 180
-               Q 250 120, 300 150
-               Q 340 170, 350 100
-               Q 360 50, 380 80"
+            d="M 60 220 
+               C 80 180, 100 140, 130 120
+               C 160 100, 180 80, 200 60
+               C 220 40, 240 30, 250 50
+               C 260 70, 240 90, 220 100
+               C 200 110, 180 130, 200 150
+               C 220 170, 260 140, 270 120"
             fill="none"
             stroke="#7E33F7"
-            strokeOpacity="0.15"
-            strokeWidth="3"
+            strokeOpacity="0.2"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
             variants={{
@@ -40,31 +41,8 @@ function SuccessContent() {
                 pathLength: 1,
                 opacity: 1,
                 transition: {
-                  pathLength: { duration: 1.5, ease: "easeOut" },
+                  pathLength: { duration: 1.8, ease: "easeInOut" },
                   opacity: { duration: 0.3 }
-                }
-              }
-            }}
-          />
-          {/* Small checkmark/flourish at the end */}
-          <motion.path
-            d="M 320 180 
-               Q 340 200, 360 160
-               Q 380 120, 390 140"
-            fill="none"
-            stroke="#7E33F7"
-            strokeOpacity="0.15"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            variants={{
-              hidden: { pathLength: 0, opacity: 0 },
-              visible: {
-                pathLength: 1,
-                opacity: 1,
-                transition: {
-                  pathLength: { duration: 0.5, ease: "easeOut", delay: 1.3 },
-                  opacity: { duration: 0.2, delay: 1.3 }
                 }
               }
             }}
@@ -73,11 +51,10 @@ function SuccessContent() {
 
         {/* "Terminé !" text overlay */}
         <motion.h1
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, duration: 0.4 }}
           className="absolute inset-0 flex items-center justify-center text-5xl font-bold text-[#7E33F7]"
-          style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
         >
           Terminé !
         </motion.h1>
