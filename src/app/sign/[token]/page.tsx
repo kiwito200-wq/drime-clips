@@ -316,22 +316,21 @@ export default function SignPage() {
     <div className="min-h-screen bg-gray-100 flex flex-col pb-48">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <svg className="w-6 h-6 text-[#08CF65]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-              </svg>
-              <span className="font-semibold text-gray-900">Drime Sign</span>
-            </div>
+        <div className="w-full px-4 py-3 flex items-center justify-between">
+          {/* Left - Logo */}
+          <div className="flex items-center gap-2">
+            <img src="/drime-logo.png" alt="Drime Sign" className="h-6" />
+            <span className="font-semibold text-gray-900">Drime Sign</span>
           </div>
           
-          <div className="text-center flex-1 px-4">
-            <p className="text-sm text-gray-600 truncate">
+          {/* Center - Document name */}
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <p className="text-sm text-gray-600">
               <span className="font-medium">Signature:</span> {data?.envelope.name}
             </p>
           </div>
           
+          {/* Right - Download */}
           {pdfUrl && (
             <a
               href={pdfUrl}

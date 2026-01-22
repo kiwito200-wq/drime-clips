@@ -294,17 +294,22 @@ export default function SigningBanner({
                   {/* Controls row */}
                   <div className="flex items-center justify-between gap-2">
                     {signatureMode === 'type' && (
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-xs">Police:</span>
-                        <select
-                          value={selectedFont}
-                          onChange={(e) => setSelectedFont(Number(e.target.value))}
-                          className="bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 border border-gray-200"
-                        >
-                          {SIGNATURE_FONTS.map((font, i) => (
-                            <option key={font.name} value={i}>{font.label}</option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={selectedFont}
+                            onChange={(e) => setSelectedFont(Number(e.target.value))}
+                            className="appearance-none bg-white text-gray-700 text-xs rounded-lg px-3 py-1.5 pr-7 border border-gray-200 cursor-pointer hover:border-gray-300 focus:outline-none focus:border-[#08CF65] focus:ring-1 focus:ring-[#08CF65]/20"
+                          >
+                            {SIGNATURE_FONTS.map((font, i) => (
+                              <option key={font.name} value={i}>{font.label}</option>
+                            ))}
+                          </select>
+                          <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </div>
                       </div>
                     )}
                     {signatureMode !== 'type' && <div />}
