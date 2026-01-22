@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -33,6 +33,44 @@ type FilterStatus = 'all' | 'need_to_sign' | 'in_progress' | 'completed' | 'reje
 type ViewType = 'my_documents' | 'sent_to_me'
 
 const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
+
+// Menu Icons
+const ViewIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+  </svg>
+)
+
+const AddRecipientsIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+  </svg>
+)
+
+const CalendarIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+  </svg>
+)
+
+const AuditIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const RenameIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+  </svg>
+)
+
+const DeleteIcon = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
 
 // Convert R2 URL to proxy URL to bypass CORS
 function getProxyUrl(url: string): string {
@@ -99,6 +137,23 @@ function AgreementsContent() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all')
   const [viewType, setViewType] = useState<ViewType>('my_documents')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [renameModalOpen, setRenameModalOpen] = useState<string | null>(null)
+  const [dueDateModalOpen, setDueDateModalOpen] = useState<string | null>(null)
+  const [newName, setNewName] = useState('')
+  const [selectedDueDate, setSelectedDueDate] = useState<number>(7)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   // Handle URL query params for filtering
   useEffect(() => {
@@ -243,6 +298,100 @@ function AgreementsContent() {
       router.push(`/send?slug=${envelope.slug}`)
     } else {
       router.push(`/view/${envelope.slug}`)
+    }
+  }
+
+  // Menu action handlers
+  const handleView = (envelope: Envelope) => {
+    setOpenMenuId(null)
+    router.push(`/view/${envelope.slug}`)
+  }
+
+  const handleAddRecipients = (envelope: Envelope) => {
+    setOpenMenuId(null)
+    router.push(`/send?slug=${envelope.slug}&step=2`)
+  }
+
+  const handleChangeDueDate = (envelope: Envelope) => {
+    setOpenMenuId(null)
+    setDueDateModalOpen(envelope.slug)
+  }
+
+  const handleAuditTrail = (envelope: Envelope) => {
+    setOpenMenuId(null)
+    router.push(`/view/${envelope.slug}?tab=audit`)
+  }
+
+  const handleRename = (envelope: Envelope) => {
+    setOpenMenuId(null)
+    setNewName(envelope.name)
+    setRenameModalOpen(envelope.slug)
+  }
+
+  const handleDelete = async (envelope: Envelope) => {
+    setOpenMenuId(null)
+    if (confirm(`Are you sure you want to delete "${envelope.name}"?`)) {
+      try {
+        const res = await fetch(`/api/envelopes/${envelope.slug}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (res.ok) {
+          setEnvelopes(prev => prev.filter(e => e.id !== envelope.id))
+        } else {
+          alert('Failed to delete document')
+        }
+      } catch (error) {
+        console.error('Delete error:', error)
+        alert('Failed to delete document')
+      }
+    }
+  }
+
+  const submitRename = async () => {
+    if (!renameModalOpen || !newName.trim()) return
+    try {
+      const res = await fetch(`/api/envelopes/${renameModalOpen}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setEnvelopes(prev => prev.map(e => 
+          e.slug === renameModalOpen ? { ...e, name: newName } : e
+        ))
+        setRenameModalOpen(null)
+      } else {
+        alert('Failed to rename document')
+      }
+    } catch (error) {
+      console.error('Rename error:', error)
+      alert('Failed to rename document')
+    }
+  }
+
+  const submitDueDate = async () => {
+    if (!dueDateModalOpen) return
+    try {
+      const dueDate = new Date()
+      dueDate.setDate(dueDate.getDate() + selectedDueDate)
+      
+      const res = await fetch(`/api/envelopes/${dueDateModalOpen}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dueDate: dueDate.toISOString() }),
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setDueDateModalOpen(null)
+        fetchEnvelopes() // Refresh to get updated data
+      } else {
+        alert('Failed to update due date')
+      }
+    } catch (error) {
+      console.error('Due date error:', error)
+      alert('Failed to update due date')
     }
   }
 
@@ -562,15 +711,69 @@ function AgreementsContent() {
                       </div>
 
                       {/* Actions */}
-                      <div className="w-10 flex justify-center">
+                      <div className="w-10 flex justify-center relative" ref={openMenuId === envelope.id ? menuRef : null}>
                         <button 
-                          onClick={(e) => { e.stopPropagation() }}
-                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded-lg transition-all"
+                          onClick={(e) => { 
+                            e.stopPropagation()
+                            setOpenMenuId(openMenuId === envelope.id ? null : envelope.id)
+                          }}
+                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-all"
                         >
                           <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                           </svg>
                         </button>
+                        
+                        {/* Dropdown Menu */}
+                        {openMenuId === envelope.id && (
+                          <div className="absolute right-0 top-8 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px]">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleView(envelope) }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <ViewIcon />
+                              View
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleAddRecipients(envelope) }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <AddRecipientsIcon />
+                              Add recipients
+                            </button>
+                            {envelope.status !== 'completed' && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleChangeDueDate(envelope) }}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <CalendarIcon />
+                                Change due date
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleAuditTrail(envelope) }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <AuditIcon />
+                              Audit trail
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRename(envelope) }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <RenameIcon />
+                              Rename
+                            </button>
+                            <div className="border-t border-gray-100 my-1" />
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(envelope) }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              <DeleteIcon />
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )
@@ -580,6 +783,88 @@ function AgreementsContent() {
           </div>
         </main>
       </div>
+
+      {/* Rename Modal */}
+      {renameModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setRenameModalOpen(null)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Rename document</h3>
+              <button onClick={() => setRenameModalOpen(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <input
+              type="text"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent"
+              placeholder="Document name"
+              autoFocus
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setRenameModalOpen(null)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitRename}
+                className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Rename
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Due Date Modal */}
+      {dueDateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDueDateModalOpen(null)}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Change due date</h3>
+              <button onClick={() => setDueDateModalOpen(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Expiration</label>
+            <select
+              value={selectedDueDate}
+              onChange={(e) => setSelectedDueDate(Number(e.target.value))}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent bg-white"
+            >
+              <option value={1}>1 day</option>
+              <option value={3}>3 days</option>
+              <option value={5}>5 days</option>
+              <option value={7}>7 days</option>
+              <option value={15}>15 days</option>
+              <option value={30}>30 days</option>
+              <option value={60}>60 days</option>
+            </select>
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setDueDateModalOpen(null)}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitDueDate}
+                className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
