@@ -145,7 +145,8 @@ export default function StepFields({
   // Get recipient color by ID
   const getRecipientColor = useCallback((recipientId: string) => {
     const recipient = recipients.find(r => r.id === recipientId)
-    return recipient?.color || '#EF4444'
+    // Fallback to first recipient's color or Drime purple if no match
+    return recipient?.color || recipients[0]?.color || '#7E33F7'
   }, [recipients])
 
   // Handle PDF pages loaded

@@ -295,9 +295,24 @@ function SendPageContent() {
       if (res.ok) {
         const data = await res.json()
         if (data.signers) {
+          // Create a map from old signer IDs to new signer IDs
+          const oldToNewIdMap: Record<string, string> = {}
+          signers.forEach((oldSigner, i) => {
+            if (data.signers[i]) {
+              oldToNewIdMap[oldSigner.id] = data.signers[i].id
+            }
+          })
+          
+          // Update signers with new IDs
           setSigners(data.signers.map((s: any, i: number) => ({
             ...signers[i],
             id: s.id,
+          })))
+          
+          // Update fields to use new signer IDs
+          setFields(prev => prev.map(field => ({
+            ...field,
+            signerId: oldToNewIdMap[field.signerId] || field.signerId
           })))
         }
         return true
