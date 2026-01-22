@@ -34,6 +34,20 @@ type ViewType = 'my_documents' | 'sent_to_me'
 
 const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
 
+// Convert R2 URL to proxy URL to bypass CORS
+function getProxyUrl(url: string): string {
+  if (!url) return ''
+  if (url.startsWith('/')) return url
+  try {
+    const urlObj = new URL(url)
+    // Extract path after the bucket name
+    const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname
+    return `/api/files/${path}`
+  } catch {
+    return url
+  }
+}
+
 // SVG Icons
 const DocumentIcon = () => (
   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -434,7 +448,15 @@ export default function Dashboard() {
                       <div className="flex-1 flex items-center gap-3 min-w-0 pl-2">
                         <div className="w-8 h-8 rounded bg-white border border-gray-200 shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {envelope.thumbnailUrl ? (
-                            <img src={envelope.thumbnailUrl} alt="" className="w-full h-full object-cover" />
+                            <img 
+                              src={getProxyUrl(envelope.thumbnailUrl)} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Hide broken image and show fallback
+                                e.currentTarget.style.display = 'none'
+                              }}
+                            />
                           ) : (
                             <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
