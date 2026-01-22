@@ -26,7 +26,8 @@
     "pdfjs-dist": "^4.0.0",
     "react": "^18",
     "react-dom": "^18",
-    "resend": "^3.0.0"
+    "resend": "^3.0.0",
+    "signature_pad": "^5.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
