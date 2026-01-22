@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import DrimeFilePicker from '@/components/DrimeFilePicker'
 
 interface User {
   id: string
@@ -29,6 +30,19 @@ interface Envelope {
 }
 
 const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
+
+// Dropdown icons
+const DeviceIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+  </svg>
+)
+
+const DrimeIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 11H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1zm-7-9L4 9h16l-8-7z"/>
+  </svg>
+)
 
 // SVG Icons - Black color for sidebar
 const HomeIcon = () => (
@@ -86,7 +100,21 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [showImportDropdown, setShowImportDropdown] = useState(false)
+  const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const importDropdownRef = useRef<HTMLDivElement>(null)
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
+        setShowImportDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchEnvelopes = useCallback(async () => {
     const envelopesRes = await fetch('/api/envelopes', { credentials: 'include' })
@@ -202,6 +230,12 @@ export default function DashboardHome() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleFileUpload(file)
+  }
+
+  // Handle file from Drime
+  const handleDrimeFileSelect = async (drimeFile: any, blob: Blob) => {
+    const file = new File([blob], drimeFile.name || drimeFile.file_name || 'document.pdf', { type: 'application/pdf' })
+    await handleFileUpload(file)
   }
 
   // Show skeleton instead of spinner for smoother transition
@@ -392,12 +426,11 @@ export default function DashboardHome() {
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
               className={`
-                border-2 border-dashed rounded-2xl h-full min-h-[280px] flex flex-col items-center justify-center cursor-pointer transition-all
+                border-2 border-dashed rounded-2xl h-full min-h-[280px] flex flex-col items-center justify-center transition-all
                 ${isDragging 
                   ? 'border-[#08CF65] bg-[#DCFCE7]/30' 
-                  : 'border-gray-300 hover:border-[#08CF65] hover:bg-gray-50'
+                  : 'border-gray-300'
                 }
                 ${isUploading ? 'pointer-events-none opacity-50' : ''}
               `}
@@ -429,18 +462,59 @@ export default function DashboardHome() {
                     Supported files: PDF
                   </p>
                   
-                  <button className="px-6 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white font-medium rounded-lg transition-colors flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                    </svg>
-                    Import
-                  </button>
+                  {/* Import button with dropdown */}
+                  <div className="relative" ref={importDropdownRef}>
+                    <button 
+                      onClick={() => setShowImportDropdown(!showImportDropdown)}
+                      className="px-6 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      </svg>
+                      Import
+                      <svg className={`w-4 h-4 transition-transform ${showImportDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showImportDropdown && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-2 min-w-[200px] z-10">
+                        <button
+                          onClick={() => {
+                            setShowImportDropdown(false)
+                            fileInputRef.current?.click()
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          <DeviceIcon />
+                          From my device
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowImportDropdown(false)
+                            setShowDrimeFilePicker(true)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          <span className="text-[#08CF65]"><DrimeIcon /></span>
+                          From Drime
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
             </div>
           </div>
         </main>
       </div>
+
+      {/* Drime File Picker Modal */}
+      <DrimeFilePicker
+        isOpen={showDrimeFilePicker}
+        onClose={() => setShowDrimeFilePicker(false)}
+        onSelect={handleDrimeFileSelect}
+      />
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import DrimeFilePicker from '@/components/DrimeFilePicker'
 
 interface User {
   id: string
@@ -69,6 +70,19 @@ const RenameIcon = () => (
 const DeleteIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+)
+
+// Import dropdown icons
+const DeviceIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
+  </svg>
+)
+
+const DrimeIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 11H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1zm-7-9L4 9h16l-8-7z"/>
   </svg>
 )
 
@@ -144,8 +158,12 @@ function AgreementsContent() {
   const [newName, setNewName] = useState('')
   const [selectedDueDate, setSelectedDueDate] = useState<number>(7)
   const [showDueDateDropdown, setShowDueDateDropdown] = useState(false)
+  const [showSignDropdown, setShowSignDropdown] = useState(false)
+  const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const dueDateDropdownRef = useRef<HTMLDivElement>(null)
+  const signDropdownRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -155,6 +173,9 @@ function AgreementsContent() {
       }
       if (dueDateDropdownRef.current && !dueDateDropdownRef.current.contains(event.target as Node)) {
         setShowDueDateDropdown(false)
+      }
+      if (signDropdownRef.current && !signDropdownRef.current.contains(event.target as Node)) {
+        setShowSignDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -416,6 +437,59 @@ function AgreementsContent() {
     return colors[Math.abs(hash) % colors.length]
   }
 
+  // File upload handler
+  const handleFileUpload = async (file: File) => {
+    if (!file || !file.type.includes('pdf')) {
+      alert('Please upload a PDF file')
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('name', file.name.replace('.pdf', ''))
+
+      // Generate thumbnail client-side
+      try {
+        const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
+        const thumbnail = await generatePdfThumbnail(file, 128)
+        if (thumbnail) {
+          formData.append('thumbnail', thumbnail)
+        }
+      } catch (e) {
+        console.error('Thumbnail generation failed:', e)
+      }
+
+      const response = await fetch('/api/envelopes', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        router.push(`/send?slug=${data.envelope.slug}`)
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to upload document')
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Failed to upload document')
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+  }
+
+  // Handle file from Drime
+  const handleDrimeFileSelect = async (drimeFile: any, blob: Blob) => {
+    const file = new File([blob], drimeFile.name || drimeFile.file_name || 'document.pdf', { type: 'application/pdf' })
+    await handleFileUpload(file)
+  }
+
   if (loading) {
     return (
       <div className="h-screen bg-[#F3F4F6] flex flex-col overflow-hidden">
@@ -605,19 +679,59 @@ function AgreementsContent() {
                   Visible only to you
                 </span>
               </div>
-              <Link 
-                href="/send" 
-                className="flex items-center gap-2 px-4 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11.3987 7.5332L15.1494 12.7706C15.3994 13.1296 15.3576 13.6063 15.0492 13.907C13.9128 14.9762 11.3238 17.5818 9.91202 20.0715C9.74467 20.3634 9.45279 20.5055 9.15993 20.5055C8.85929 20.5055 8.56741 20.3634 8.40006 20.0715C6.99707 17.5818 4.39931 14.9762 3.27167 13.907C2.95351 13.6063 2.91168 13.1296 3.1627 12.7706L5.03805 10.1519" />
-                  <path d="M9.1582 14.4102L9.15836 20.5118" />
-                  <path fillRule="evenodd" clipRule="evenodd" d="M10.5289 13.0398C10.5289 12.2819 9.91493 11.668 9.15701 11.668C8.40006 11.668 7.78516 12.2819 7.78516 13.0398C7.78516 13.7977 8.40006 14.4117 9.15701 14.4117C9.91493 14.4117 10.5289 13.7977 10.5289 13.0398Z" />
-                  <path d="M12.3012 3.48828C13.1905 3.48828 13.8317 4.34058 13.5865 5.19483L13.2382 6.40517C13.0455 7.07553 12.4326 7.53671 11.735 7.53671H6.5803C5.8827 7.53671 5.26975 7.07553 5.0771 6.40517L4.72879 5.19483C4.48263 4.34058 5.12478 3.48828 6.01405 3.48828H9.15763" />
-                  <path d="M12.2617 20.5137C14.446 20.5137 14.446 19.7266 16.6293 19.7266C18.8145 19.7266 18.8145 20.5137 20.9997 20.5137" />
-                </svg>
-                Sign securely
-              </Link>
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* Sign securely button with dropdown */}
+              <div className="relative" ref={signDropdownRef}>
+                <button 
+                  onClick={() => setShowSignDropdown(!showSignDropdown)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11.3987 7.5332L15.1494 12.7706C15.3994 13.1296 15.3576 13.6063 15.0492 13.907C13.9128 14.9762 11.3238 17.5818 9.91202 20.0715C9.74467 20.3634 9.45279 20.5055 9.15993 20.5055C8.85929 20.5055 8.56741 20.3634 8.40006 20.0715C6.99707 17.5818 4.39931 14.9762 3.27167 13.907C2.95351 13.6063 2.91168 13.1296 3.1627 12.7706L5.03805 10.1519" />
+                    <path d="M9.1582 14.4102L9.15836 20.5118" />
+                    <path fillRule="evenodd" clipRule="evenodd" d="M10.5289 13.0398C10.5289 12.2819 9.91493 11.668 9.15701 11.668C8.40006 11.668 7.78516 12.2819 7.78516 13.0398C7.78516 13.7977 8.40006 14.4117 9.15701 14.4117C9.91493 14.4117 10.5289 13.7977 10.5289 13.0398Z" />
+                    <path d="M12.3012 3.48828C13.1905 3.48828 13.8317 4.34058 13.5865 5.19483L13.2382 6.40517C13.0455 7.07553 12.4326 7.53671 11.735 7.53671H6.5803C5.8827 7.53671 5.26975 7.07553 5.0771 6.40517L4.72879 5.19483C4.48263 4.34058 5.12478 3.48828 6.01405 3.48828H9.15763" />
+                    <path d="M12.2617 20.5137C14.446 20.5137 14.446 19.7266 16.6293 19.7266C18.8145 19.7266 18.8145 20.5137 20.9997 20.5137" />
+                  </svg>
+                  Sign securely
+                  <svg className={`w-4 h-4 transition-transform ${showSignDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showSignDropdown && (
+                  <div className="absolute right-0 top-full mt-2 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-2 min-w-[200px] z-10">
+                    <button
+                      onClick={() => {
+                        setShowSignDropdown(false)
+                        fileInputRef.current?.click()
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                    >
+                      <DeviceIcon />
+                      From my device
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowSignDropdown(false)
+                        setShowDrimeFilePicker(true)
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                    >
+                      <span className="text-[#08CF65]"><DrimeIcon /></span>
+                      From Drime
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1037,6 +1151,13 @@ function AgreementsContent() {
           </div>
         </div>
       )}
+
+      {/* Drime File Picker Modal */}
+      <DrimeFilePicker
+        isOpen={showDrimeFilePicker}
+        onClose={() => setShowDrimeFilePicker(false)}
+        onSelect={handleDrimeFileSelect}
+      />
     </div>
   )
 }
