@@ -41,12 +41,28 @@ export async function GET(request: NextRequest) {
 
     console.log('[Drime Files] Fetching from:', apiUrl)
 
+    // Extract XSRF token from cookies if present
+    const xsrfMatch = cookieHeader.match(/XSRF-TOKEN=([^;]+)/)
+    const xsrfToken = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : ''
+    
+    console.log('[Drime Files] XSRF Token found:', !!xsrfToken)
+
+    const headers: Record<string, string> = {
+      'Cookie': cookieHeader,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Origin': 'https://staging.drime.cloud',
+      'Referer': 'https://staging.drime.cloud/',
+    }
+    
+    // Add XSRF token header if present (Laravel expects this)
+    if (xsrfToken) {
+      headers['X-XSRF-TOKEN'] = xsrfToken
+    }
+
     const response = await fetch(apiUrl, {
       method: 'GET',
-      headers: {
-        'Cookie': cookieHeader,
-        'Accept': 'application/json',
-      },
+      headers,
     })
 
     if (!response.ok) {
