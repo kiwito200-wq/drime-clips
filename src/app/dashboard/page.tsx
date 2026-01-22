@@ -119,8 +119,21 @@ export default function DashboardHome() {
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [readNotifications, setReadNotifications] = useState<string[]>([])
+  const [readNotifications, setReadNotifications] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('readNotifications')
+      return stored ? JSON.parse(stored) : []
+    }
+    return []
+  })
   const [notificationTab, setNotificationTab] = useState<'general' | 'invitations' | 'requests'>('general')
+  
+  // Persist read notifications to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('readNotifications', JSON.stringify(readNotifications))
+    }
+  }, [readNotifications])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const importDropdownRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)

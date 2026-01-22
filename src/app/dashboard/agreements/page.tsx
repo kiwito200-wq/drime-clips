@@ -163,8 +163,21 @@ function AgreementsContent() {
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
-  const [readNotifications, setReadNotifications] = useState<string[]>([])
+  const [readNotifications, setReadNotifications] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('readNotifications')
+      return stored ? JSON.parse(stored) : []
+    }
+    return []
+  })
   const [notificationTab, setNotificationTab] = useState<'general' | 'invitations' | 'requests'>('general')
+  
+  // Persist read notifications to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('readNotifications', JSON.stringify(readNotifications))
+    }
+  }, [readNotifications])
   const menuRef = useRef<HTMLDivElement>(null)
   const dueDateDropdownRef = useRef<HTMLDivElement>(null)
   const signDropdownRef = useRef<HTMLDivElement>(null)

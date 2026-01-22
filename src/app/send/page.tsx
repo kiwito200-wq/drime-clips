@@ -559,6 +559,8 @@ function SendPageContent() {
                 onAddField={addField}
                 onRemoveField={removeField}
                 onUpdateField={updateField}
+                onRemoveSigner={removeSigner}
+                onUpdateSigner={updateSigner}
                 onUpdateDocumentName={updateDocumentName}
                 onBack={() => setCurrentStep(2)}
                 onNext={async () => {

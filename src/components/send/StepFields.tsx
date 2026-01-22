@@ -17,6 +17,8 @@ interface StepFieldsProps {
   onAddField: (field: Omit<SignField, 'id'>) => void
   onRemoveField: (id: string) => void
   onUpdateField: (id: string, updates: Partial<SignField>) => void
+  onRemoveSigner?: (id: string) => void
+  onUpdateSigner?: (id: string, updates: Partial<Signer>) => void
   onUpdateDocumentName?: (name: string) => Promise<boolean>
   onBack: () => void
   onNext: () => void
@@ -30,6 +32,8 @@ export default function StepFields({
   onAddField,
   onRemoveField,
   onUpdateField,
+  onRemoveSigner,
+  onUpdateSigner,
   onUpdateDocumentName,
   onBack,
   onNext,
@@ -293,13 +297,24 @@ export default function StepFields({
 
   // Update recipient
   const updateRecipient = useCallback((id: string, updates: Partial<Recipient>) => {
-    // Not implemented in this step
-  }, [])
+    if (onUpdateSigner) {
+      onUpdateSigner(id, updates)
+    }
+  }, [onUpdateSigner])
 
   // Delete recipient
   const deleteRecipient = useCallback((id: string) => {
-    // Not implemented in this step
-  }, [])
+    if (onRemoveSigner) {
+      onRemoveSigner(id)
+      // If we deleted the selected recipient, select the first one
+      if (selectedRecipientId === id && signers.length > 1) {
+        const remaining = signers.filter(s => s.id !== id)
+        if (remaining.length > 0) {
+          setSelectedRecipientId(remaining[0].id)
+        }
+      }
+    }
+  }, [onRemoveSigner, selectedRecipientId, signers])
 
   // Keyboard shortcuts
   useEffect(() => {
