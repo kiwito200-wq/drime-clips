@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
@@ -98,7 +98,7 @@ const SearchIcon = () => (
   </svg>
 )
 
-export default function Dashboard() {
+function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [user, setUser] = useState<User | null>(null)
@@ -548,5 +548,21 @@ export default function Dashboard() {
         </main>
       </div>
     </div>
+  )
+}
+
+// Wrap in Suspense to handle useSearchParams
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Chargement...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   )
 }
