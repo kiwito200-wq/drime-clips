@@ -149,6 +149,17 @@ export default function DashboardHome() {
       formData.append('file', file)
       formData.append('name', file.name.replace('.pdf', ''))
 
+      // Generate thumbnail client-side
+      try {
+        const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
+        const thumbnail = await generatePdfThumbnail(file, 128)
+        if (thumbnail) {
+          formData.append('thumbnail', thumbnail)
+        }
+      } catch (e) {
+        console.error('Thumbnail generation failed:', e)
+      }
+
       const response = await fetch('/api/envelopes', {
         method: 'POST',
         body: formData,

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
 import PDFViewer from '@/components/sign/PDFViewer'
 
 interface Signer {
@@ -115,9 +114,9 @@ export default function ViewDocumentPage() {
           </div>
           <h1 className="text-xl font-semibold text-gray-900 mb-2">Erreur</h1>
           <p className="text-gray-500 mb-4">{error}</p>
-          <Link href="/dashboard" className="text-[#08CF65] hover:underline">
+          <button onClick={() => router.back()} className="text-[#08CF65] hover:underline">
             Retour au dashboard
-          </Link>
+          </button>
         </div>
       </div>
     )
@@ -131,11 +130,11 @@ export default function ViewDocumentPage() {
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
               <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-            </Link>
+            </button>
             <div>
               <h1 className="font-semibold text-gray-900">{envelope.name}</h1>
               <p className="text-sm text-gray-500">
