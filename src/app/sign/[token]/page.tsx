@@ -57,9 +57,9 @@ export default function SignPage() {
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
   const [showWelcome, setShowWelcome] = useState(true)
   
-  // Convert fields to Field format
-  const internalFields: Field[] = useMemo(() => 
-    data?.fields.map(f => ({
+  // Convert fields to Field format and sort by position (page first, then Y position top to bottom)
+  const internalFields: Field[] = useMemo(() => {
+    const fields = data?.fields.map(f => ({
       id: f.id,
       type: f.type as FieldType,
       recipientId: data.id,
@@ -72,9 +72,14 @@ export default function SignPage() {
       label: f.label || '',
       placeholder: '',
       value: fieldValues[f.id] || f.value || undefined,
-    })) || [],
-    [data?.fields, data?.id, fieldValues]
-  )
+    })) || []
+    
+    // Sort by page, then by Y position (top to bottom)
+    return fields.sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page
+      return a.y - b.y
+    })
+  }, [data?.fields, data?.id, fieldValues])
   
   // Fetch signer data
   const fetchSignerData = useCallback(async () => {
@@ -318,7 +323,7 @@ export default function SignPage() {
   }).length
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col pb-32">
+    <div className="min-h-screen bg-gray-100 flex flex-col pb-56">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
