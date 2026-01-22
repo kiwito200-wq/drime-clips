@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useMemo } from 'react'
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DocumentData, Signer, SignField } from '@/app/send/page'
 import PDFViewer from '@/components/sign/PDFViewer'
@@ -17,6 +17,7 @@ interface StepFieldsProps {
   onAddField: (field: Omit<SignField, 'id'>) => void
   onRemoveField: (id: string) => void
   onUpdateField: (id: string, updates: Partial<SignField>) => void
+  onUpdateDocumentName?: (name: string) => Promise<boolean>
   onBack: () => void
   onNext: () => void
   isLoading: boolean
@@ -29,6 +30,7 @@ export default function StepFields({
   onAddField,
   onRemoveField,
   onUpdateField,
+  onUpdateDocumentName,
   onBack,
   onNext,
   isLoading,
@@ -41,6 +43,10 @@ export default function StepFields({
   const [scale, setScale] = useState(0.6)
   const [selectedRecipientId, setSelectedRecipientId] = useState(signers[0]?.id || '')
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(documentData.name)
+  const [isSavingName, setIsSavingName] = useState(false)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Update selectedRecipientId when signers change (e.g., after saving to DB)
   useEffect(() => {
@@ -254,6 +260,36 @@ export default function StepFields({
     onBack()
   }, [onBack])
 
+  // Name editing handlers
+  const startEditingName = useCallback(() => {
+    setEditedName(documentData.name)
+    setIsEditingName(true)
+    setTimeout(() => nameInputRef.current?.focus(), 50)
+  }, [documentData.name])
+
+  const saveName = useCallback(async () => {
+    if (!onUpdateDocumentName || editedName.trim() === '' || editedName === documentData.name) {
+      setIsEditingName(false)
+      return
+    }
+
+    setIsSavingName(true)
+    try {
+      await onUpdateDocumentName(editedName.trim())
+    } finally {
+      setIsSavingName(false)
+      setIsEditingName(false)
+    }
+  }, [editedName, documentData.name, onUpdateDocumentName])
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveName()
+    } else if (e.key === 'Escape') {
+      setIsEditingName(false)
+    }
+  }, [saveName])
+
   // Update recipient
   const updateRecipient = useCallback((id: string, updates: Partial<Recipient>) => {
     // Not implemented in this step
@@ -306,7 +342,34 @@ export default function StepFields({
             <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span className="font-medium text-gray-900 truncate max-w-[200px]">{documentData.name}</span>
+            {isEditingName ? (
+              <div className="flex items-center gap-1">
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onBlur={saveName}
+                  onKeyDown={handleNameKeyDown}
+                  disabled={isSavingName}
+                  className="font-medium text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 -ml-1 min-w-[150px] max-w-[200px]"
+                />
+                {isSavingName && (
+                  <div className="w-3 h-3 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={startEditingName}
+                className="font-medium text-gray-900 truncate max-w-[200px] flex items-center gap-1.5 hover:text-[#08CF65] transition-colors"
+                title="Cliquez pour renommer"
+              >
+                {documentData.name}
+                <svg className="w-3.5 h-3.5 text-gray-400 hover:text-[#08CF65] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            )}
           </div>
           <div className="w-px h-5 bg-gray-200" />
           <div className="flex items-center gap-2 text-sm text-gray-500">

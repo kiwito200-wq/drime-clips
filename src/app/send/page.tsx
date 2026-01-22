@@ -252,6 +252,28 @@ function SendPageContent() {
     setSigners(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s))
   }, [])
 
+  // Update document name
+  const updateDocumentName = useCallback(async (newName: string) => {
+    if (!document.slug || !newName.trim()) return false
+    
+    try {
+      const res = await fetch(`/api/envelopes/${document.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName.trim() }),
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        setDocument(prev => ({ ...prev, name: newName.trim() }))
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to update document name:', error)
+    }
+    return false
+  }, [document.slug])
+
   // Sauvegarder les signataires
   const saveSigners = useCallback(async () => {
     if (!document.slug || signers.length === 0) return false
@@ -517,6 +539,7 @@ function SendPageContent() {
                 onAddField={addField}
                 onRemoveField={removeField}
                 onUpdateField={updateField}
+                onUpdateDocumentName={updateDocumentName}
                 onBack={() => setCurrentStep(2)}
                 onNext={async () => {
                   const saved = await saveFields()
