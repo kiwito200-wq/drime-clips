@@ -28,13 +28,28 @@ export async function POST(request: NextRequest) {
     
     console.log('[Drime Download] Downloading from:', downloadUrl)
 
+    // Extract XSRF token from cookies if present
+    const xsrfMatch = cookieHeader.match(/XSRF-TOKEN=([^;]+)/)
+    const xsrfToken = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : ''
+    
+    const headers: Record<string, string> = {
+      'Cookie': cookieHeader,
+      'Accept': '*/*',
+      'Origin': 'https://staging.drime.cloud',
+      'Referer': 'https://staging.drime.cloud/',
+    }
+    
+    if (xsrfToken) {
+      headers['X-XSRF-TOKEN'] = xsrfToken
+    }
+
     const response = await fetch(downloadUrl, {
       method: 'GET',
-      headers: {
-        'Cookie': cookieHeader,
-        'Accept': 'application/pdf',
-      },
+      headers,
     })
+
+    console.log('[Drime Download] Response status:', response.status)
+    console.log('[Drime Download] Content-Type:', response.headers.get('content-type'))
 
     if (!response.ok) {
       const errorText = await response.text()
@@ -42,14 +57,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to download file from Drime' }, { status: response.status })
     }
 
-    // Get the file as blob
-    const blob = await response.blob()
+    // Check content type to ensure we got a PDF
+    const contentType = response.headers.get('content-type') || ''
+    if (!contentType.includes('pdf') && !contentType.includes('octet-stream')) {
+      console.error('[Drime Download] Unexpected content type:', contentType)
+      // Try to read as text to see what we got
+      const text = await response.text()
+      console.error('[Drime Download] Response body:', text.substring(0, 500))
+      return NextResponse.json({ error: 'Drime returned non-PDF response' }, { status: 500 })
+    }
+
+    // Get the file as arrayBuffer then blob for better handling
+    const arrayBuffer = await response.arrayBuffer()
+    console.log('[Drime Download] Downloaded size:', arrayBuffer.byteLength, 'bytes')
     
     // Return the file with appropriate headers
-    return new NextResponse(blob, {
+    return new NextResponse(arrayBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
+        'Content-Length': String(arrayBuffer.byteLength),
       },
     })
   } catch (error) {
