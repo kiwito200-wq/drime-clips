@@ -4,6 +4,8 @@ import { getCurrentUser } from '@/lib/auth'
 import { uploadPdf, uploadThumbnail } from '@/lib/storage'
 import { generateSlug } from '@/lib/utils'
 
+const WORKER_URL = process.env.THUMBNAIL_WORKER_URL
+
 // GET /api/envelopes - List user's envelopes
 export async function GET() {
   try {
@@ -74,14 +76,41 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const { url, hash } = await uploadPdf(buffer, file.name)
     
-    // Upload thumbnail if provided
+    // Handle thumbnail
     let thumbnailUrl: string | undefined
-    if (thumbnailBlob) {
+    
+    // 1. Try client-provided thumbnail first
+    if (thumbnailBlob && thumbnailBlob.size > 0) {
       try {
         const thumbnailBuffer = Buffer.from(await thumbnailBlob.arrayBuffer())
         thumbnailUrl = await uploadThumbnail(thumbnailBuffer, file.name)
+        console.log('[Envelope] Used client-provided thumbnail')
       } catch (e) {
-        console.error('Failed to upload thumbnail:', e)
+        console.error('[Envelope] Failed to upload client thumbnail:', e)
+      }
+    }
+    
+    // 2. Try worker if no client thumbnail and worker is configured
+    if (!thumbnailUrl && WORKER_URL) {
+      try {
+        console.log('[Envelope] Generating thumbnail via worker...')
+        const workerResponse = await fetch(`${WORKER_URL}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfUrl: url, width: 150 }),
+        })
+        
+        if (workerResponse.ok) {
+          const workerBlob = await workerResponse.blob()
+          const workerBuffer = Buffer.from(await workerBlob.arrayBuffer())
+          thumbnailUrl = await uploadThumbnail(workerBuffer, file.name)
+          console.log('[Envelope] Generated thumbnail via worker')
+        } else {
+          const error = await workerResponse.text()
+          console.error('[Envelope] Worker error:', error)
+        }
+      } catch (e) {
+        console.error('[Envelope] Worker thumbnail failed:', e)
       }
     }
     
