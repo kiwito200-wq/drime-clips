@@ -339,9 +339,6 @@ export default function StepFields({
         {/* Left - Document info */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 text-sm">
-            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
             {isEditingName ? (
               <div className="flex items-center gap-1">
                 <input
@@ -352,7 +349,7 @@ export default function StepFields({
                   onBlur={saveName}
                   onKeyDown={handleNameKeyDown}
                   disabled={isSavingName}
-                  className="font-medium text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 -ml-1 min-w-[150px] max-w-[200px]"
+                  className="font-medium text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 min-w-[200px]"
                 />
                 {isSavingName && (
                   <div className="w-3 h-3 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
@@ -361,7 +358,7 @@ export default function StepFields({
             ) : (
               <button
                 onClick={startEditingName}
-                className="font-medium text-gray-900 truncate max-w-[200px] flex items-center gap-1.5 hover:text-[#08CF65] transition-colors"
+                className="font-medium text-gray-900 flex items-center gap-1.5 hover:text-[#08CF65] transition-colors"
                 title="Cliquez pour renommer"
               >
                 {documentData.name}

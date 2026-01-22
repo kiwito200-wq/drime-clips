@@ -354,6 +354,8 @@ function AgreementsContent() {
       slug: string
       time: string
       read: boolean
+      senderEmail?: string
+      senderName?: string
     }> = []
 
     envelopes.forEach(envelope => {
@@ -394,7 +396,9 @@ function AgreementsContent() {
           title: envelope.name,
           slug: envelope.slug,
           time: envelope.createdAt,
-          read: readNotifications.includes(`invited-${envelope.id}`)
+          read: readNotifications.includes(`invited-${envelope.id}`),
+          senderEmail: envelope.createdBy || '',
+          senderName: envelope.createdBy?.split('@')[0] || ''
         })
       }
     })
@@ -673,46 +677,56 @@ function AgreementsContent() {
                   </div>
 
                   {/* Tabs */}
-                  <div className="flex border-b border-gray-100">
-                    <button
-                      onClick={() => setNotificationTab('general')}
-                      className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                        notificationTab === 'general' 
-                          ? 'text-gray-900 border-b-2 border-[#08CF65]' 
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Général
-                      {notifications.filter(n => n.type === 'general' && !n.read).length > 0 && (
-                        <span className="ml-1.5 px-1.5 py-0.5 bg-[#08CF65] text-white text-xs rounded-full">
-                          {notifications.filter(n => n.type === 'general' && !n.read).length}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setNotificationTab('invitations')}
-                      className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                        notificationTab === 'invitations' 
-                          ? 'text-gray-900 border-b-2 border-[#08CF65]' 
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Invitations {notifications.filter(n => n.type === 'invitation' && !n.read).length > 0 && (
-                        <span className="ml-1 px-1.5 py-0.5 bg-[#7E33F7] text-white text-xs rounded-full">
-                          {notifications.filter(n => n.type === 'invitation' && !n.read).length}
-                        </span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setNotificationTab('requests')}
-                      className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                        notificationTab === 'requests' 
-                          ? 'text-gray-900 border-b-2 border-[#08CF65]' 
-                          : 'text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      Demandes <span className="text-gray-400">0</span>
-                    </button>
+                  <div className="relative">
+                    <div className="flex">
+                      <button
+                        onClick={() => setNotificationTab('general')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'general' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Général
+                        {notifications.filter(n => n.type === 'general' && !n.read).length > 0 && (
+                          <span className="px-1.5 py-0.5 bg-[#08CF65] text-white text-xs rounded-full leading-none">
+                            {notifications.filter(n => n.type === 'general' && !n.read).length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setNotificationTab('invitations')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'invitations' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Invitations
+                        {notifications.filter(n => n.type === 'invitation' && !n.read).length > 0 && (
+                          <span className="px-1.5 py-0.5 bg-[#7E33F7] text-white text-xs rounded-full leading-none">
+                            {notifications.filter(n => n.type === 'invitation' && !n.read).length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setNotificationTab('requests')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'requests' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        Demandes
+                        <span className="text-gray-400">0</span>
+                      </button>
+                    </div>
+                    {/* Sliding underline */}
+                    <div className="absolute bottom-0 h-0.5 bg-[#08CF65] transition-all duration-300 ease-in-out" style={{
+                      width: '33.333%',
+                      left: notificationTab === 'general' ? '0%' : notificationTab === 'invitations' ? '33.333%' : '66.666%'
+                    }} />
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100" />
                   </div>
 
                   {/* Content */}
@@ -774,24 +788,22 @@ function AgreementsContent() {
                             }}
                             className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
                           >
-                            <div className={`w-9 h-9 rounded-full bg-[#F3E8FF] flex items-center justify-center text-xs font-semibold text-[#7E33F7] flex-shrink-0`}>
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
+                            <div className={`w-9 h-9 rounded-full ${getAvatarColor(notification.senderEmail || '')} flex items-center justify-center text-xs font-semibold text-gray-800 flex-shrink-0`}>
+                              {(notification.senderName || notification.senderEmail || 'U').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
                                 <span className="font-medium">{notification.title}</span> - signature requise
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                <svg className="w-3 h-3 text-[#7E33F7]" fill="currentColor" viewBox="0 0 20 20">
+                                <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                                 </svg>
                                 Drime Sign | {formatDateTime(notification.time)}
                               </p>
                             </div>
                             {!notification.read && (
-                              <div className="w-2 h-2 bg-[#7E33F7] rounded-full flex-shrink-0 mt-2" />
+                              <div className="w-2 h-2 bg-[#08CF65] rounded-full flex-shrink-0 mt-2" />
                             )}
                           </div>
                         ))}
