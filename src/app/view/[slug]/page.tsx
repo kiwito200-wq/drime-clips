@@ -47,7 +47,7 @@ export default function ViewDocumentPage() {
       }
       
       const data = await res.json()
-      setEnvelope(data)
+      setEnvelope(data.envelope || data)
       
       // Get PDF URL
       const pdfRes = await fetch(`/api/envelopes/${slug}/pdf-url`)
@@ -199,7 +199,7 @@ export default function ViewDocumentPage() {
           <h2 className="font-semibold text-gray-900 mb-4">Signataires</h2>
           
           <div className="space-y-4">
-            {envelope.signers.map((signer, index) => (
+            {(envelope.signers || []).map((signer, index) => (
               <div key={signer.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#08CF65] to-[#06B557] flex items-center justify-center text-white font-medium flex-shrink-0">
                   {(signer.name || signer.email).charAt(0).toUpperCase()}
@@ -242,7 +242,7 @@ export default function ViewDocumentPage() {
                   <p className="text-gray-500">{formatDate(envelope.createdAt)}</p>
                 </div>
               </div>
-              {envelope.signers.filter(s => s.status === 'signed').map(signer => (
+              {(envelope.signers || []).filter(s => s.status === 'signed').map(signer => (
                 <div key={signer.id} className="flex items-start gap-2">
                   <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
                   <div>
