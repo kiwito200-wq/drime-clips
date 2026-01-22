@@ -36,7 +36,9 @@ export async function POST(request: NextRequest, { params }: Params) {
         userId: user.id,
       },
       include: {
-        signers: true,
+        signers: {
+          orderBy: { order: 'asc' },
+        },
         fields: true,
         user: true,
       },
@@ -89,10 +91,10 @@ export async function POST(request: NextRequest, { params }: Params) {
       userAgent: request.headers.get('user-agent') || undefined,
     })
 
-    // Send emails to all signers
-    const signerLinks: { email: string; name: string | null; signUrl: string; emailSent: boolean }[] = []
+    // Send emails to all signers in parallel
+    console.log(`[SEND] Sending emails to ${envelope.signers.length} signers`)
     
-    for (const signer of envelope.signers) {
+    const emailPromises = envelope.signers.map(async (signer) => {
       const signUrl = `${APP_URL}/sign/${signer.token}`
       
       // Check if this is self-signing (signer email = owner email)
@@ -101,35 +103,46 @@ export async function POST(request: NextRequest, { params }: Params) {
       let emailSent = false
       
       if (!isSelfSign) {
-        // Send email to external signer
-        const emailResult = await sendSignatureRequestEmail({
-          to: signer.email,
-          signerName: signer.name,
-          documentName: envelope.name,
-          senderName: user.name || user.email,
-          senderEmail: user.email,
-          signingLink: signUrl,
-          message,
-          expiresAt: envelope.expiresAt || undefined,
-        })
-        
-        emailSent = emailResult.success
-        
-        // Log email sent event
-        if (emailSent) {
-          await logAuditEvent(envelope.id, 'sent', signer.id, {
-            email: signer.email,
+        try {
+          console.log(`[SEND] Sending email to: ${signer.email}`)
+          // Send email to external signer
+          const emailResult = await sendSignatureRequestEmail({
+            to: signer.email,
+            signerName: signer.name,
+            documentName: envelope.name,
+            senderName: user.name || user.email,
+            senderEmail: user.email,
+            signingLink: signUrl,
+            message,
+            expiresAt: envelope.expiresAt || undefined,
           })
+          
+          emailSent = emailResult.success
+          console.log(`[SEND] Email to ${signer.email}: ${emailSent ? 'SUCCESS' : 'FAILED'}`)
+          
+          // Log email sent event
+          if (emailSent) {
+            await logAuditEvent(envelope.id, 'sent', signer.id, {
+              email: signer.email,
+            })
+          }
+        } catch (emailError) {
+          console.error(`[SEND] Failed to send email to ${signer.email}:`, emailError)
         }
+      } else {
+        console.log(`[SEND] Skipping self-sign email for: ${signer.email}`)
       }
       
-      signerLinks.push({
+      return {
         email: signer.email,
         name: signer.name,
         signUrl,
         emailSent,
-      })
-    }
+      }
+    })
+    
+    const signerLinks = await Promise.all(emailPromises)
+    console.log(`[SEND] Completed sending emails. Results:`, signerLinks.map(s => ({ email: s.email, sent: s.emailSent })))
 
     // Check if this is self-signing only
     // ONLY use client flag when explicitly set, or check if single signer matches user email

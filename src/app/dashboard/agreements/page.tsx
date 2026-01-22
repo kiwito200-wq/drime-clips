@@ -1475,11 +1475,24 @@ function AgreementsContent() {
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {signingOrderModal.signers.map((signer, i) => (
-                        <Tooltip key={i} content={signer.name || signer.email} position="bottom">
-                          <div
-                            className={`w-9 h-9 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800`}
-                          >
-                            {(signer.name || signer.email).slice(0, 2).toUpperCase()}
+                        <Tooltip 
+                          key={i} 
+                          content={`${signer.name || signer.email}${signer.status === 'signed' ? ' - Signé ✓' : ' - En attente'}`} 
+                          position="bottom"
+                        >
+                          <div className="relative">
+                            <div
+                              className={`w-9 h-9 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800 ${signer.status === 'signed' ? 'ring-2 ring-[#08CF65]' : ''}`}
+                            >
+                              {(signer.name || signer.email).slice(0, 2).toUpperCase()}
+                            </div>
+                            {signer.status === 'signed' && (
+                              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#08CF65] rounded-full flex items-center justify-center">
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                              </div>
+                            )}
                           </div>
                         </Tooltip>
                       ))}
