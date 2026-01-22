@@ -291,26 +291,15 @@ export default function SignPage() {
             />
           </div>
           
-          {/* Checkmark and text overlay */}
+          {/* Text overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', delay: 1.5, stiffness: 200 }}
-              className="w-20 h-20 bg-[#08CF65] rounded-full flex items-center justify-center mb-6 shadow-lg"
-            >
-              <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            </motion.div>
-            
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.8, duration: 0.4 }}
-              className="text-4xl font-bold text-[#7E33F7] mb-4"
+              transition={{ delay: 1.5, duration: 0.4 }}
+              className="text-4xl font-bold text-[#7E33F7]"
             >
-              Merci !
+              Terminé !
             </motion.h1>
           </div>
         </div>
@@ -333,7 +322,7 @@ export default function SignPage() {
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            Signature vérifiée cryptographiquement
+            Signature vérifiée
           </div>
         </motion.div>
       </div>
