@@ -49,10 +49,12 @@ export default function SigningBanner({
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const signaturePadRef = useRef<SignaturePad | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [signatureMode, setSignatureMode] = useState<'type' | 'draw'>('type')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [signatureMode, setSignatureMode] = useState<'type' | 'draw' | 'upload'>('type')
   const [typedSignature, setTypedSignature] = useState(signerName)
   const [selectedFont, setSelectedFont] = useState(0)
   const [hasDrawn, setHasDrawn] = useState(false)
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [textValue, setTextValue] = useState('')
   const [dateValue, setDateValue] = useState('')
   
@@ -66,6 +68,7 @@ export default function SigningBanner({
         ? signerName.split(' ').map(n => n[0] || '').join('').toUpperCase()
         : signerName)
       setHasDrawn(false)
+      setUploadedImage(null)
       if (signaturePadRef.current) signaturePadRef.current.clear()
     } else if (currentField.type === 'text' || currentField.type === 'name' || currentField.type === 'email') {
       const existing = fieldValues[currentField.id] || ''
@@ -97,12 +100,27 @@ export default function SigningBanner({
     return () => { signaturePadRef.current?.off() }
   }, [signatureMode, currentField?.type])
   
+  // Handle file upload
+  const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string
+      setUploadedImage(dataUrl)
+    }
+    reader.readAsDataURL(file)
+  }, [])
+  
   const handleNext = useCallback(() => {
     if (!currentField) return
     
     if (currentField.type === 'signature' || currentField.type === 'initials') {
       if (signatureMode === 'draw' && signaturePadRef.current && hasDrawn) {
         onValueChange(currentField.id, signaturePadRef.current.toDataURL('image/png'))
+      } else if (signatureMode === 'upload' && uploadedImage) {
+        onValueChange(currentField.id, uploadedImage)
       } else if (signatureMode === 'type' && typedSignature.trim()) {
         const canvas = document.createElement('canvas')
         canvas.width = 400
@@ -130,7 +148,7 @@ export default function SigningBanner({
     if (currentFieldIndex < totalFields - 1) {
       onFieldChange(currentFieldIndex + 1)
     }
-  }, [currentField, signatureMode, hasDrawn, typedSignature, selectedFont, dateValue, textValue, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange])
   
   const handleBack = () => {
     if (currentFieldIndex > 0) onFieldChange(currentFieldIndex - 1)
@@ -141,13 +159,15 @@ export default function SigningBanner({
   const isValid = useCallback(() => {
     if (!currentField) return false
     if (currentField.type === 'signature' || currentField.type === 'initials') {
-      return signatureMode === 'draw' ? hasDrawn : typedSignature.trim() !== ''
+      if (signatureMode === 'draw') return hasDrawn
+      if (signatureMode === 'upload') return !!uploadedImage
+      return typedSignature.trim() !== ''
     }
     if (currentField.type === 'checkbox') return !currentField.required || fieldValues[currentField.id] === 'true'
     if (currentField.type === 'date') return !currentField.required || dateValue !== ''
     if (['text', 'name', 'email'].includes(currentField.type)) return !currentField.required || textValue.trim() !== ''
     return true
-  }, [currentField, signatureMode, hasDrawn, typedSignature, dateValue, textValue, fieldValues])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, dateValue, textValue, fieldValues])
   
   const getFieldLabel = (type: FieldType) => {
     const labels: Record<string, string> = {
@@ -218,7 +238,7 @@ export default function SigningBanner({
                         autoFocus
                       />
                     </div>
-                  ) : (
+                  ) : signatureMode === 'draw' ? (
                     <div className="relative mb-3">
                       <canvas
                         ref={canvasRef}
@@ -236,22 +256,58 @@ export default function SigningBanner({
                         </button>
                       )}
                     </div>
+                  ) : (
+                    /* Upload mode */
+                    <div className="mb-3">
+                      {uploadedImage ? (
+                        <div className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 flex items-center justify-center">
+                          <img src={uploadedImage} alt="Signature" className="max-h-16 max-w-full object-contain" />
+                          <button
+                            onClick={() => setUploadedImage(null)}
+                            className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-500 hover:text-gray-700"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="block bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 h-20 flex items-center justify-center cursor-pointer hover:border-[#08CF65] transition-colors">
+                          <div className="text-center">
+                            <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span className="text-sm text-gray-500">Cliquez pour uploader</span>
+                          </div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
                   )}
                   
                   {/* Controls row */}
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1">
-                      <span className="text-gray-500 text-xs">Police:</span>
-                      <select
-                        value={selectedFont}
-                        onChange={(e) => setSelectedFont(Number(e.target.value))}
-                        className="bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 border border-gray-200"
-                      >
-                        {SIGNATURE_FONTS.map((font, i) => (
-                          <option key={font.name} value={i}>{font.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {signatureMode === 'type' && (
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-500 text-xs">Police:</span>
+                        <select
+                          value={selectedFont}
+                          onChange={(e) => setSelectedFont(Number(e.target.value))}
+                          className="bg-gray-100 text-gray-700 text-xs rounded px-2 py-1 border border-gray-200"
+                        >
+                          {SIGNATURE_FONTS.map((font, i) => (
+                            <option key={font.name} value={i}>{font.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    {signatureMode !== 'type' && <div />}
                     
                     <div className="flex gap-1">
                       <button
@@ -269,6 +325,14 @@ export default function SigningBanner({
                         }`}
                       >
                         Dessiner
+                      </button>
+                      <button
+                        onClick={() => setSignatureMode('upload')}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                          signatureMode === 'upload' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Upload
                       </button>
                     </div>
                   </div>
