@@ -17,7 +17,19 @@ export async function GET(
   { params }: { params: { path: string[] } }
 ) {
   try {
-    const key = params.path.join('/')
+    let key = params.path.join('/')
+    
+    // Remove bucket name from path if present
+    if (key.startsWith(BUCKET + '/')) {
+      key = key.slice(BUCKET.length + 1)
+    }
+    // Also check for common bucket name variations
+    if (key.startsWith('drimesign/')) {
+      key = key.slice('drimesign/'.length)
+    }
+    if (key.startsWith('drime-sign/')) {
+      key = key.slice('drime-sign/'.length)
+    }
     
     console.log('[Files Proxy] Fetching:', key)
 
