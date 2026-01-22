@@ -35,6 +35,43 @@ type ViewType = 'my_documents' | 'sent_to_me'
 
 const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
 
+// Icon components
+const DocumentIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+)
+
+const MailIcon = ({ className = "w-5 h-5" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+  </svg>
+)
+
+const PenIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+  </svg>
+)
+
+const ClockIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+)
+
+const CheckIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+)
+
+const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+)
+
 export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
@@ -136,14 +173,18 @@ export default function Dashboard() {
     const needsMySignature = signers.some(s => s.email === user?.email && s.status === 'pending')
     
     if (status === 'pending' && needsMySignature) {
-      return { label: 'À signer', color: 'bg-[#7C5CFF] text-white', icon: '✍️' }
+      return { 
+        label: 'Need to sign', 
+        color: 'bg-blue-50 text-blue-600 border border-blue-200', 
+        icon: <PenIcon className="w-3.5 h-3.5" /> 
+      }
     }
     
-    const styles: Record<string, { label: string; color: string; icon: string }> = {
-      draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-600', icon: '' },
-      pending: { label: 'En cours', color: 'bg-[#F5A623]/15 text-[#D4920E]', icon: '' },
-      completed: { label: 'Approuvé', color: 'bg-[#08CF65]/15 text-[#08CF65]', icon: '✓' },
-      rejected: { label: 'Rejeté', color: 'bg-[#E53935]/15 text-[#E53935]', icon: '✗' },
+    const styles: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+      draft: { label: 'Brouillon', color: 'bg-gray-100 text-gray-600', icon: null },
+      pending: { label: 'En cours', color: 'bg-orange-50 text-orange-600 border border-orange-200', icon: <ClockIcon className="w-3.5 h-3.5" /> },
+      completed: { label: 'Approved', color: 'bg-green-50 text-green-600 border border-green-200', icon: <CheckIcon className="w-3.5 h-3.5" /> },
+      rejected: { label: 'Rejected', color: 'bg-red-50 text-red-600 border border-red-200', icon: <XIcon className="w-3.5 h-3.5" /> },
     }
     return styles[status] || styles.draft
   }
@@ -165,8 +206,8 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-6 h-6 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-400 text-xs">Chargement...</p>
+          <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Chargement...</p>
         </div>
       </div>
     )
@@ -175,104 +216,128 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-white flex">
       {/* Sidebar */}
-      <aside className="w-52 border-r border-gray-100 flex flex-col">
+      <aside className="w-64 border-r border-gray-200 flex flex-col">
         {/* Logo */}
-        <div className="px-4 py-5 border-b border-gray-50">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#08CF65] rounded-lg flex items-center justify-center">
-              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
+        <div className="px-6 py-5 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-[#08CF65] rounded-lg flex items-center justify-center">
+              <CheckIcon className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold text-gray-900 text-sm">Drime Sign</span>
+            <span className="font-semibold text-gray-900">Drime Sign</span>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mb-2">Agreements</p>
-          <ul className="space-y-0.5">
+        <nav className="flex-1 px-4 py-5">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-3 mb-3">Agreements</p>
+          <ul className="space-y-1">
             <li>
               <button
                 onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   viewType === 'my_documents' && filterStatus === 'all'
                     ? 'bg-[#08CF65] text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <DocumentIcon className="w-5 h-5" />
                 My agreements
               </button>
             </li>
             <li>
               <button
                 onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
-                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   viewType === 'sent_to_me'
                     ? 'bg-[#08CF65] text-white'
-                    : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
+                <MailIcon className="w-5 h-5" />
                 Sent to me
               </button>
             </li>
           </ul>
 
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-2 mt-5 mb-2">Filtered by status</p>
-          <ul className="space-y-0.5">
-            {[
-              { key: 'need_to_sign', label: 'Need to sign', icon: '✍️' },
-              { key: 'in_progress', label: 'In progress', icon: '⏳' },
-              { key: 'completed', label: 'Approved', icon: '✓' },
-              { key: 'rejected', label: 'Rejected', icon: '✗' },
-            ].map(item => (
-              <li key={item.key}>
-                <button
-                  onClick={() => setFilterStatus(item.key as FilterStatus)}
-                  className={`w-full flex items-center justify-between px-2 py-1.5 rounded-md text-xs transition-colors ${
-                    filterStatus === item.key
-                      ? 'text-gray-900 bg-gray-50 font-medium'
-                      : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="w-3.5 text-center text-[10px]">{item.icon}</span>
-                    {item.label}
-                  </span>
-                </button>
-              </li>
-            ))}
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider px-3 mt-8 mb-3">Filtered by status</p>
+          <ul className="space-y-1">
+            <li>
+              <button
+                onClick={() => setFilterStatus('need_to_sign')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  filterStatus === 'need_to_sign'
+                    ? 'text-gray-900 bg-gray-100 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <PenIcon className="w-5 h-5" />
+                Need to sign
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => setFilterStatus('in_progress')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  filterStatus === 'in_progress'
+                    ? 'text-gray-900 bg-gray-100 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <ClockIcon className="w-5 h-5" />
+                In progress
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => setFilterStatus('completed')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  filterStatus === 'completed'
+                    ? 'text-gray-900 bg-gray-100 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <CheckIcon className="w-5 h-5" />
+                Approved
+              </button>
+            </li>
+            <li>
+              <button
+                onClick={() => setFilterStatus('rejected')}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  filterStatus === 'rejected'
+                    ? 'text-gray-900 bg-gray-100 font-medium'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <XIcon className="w-5 h-5" />
+                Rejected
+              </button>
+            </li>
           </ul>
         </nav>
       </aside>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col bg-gray-50/50">
         {/* Header */}
-        <header className="px-6 py-4 border-b border-gray-100">
+        <header className="bg-white border-b border-gray-200 px-8 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-base font-semibold text-gray-900">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-semibold text-gray-900">
                 {viewType === 'my_documents' ? 'My agreements' : 'Sent to me'}
               </h1>
-              <span className="text-xs text-gray-400 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              <span className="text-sm text-gray-400 flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
                 Visible only to you
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {/* Search */}
               <div className="relative">
-                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
@@ -280,17 +345,15 @@ export default function Dashboard() {
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 w-44 bg-gray-50 border-0 rounded-md text-xs placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-200"
+                  className="pl-10 pr-4 py-2 w-52 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65]/20 focus:border-[#08CF65]"
                 />
               </div>
               
               <Link 
                 href="/send" 
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-medium rounded-md transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+                <PenIcon className="w-4 h-4" />
                 Sign securely
               </Link>
             </div>
@@ -298,41 +361,39 @@ export default function Dashboard() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto p-8">
           {filteredEnvelopes.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex flex-col items-center justify-center py-20"
             >
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mb-3">
-                <svg className="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+                <DocumentIcon className="w-8 h-8 text-gray-400" />
               </div>
-              <p className="text-gray-500 text-sm mb-1">No documents</p>
-              <p className="text-gray-400 text-xs mb-3">
+              <p className="text-gray-600 text-base mb-1">No documents</p>
+              <p className="text-gray-400 text-sm mb-4">
                 {searchQuery ? 'No results found' : 'Create your first document'}
               </p>
               {!searchQuery && (
-                <Link href="/send" className="text-[#08CF65] text-xs font-medium hover:underline">
+                <Link href="/send" className="text-[#08CF65] text-sm font-medium hover:underline">
                   + New document
                 </Link>
               )}
             </motion.div>
           ) : (
-            <div className="px-6 py-3">
+            <div className="bg-white rounded-xl border border-gray-200">
               {/* Column headers */}
-              <div className="flex items-center px-2 py-2 text-[10px] font-medium text-gray-400 uppercase tracking-wider border-b border-gray-50">
-                <div className="flex-1 pl-11">Name</div>
-                <div className="w-24 text-center">Status</div>
-                <div className="w-24 text-center">Recipients</div>
-                <div className="w-28 text-right">Last updated</div>
-                <div className="w-8"></div>
+              <div className="flex items-center px-6 py-4 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <div className="flex-1">Name</div>
+                <div className="w-32 text-center">Status</div>
+                <div className="w-32 text-center">Recipients</div>
+                <div className="w-36 text-right">Last updated</div>
+                <div className="w-10"></div>
               </div>
 
               {/* Documents */}
-              <div className="divide-y divide-gray-50">
+              <div className="divide-y divide-gray-100">
                 {filteredEnvelopes.map((envelope, index) => {
                   const statusBadge = getStatusBadge(envelope.status, envelope.signers)
                   
@@ -341,68 +402,66 @@ export default function Dashboard() {
                       key={envelope.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      transition={{ delay: index * 0.015 }}
+                      transition={{ delay: index * 0.02 }}
                       onClick={() => handleDocumentClick(envelope)}
-                      className="flex items-center px-2 py-2.5 hover:bg-gray-50/50 cursor-pointer transition-colors group"
+                      className="flex items-center px-6 py-4 hover:bg-gray-50 cursor-pointer transition-colors group"
                     >
                       {/* Document preview & name */}
-                      <div className="flex-1 flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-10 bg-gray-50 rounded flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-100">
+                      <div className="flex-1 flex items-center gap-4 min-w-0">
+                        <div className="w-10 h-12 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden border border-gray-200">
                           {envelope.thumbnailUrl ? (
                             <img src={envelope.thumbnailUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                            <DocumentIcon className="w-5 h-5 text-gray-400" />
                           )}
                         </div>
-                        <span className="text-xs text-gray-800 truncate group-hover:text-[#08CF65] transition-colors">
+                        <span className="text-sm text-gray-900 truncate group-hover:text-[#08CF65] transition-colors font-medium">
                           {envelope.name}
                         </span>
                       </div>
 
                       {/* Status */}
-                      <div className="w-24 flex justify-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${statusBadge.color}`}>
-                          {statusBadge.icon && <span>{statusBadge.icon}</span>}
+                      <div className="w-32 flex justify-center">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${statusBadge.color}`}>
+                          {statusBadge.icon}
                           {statusBadge.label}
                         </span>
                       </div>
 
                       {/* Recipients */}
-                      <div className="w-24 flex justify-center">
-                        <div className="flex -space-x-1">
-                          {envelope.signers.slice(0, 2).map((signer, i) => (
+                      <div className="w-32 flex justify-center">
+                        <div className="flex -space-x-2">
+                          {envelope.signers.slice(0, 3).map((signer, i) => (
                             <div
                               key={i}
-                              className="w-6 h-6 rounded-full bg-[#7C5CFF] flex items-center justify-center text-white text-[9px] font-medium border-2 border-white"
+                              className="w-8 h-8 rounded-full bg-[#7C5CFF] flex items-center justify-center text-white text-xs font-medium border-2 border-white"
                               title={signer.name || signer.email}
                             >
                               {(signer.name || signer.email).charAt(0).toUpperCase()}
                             </div>
                           ))}
-                          {envelope.signers.length > 2 && (
-                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-[9px] font-medium border-2 border-white">
-                              +{envelope.signers.length - 2}
+                          {envelope.signers.length > 3 && (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium border-2 border-white">
+                              +{envelope.signers.length - 3}
                             </div>
                           )}
                         </div>
                       </div>
 
                       {/* Date */}
-                      <div className="w-28 text-right">
-                        <span className="text-[11px] text-gray-400">
+                      <div className="w-36 text-right">
+                        <span className="text-sm text-gray-500">
                           {formatDate(envelope.updatedAt || envelope.createdAt)}
                         </span>
                       </div>
 
                       {/* Actions */}
-                      <div className="w-8 flex justify-end">
+                      <div className="w-10 flex justify-end">
                         <button 
                           onClick={(e) => { e.stopPropagation() }}
-                          className="p-1 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded transition-all"
+                          className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-gray-100 rounded-lg transition-all"
                         >
-                          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                           </svg>
                         </button>
