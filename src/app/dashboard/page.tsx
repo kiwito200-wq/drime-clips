@@ -265,15 +265,15 @@ export default function Dashboard() {
           {/* Search bar - white with stroke */}
           <div className="flex-1 max-w-xl">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                 <SearchIcon />
-              </div>
+              </span>
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
+                className="w-full pl-12 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
               />
             </div>
           </div>
