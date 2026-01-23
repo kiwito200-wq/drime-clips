@@ -43,6 +43,11 @@ const TAB_CONFIG = [
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
     </svg>
   )},
+  { mode: 'saved' as const, label: 'Saved', icon: (
+    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    </svg>
+  )},
 ]
 
 export default function SignatureEditorModal({
@@ -215,13 +220,8 @@ export default function SignatureEditorModal({
   }, [onSave, handleClear])
 
   // Get active tab index for animation
-  const getTabIndex = (tabMode: SignatureMode) => {
-    if (tabMode === 'saved') return 3
-    return TAB_CONFIG.findIndex(t => t.mode === tabMode)
-  }
-
-  const activeTabIndex = getTabIndex(mode)
-  const tabCount = savedSignatures.length > 0 ? 4 : 3
+  const activeTabIndex = TAB_CONFIG.findIndex(t => t.mode === mode)
+  const tabCount = TAB_CONFIG.length
 
   return (
     <AnimatePresence>
@@ -271,19 +271,6 @@ export default function SignatureEditorModal({
                     {tab.label}
                   </button>
                 ))}
-                {savedSignatures.length > 0 && (
-                  <button
-                    onClick={() => setMode('saved')}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors relative ${
-                      mode === 'saved' ? 'text-gray-900' : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Saved
-                  </button>
-                )}
               </div>
               
               {/* Animated underline */}
@@ -472,7 +459,7 @@ export default function SignatureEditorModal({
                 )}
 
                 {/* Saved signatures mode */}
-                {mode === 'saved' && savedSignatures.length > 0 && (
+                {mode === 'saved' && (
                   <motion.div
                     key="saved"
                     initial={{ opacity: 0, x: -10 }}
@@ -481,53 +468,65 @@ export default function SignatureEditorModal({
                     transition={{ duration: 0.15 }}
                     className="space-y-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">
-                        {currentSavedIndex + 1}/{savedSignatures.length} saved signatures
-                      </span>
-                      <button
-                        onClick={handleDelete}
-                        disabled={deleting}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    {savedSignatures.length > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-500">
+                            {currentSavedIndex + 1}/{savedSignatures.length} saved signature{savedSignatures.length > 1 ? 's' : ''}
+                          </span>
+                          <button
+                            onClick={handleDelete}
+                            disabled={deleting}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            {deleting ? 'Deleting...' : 'Clear'}
+                          </button>
+                        </div>
+                        
+                        <div className="relative bg-white rounded-xl border border-gray-200 h-40 flex items-center justify-center">
+                          {/* Previous button */}
+                          {savedSignatures.length > 1 && (
+                            <button
+                              onClick={() => setCurrentSavedIndex(prev => (prev - 1 + savedSignatures.length) % savedSignatures.length)}
+                              className="absolute left-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          
+                          <img
+                            src={savedSignatures[currentSavedIndex].data}
+                            alt="Saved signature"
+                            className="max-w-[80%] max-h-[80%] object-contain"
+                          />
+                          
+                          {/* Next button */}
+                          {savedSignatures.length > 1 && (
+                            <button
+                              onClick={() => setCurrentSavedIndex(prev => (prev + 1) % savedSignatures.length)}
+                              className="absolute right-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
+                            >
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-40 flex flex-col items-center justify-center text-center">
+                        <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        {deleting ? 'Deleting...' : 'Clear'}
-                      </button>
-                    </div>
-                    
-                    <div className="relative bg-white rounded-xl border border-gray-200 h-40 flex items-center justify-center">
-                      {/* Previous button */}
-                      {savedSignatures.length > 1 && (
-                        <button
-                          onClick={() => setCurrentSavedIndex(prev => (prev - 1 + savedSignatures.length) % savedSignatures.length)}
-                          className="absolute left-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                          </svg>
-                        </button>
-                      )}
-                      
-                      <img
-                        src={savedSignatures[currentSavedIndex].data}
-                        alt="Saved signature"
-                        className="max-w-[80%] max-h-[80%] object-contain"
-                      />
-                      
-                      {/* Next button */}
-                      {savedSignatures.length > 1 && (
-                        <button
-                          onClick={() => setCurrentSavedIndex(prev => (prev + 1) % savedSignatures.length)}
-                          className="absolute right-2 w-8 h-8 bg-white rounded-full shadow-md flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                        <p className="text-sm text-gray-500">No saved signatures yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Draw, type or upload a signature to save it</p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
