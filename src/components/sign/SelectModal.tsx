@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface SelectModalProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export default function SelectModal({
   required = true,
   hasNextField = false,
 }: SelectModalProps) {
+  const { locale } = useTranslation()
   const [selectedOption, setSelectedOption] = useState<string>(currentValue || '')
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function SelectModal({
                 onClick={onClose}
                 className="flex-1 px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
-                Annuler
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
               {hasNextField && onSaveAndNext ? (
                 <button

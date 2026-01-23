@@ -2,6 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 type SignatureMode = 'draw' | 'type' | 'upload'
 
@@ -30,6 +31,7 @@ export default function SignaturePad({
   hasNextField = false,
   title = 'Ajoutez votre signature',
 }: SignaturePadProps) {
+  const { locale } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
@@ -427,7 +429,7 @@ export default function SignaturePad({
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-200 rounded-xl transition-colors"
               >
-                Annuler
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
               {hasNextField && onSaveAndNext ? (
                 <button

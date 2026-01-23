@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { FieldType } from './types'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface FieldInputModalProps {
   isOpen: boolean
@@ -25,6 +26,7 @@ export default function FieldInputModal({
   placeholder,
   defaultValue = '',
 }: FieldInputModalProps) {
+  const { locale } = useTranslation()
   const [value, setValue] = useState(defaultValue)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -223,7 +225,7 @@ export default function FieldInputModal({
               onClick={onClose}
               className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
             >
-              Annuler
+              {locale === 'fr' ? 'Annuler' : 'Cancel'}
             </button>
             {hasNextField && onSaveAndNext ? (
               <button

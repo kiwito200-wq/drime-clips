@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface FileUploadModalProps {
   isOpen: boolean
@@ -28,6 +29,7 @@ export default function FileUploadModal({
   required = true,
   hasNextField = false,
 }: FileUploadModalProps) {
+  const { locale } = useTranslation()
   const [preview, setPreview] = useState<string>(currentValue || '')
   const [fileName, setFileName] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
@@ -255,7 +257,7 @@ export default function FileUploadModal({
                 onClick={onClose}
                 className="flex-1 px-4 py-3 text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-medium"
               >
-                Annuler
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
               {hasNextField && onSaveAndNext ? (
                 <button

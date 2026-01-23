@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface DateModalProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ export default function DateModal({
   required = true,
   hasNextField = false,
 }: DateModalProps) {
+  const { locale } = useTranslation()
   const [value, setValue] = useState(currentValue || '')
 
   useEffect(() => {
@@ -159,7 +161,7 @@ export default function DateModal({
                   onClick={onClose}
                   className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors font-medium"
                 >
-                  Annuler
+                  {locale === 'fr' ? 'Annuler' : 'Cancel'}
                 </button>
                 {hasNextField && onSaveAndNext ? (
                   <button

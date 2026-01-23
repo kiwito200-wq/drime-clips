@@ -729,7 +729,7 @@ function AgreementsContent() {
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+                className="relative p-2.5 text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 rounded-xl transition-all duration-200"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -1417,7 +1417,7 @@ function AgreementsContent() {
                         
                         {/* Dropdown Menu */}
                         {openMenuId === envelope.id && (
-                          <div className="absolute right-0 top-8 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[180px]">
+                          <div className="absolute right-0 top-8 z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[220px]">
                             <button
                               onClick={(e) => { e.stopPropagation(); handleView(envelope) }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
@@ -1483,7 +1483,7 @@ function AgreementsContent() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-lg"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -1509,7 +1509,7 @@ function AgreementsContent() {
                 <div className="flex justify-end gap-3 mt-6">
                   <button
                     onClick={() => setRenameModalOpen(null)}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
@@ -1543,7 +1543,7 @@ function AgreementsContent() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-lg"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
@@ -1679,7 +1679,7 @@ function AgreementsContent() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-lg"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
@@ -1700,7 +1700,7 @@ function AgreementsContent() {
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setDeleteConfirmModal(null)}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
