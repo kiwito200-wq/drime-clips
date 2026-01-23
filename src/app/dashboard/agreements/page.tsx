@@ -1430,7 +1430,7 @@ function AgreementsContent() {
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <AuditIcon />
-                              {locale === 'fr' ? "Piste d'audit" : 'Audit trail'}
+                              {locale === 'fr' ? 'Historique' : 'Activity'}
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleRename(envelope) }}
