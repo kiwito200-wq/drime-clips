@@ -7,6 +7,7 @@ import StepUpload from '@/components/send/StepUpload'
 import StepSigners from '@/components/send/StepSigners'
 import StepFields from '@/components/send/StepFields'
 import StepReview from '@/components/send/StepReview'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 // Types
 export interface Signer {
@@ -37,11 +38,12 @@ export interface DocumentData {
   slug: string | null
 }
 
-const STEPS = [
-  { id: 1, label: 'Document' },
-  { id: 2, label: 'Signataires' },
-  { id: 3, label: 'Champs' },
-  { id: 4, label: 'Envoyer' },
+// Step labels will be translated dynamically
+const getSteps = (locale: string) => [
+  { id: 1, label: locale === 'fr' ? 'Document' : 'Document' },
+  { id: 2, label: locale === 'fr' ? 'Signataires' : 'Signers' },
+  { id: 3, label: locale === 'fr' ? 'Champs' : 'Fields' },
+  { id: 4, label: locale === 'fr' ? 'Envoyer' : 'Send' },
 ]
 
 // Drime official accent colors
@@ -57,6 +59,9 @@ const SIGNER_COLORS = [
 function SendPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { locale } = useTranslation()
+  
+  const STEPS = getSteps(locale)
   
   const [currentStep, setCurrentStep] = useState(1)
   const [document, setDocument] = useState<DocumentData>({

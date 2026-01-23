@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface DrimeFile {
   id: string
@@ -54,6 +55,7 @@ const FolderIcon = () => (
 )
 
 export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFilePickerProps) {
+  const { t, locale } = useTranslation()
   const [files, setFiles] = useState<DrimeFile[]>([])
   const [folders, setFolders] = useState<DrimeFolder[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,10 +164,10 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
         onSelect(selectedFile, blob)
         onClose()
       } else {
-        setError('Échec du téléchargement')
+        setError(locale === 'fr' ? 'Échec du téléchargement' : 'Download failed')
       }
     } catch {
-      setError('Échec du téléchargement')
+      setError(locale === 'fr' ? 'Échec du téléchargement' : 'Download failed')
     } finally {
       setDownloading(false)
     }
@@ -221,7 +223,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher"
+              placeholder={t('drime.searchFiles')}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent"
             />
           </div>
@@ -266,7 +268,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
             </div>
           ) : folders.length === 0 && files.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
-              <p className="text-gray-500 text-sm">Aucun fichier PDF trouvé</p>
+              <p className="text-gray-500 text-sm">{t('drime.noFilesFound')}</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -353,7 +355,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               {downloading ? (
                 <span className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Chargement...
+                  {t('common.loading')}
                 </span>
               ) : (
                 'Sélectionner'

@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 // Dynamic import of Lottie to avoid SSR issues
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
@@ -14,6 +15,7 @@ import signatureAnimation from '../../../../public/signature-animation.json'
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const { t, locale } = useTranslation()
   const documentName = searchParams.get('name')
 
   return (
@@ -36,7 +38,7 @@ function SuccessContent() {
             transition={{ delay: 1.5, duration: 0.4 }}
             className="text-4xl font-bold text-[#7E33F7]"
           >
-            Terminé !
+            {t('success.signatureComplete')}
           </motion.h1>
         </div>
       </div>
@@ -49,10 +51,10 @@ function SuccessContent() {
         className="text-center max-w-md"
       >
         <p className="text-gray-700 text-lg mb-2">
-          Votre document {documentName && <strong className="text-gray-900">&ldquo;{documentName}&rdquo;</strong>} a été envoyé.
+          {locale === 'fr' ? 'Votre document' : 'Your document'} {documentName && <strong className="text-gray-900">&ldquo;{documentName}&rdquo;</strong>} {locale === 'fr' ? 'a été envoyé.' : 'has been sent.'}
         </p>
         <p className="text-gray-500 mb-8">
-          Les destinataires recevront un email avec le lien pour signer.
+          {locale === 'fr' ? 'Les destinataires recevront un email avec le lien pour signer.' : 'Recipients will receive an email with the link to sign.'}
         </p>
         
         {/* Action buttons */}
@@ -61,14 +63,14 @@ function SuccessContent() {
             onClick={() => router.push('/dashboard/agreements')}
             className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
           >
-            Voir mes documents
+            {t('success.viewDocuments')}
           </button>
           
           <button
             onClick={() => router.push('/dashboard')}
             className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
           >
-            Retour au tableau de bord
+            {t('success.backToDashboard')}
           </button>
         </div>
       </motion.div>

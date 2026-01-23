@@ -8,6 +8,7 @@ import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
 import SigningBanner from '@/components/sign/SigningBanner'
 import { Field, FieldType } from '@/components/sign/types'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 // Dynamic import of Lottie to avoid SSR issues
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
@@ -46,6 +47,7 @@ interface SignerData {
 export default function SignPage() {
   const params = useParams()
   const router = useRouter()
+  const { t, locale } = useTranslation()
   const token = params.token as string
   
   const [data, setData] = useState<SignerData | null>(null)
@@ -312,7 +314,7 @@ export default function SignPage() {
               transition={{ delay: 1.5, duration: 0.4 }}
               className="text-6xl font-bold text-[#7E33F7]"
             >
-              Terminé !
+              {t('success.signatureComplete')}
             </motion.h1>
           </div>
         </div>
@@ -325,17 +327,17 @@ export default function SignPage() {
           className="text-center max-w-lg"
         >
           <p className="text-gray-700 text-xl mb-2">
-            Merci d&apos;avoir signé <strong className="text-gray-900">&ldquo;{data?.envelope.name}&rdquo;</strong>.
+            {locale === 'fr' ? "Merci d'avoir signé" : 'Thank you for signing'} <strong className="text-gray-900">&ldquo;{data?.envelope.name}&rdquo;</strong>.
           </p>
           <p className="text-gray-500 text-base mb-6">
-            Vous recevrez une copie par email une fois que tous les signataires auront signé.
+            {t('success.youWillReceiveCopy')}
           </p>
           
           <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-8">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            Signature vérifiée
+            {t('success.verifiedSignature')}
           </div>
           
           {/* Button to return to dashboard (if authenticated) */}
@@ -347,7 +349,7 @@ export default function SignPage() {
               onClick={() => router.push('/dashboard')}
               className="px-6 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
             >
-              Retour au tableau de bord
+              {t('success.backToDashboard')}
             </motion.button>
           )}
         </motion.div>
@@ -375,7 +377,7 @@ export default function SignPage() {
           {/* Center - Document name */}
           <div className="absolute left-1/2 -translate-x-1/2">
             <p className="text-sm text-gray-600">
-              <span className="font-medium">Signature:</span> {data?.envelope.name}
+              <span className="font-medium">{t('signing.title')}:</span> {data?.envelope.name}
             </p>
           </div>
           
@@ -389,7 +391,7 @@ export default function SignPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Télécharger
+              {t('common.download')}
             </a>
           )}
         </div>

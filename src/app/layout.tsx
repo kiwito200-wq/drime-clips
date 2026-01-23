@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Schibsted_Grotesk, Dancing_Script, Great_Vibes, Allura, Caveat, Pacifico, Satisfy } from 'next/font/google'
 import './globals.css'
+import { Providers } from './providers'
 
 const schibsted = Schibsted_Grotesk({ 
   subsets: ['latin'],
@@ -58,9 +59,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${schibsted.className} ${dancingScript.variable} ${greatVibes.variable} ${allura.variable} ${caveat.variable} ${pacifico.variable} ${satisfy.variable}`}>
-        {children}
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
+import LanguageSelector from '@/components/LanguageSelector'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface User {
   id: string
@@ -109,6 +111,7 @@ const getAvatarColor = (email: string) => {
 
 export default function DashboardHome() {
   const router = useRouter()
+  const { t, locale } = useTranslation()
   const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
@@ -221,7 +224,7 @@ export default function DashboardHome() {
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('fr-FR', { 
+    return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric',
@@ -409,13 +412,16 @@ export default function DashboardHome() {
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Right side - Notifications & Profile */}
+          {/* Right side - Language, Notifications & Profile */}
           <div className="flex items-center gap-2">
+            {/* Language selector */}
+            <LanguageSelector compact />
+
             {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -429,8 +435,8 @@ export default function DashboardHome() {
                 <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] overflow-hidden z-50">
                   {/* Header */}
                   <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                    <h3 className="font-semibold text-gray-900">Notification</h3>
-                    <Tooltip content="Marquer tout comme lu" position="left">
+                    <h3 className="font-semibold text-gray-900">{t('notifications.title')}</h3>
+                    <Tooltip content={t('notifications.markAllRead')} position="left">
                       <button 
                         onClick={() => {
                           const allIds = notifications.map(n => n.id)
@@ -457,7 +463,7 @@ export default function DashboardHome() {
                             : 'text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        Général
+                        {t('notifications.general')}
                         {notifications.filter(n => n.type === 'general' && !n.read).length > 0 && (
                           <span className="px-1.5 py-0.5 bg-[#08CF65] text-white text-xs rounded-full leading-none">
                             {notifications.filter(n => n.type === 'general' && !n.read).length}
@@ -472,7 +478,7 @@ export default function DashboardHome() {
                             : 'text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        Invitations
+                        {t('notifications.invitations')}
                         {notifications.filter(n => n.type === 'invitation' && !n.read).length > 0 && (
                           <span className="px-1.5 py-0.5 bg-[#7E33F7] text-white text-xs rounded-full leading-none">
                             {notifications.filter(n => n.type === 'invitation' && !n.read).length}
@@ -487,7 +493,7 @@ export default function DashboardHome() {
                             : 'text-gray-500 hover:text-gray-700'
                         }`}
                       >
-                        Demandes
+                        {t('notifications.requests')}
                         <span className="text-gray-400">0</span>
                       </button>
                     </div>
@@ -504,7 +510,7 @@ export default function DashboardHome() {
                     {notificationTab === 'general' && (
                       <>
                         {notifications.filter(n => n.type === 'general').length > 0 && (
-                          <p className="px-4 py-2 text-xs text-gray-500">Plus tôt</p>
+                          <p className="px-4 py-2 text-xs text-gray-500">{locale === 'fr' ? 'Plus tôt' : 'Earlier'}</p>
                         )}
                         {notifications.filter(n => n.type === 'general').map(notification => (
                           <div 
@@ -524,7 +530,7 @@ export default function DashboardHome() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
-                                <span className="font-medium">{notification.title}</span> {notification.action === 'completed' ? 'a été approuvé' : 'a été signé'}
+                                <span className="font-medium">{notification.title}</span> {notification.action === 'completed' ? (locale === 'fr' ? 'a été approuvé' : 'was approved') : (locale === 'fr' ? 'a été signé' : 'was signed')}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                 <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
@@ -539,17 +545,17 @@ export default function DashboardHome() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'general').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune notification</p>
+                          <p className="px-4 py-8 text-sm text-gray-500 text-center">{t('notifications.noNotifications')}</p>
                         )}
                         <p className="px-4 py-3 text-sm text-gray-400 text-center border-t border-gray-100">
-                          Vous avez atteint la fin.
+                          {locale === 'fr' ? 'Vous avez atteint la fin.' : "You've reached the end."}
                         </p>
                       </>
                     )}
                     {notificationTab === 'invitations' && (
                       <>
                         {notifications.filter(n => n.type === 'invitation').length > 0 && (
-                          <p className="px-4 py-2 text-xs text-gray-500">Invitations en attente</p>
+                          <p className="px-4 py-2 text-xs text-gray-500">{locale === 'fr' ? 'Invitations en attente' : 'Pending invitations'}</p>
                         )}
                         {notifications.filter(n => n.type === 'invitation').map(notification => (
                           <div 
@@ -569,7 +575,7 @@ export default function DashboardHome() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-900">
-                                <span className="font-medium">{notification.title}</span> - signature requise
+                                <span className="font-medium">{notification.title}</span> - {locale === 'fr' ? 'signature requise' : 'signature required'}
                               </p>
                               <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                 <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
@@ -584,12 +590,12 @@ export default function DashboardHome() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'invitation').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune invitation</p>
+                          <p className="px-4 py-8 text-sm text-gray-500 text-center">{locale === 'fr' ? 'Aucune invitation' : 'No invitations'}</p>
                         )}
                       </>
                     )}
                     {notificationTab === 'requests' && (
-                      <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune demande</p>
+                      <p className="px-4 py-8 text-sm text-gray-500 text-center">{locale === 'fr' ? 'Aucune demande' : 'No requests'}</p>
                     )}
                   </div>
                 </div>
@@ -620,13 +626,13 @@ export default function DashboardHome() {
                         (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
                       )}
                     </div>
-                    <p className="font-semibold text-gray-900">{user?.name || 'Utilisateur'}</p>
+                    <p className="font-semibold text-gray-900">{user?.name || (locale === 'fr' ? 'Utilisateur' : 'User')}</p>
                     <p className="text-sm text-gray-500">{user?.email}</p>
                   </div>
 
                   {/* Plan info */}
                   <div className="p-4 border-b border-gray-100">
-                    <p className="text-xs text-gray-500 mb-2">{user?.name || user?.email?.split('@')[0]} de quota:</p>
+                    <p className="text-xs text-gray-500 mb-2">{user?.name || user?.email?.split('@')[0]} {locale === 'fr' ? 'de quota:' : 'quota:'}</p>
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -635,17 +641,17 @@ export default function DashboardHome() {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
                           </div>
-                          <span className="text-sm text-gray-700">Sign - Gratuit</span>
+                          <span className="text-sm text-gray-700">Sign - {locale === 'fr' ? 'Gratuit' : 'Free'}</span>
                         </div>
-                        <a href="https://drime.cloud/fr/pricing" className="text-xs text-[#08CF65] hover:underline">Mettre à niveau</a>
+                        <a href="https://drime.cloud/fr/pricing" className="text-xs text-[#08CF65] hover:underline">{locale === 'fr' ? 'Mettre à niveau' : 'Upgrade'}</a>
                       </div>
-                      <p className="text-xs text-gray-500 pl-8">2/5 signatures pour votre Workspace</p>
+                      <p className="text-xs text-gray-500 pl-8">{locale === 'fr' ? '2/5 signatures pour votre Workspace' : '2/5 signatures for your Workspace'}</p>
                     </div>
                     <a 
                       href="https://app.drime.cloud/account-settings#billing" 
                       className="block w-full mt-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-center"
                     >
-                      Voir et gérer la souscription
+                      {locale === 'fr' ? 'Voir et gérer la souscription' : 'View and manage subscription'}
                     </a>
                   </div>
 
@@ -658,7 +664,7 @@ export default function DashboardHome() {
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                       </svg>
-                      Profil
+                      {t('profile.profileSettings')}
                     </a>
                     <a
                       href="https://app.drime.cloud/account-settings"
@@ -668,17 +674,17 @@ export default function DashboardHome() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      Mes paramètres
+                      {t('profile.settings')}
                     </a>
                     {/* Signature section */}
                     <div className="px-4 py-3 border-t border-gray-100">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Ma signature</span>
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.mySignature')}</span>
                         <button
                           onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
                           className="text-xs text-[#08CF65] hover:text-[#06B557] font-medium"
                         >
-                          Modifier
+                          {t('profile.editSignature')}
                         </button>
                       </div>
                       {savedSignature ? (
@@ -694,7 +700,7 @@ export default function DashboardHome() {
                           onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
                           className="w-full py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#08CF65] hover:text-[#08CF65] transition-colors"
                         >
-                          + Ajouter une signature
+                          {t('profile.addSignature')}
                         </button>
                       )}
                     </div>
@@ -705,7 +711,7 @@ export default function DashboardHome() {
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.746 3.746 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
                       </svg>
-                      Prix et fonctionnalités
+                      {t('profile.pricingFeatures')}
                     </a>
                     <div className="border-t border-gray-100 my-1" />
                     <button
@@ -715,7 +721,7 @@ export default function DashboardHome() {
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                       </svg>
-                      Déconnexion
+                      {t('profile.logout')}
                     </button>
                   </div>
                 </div>
@@ -738,63 +744,63 @@ export default function DashboardHome() {
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-[#ECEEF0] text-gray-900 font-medium"
                 >
                   <HomeIcon />
-                  Dashboard
+                  {t('nav.home')}
                 </Link>
               </div>
             </div>
 
             {/* Agreements section */}
             <div>
-              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Agreements</p>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{t('nav.agreements')}</p>
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <DocumentIcon />
-                  My agreements
+                  {t('agreements.title')}
                 </Link>
                 <Link
                   href="/dashboard/agreements?view=sent"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <MailIcon />
-                  Sent to me
+                  {locale === 'fr' ? 'Reçus' : 'Sent to me'}
                 </Link>
               </div>
             </div>
 
             {/* Filtered by status */}
             <div>
-              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Filtered by status</p>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{locale === 'fr' ? 'Filtrer par statut' : 'Filtered by status'}</p>
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements?filter=need_to_sign"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <PenIcon />
-                  Need to sign
+                  {locale === 'fr' ? 'À signer' : 'Need to sign'}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=in_progress"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <ClockIcon />
-                  In progress
+                  {locale === 'fr' ? 'En cours' : 'In progress'}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=completed"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <CheckIcon />
-                  Approved
+                  {locale === 'fr' ? 'Approuvés' : 'Approved'}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=rejected"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <XIcon />
-                  Rejected
+                  {locale === 'fr' ? 'Refusés' : 'Rejected'}
                 </Link>
               </div>
             </div>
@@ -806,10 +812,10 @@ export default function DashboardHome() {
           {/* Welcome header */}
           <div className="px-8 py-6">
             <h1 className="text-2xl font-semibold text-gray-900">
-              Welcome{user?.name ? `, ${user.name.split(' ')[0]}` : ''}!
+              {t('dashboard.welcome')}{user?.name ? `, ${user.name.split(' ')[0]}` : ''} !
             </h1>
             <p className="text-gray-500 mt-1">
-              Summary of your documents from the last 30 days
+              {locale === 'fr' ? 'Résumé de vos documents des 30 derniers jours' : 'Summary of your documents from the last 30 days'}
             </p>
           </div>
 
@@ -824,7 +830,7 @@ export default function DashboardHome() {
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.waitingForOthers}</div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-[#FFAD12]" />
-                  <span className="text-sm text-gray-700">Waiting for signature</span>
+                  <span className="text-sm text-gray-700">{locale === 'fr' ? 'En attente de signature' : 'Waiting for signature'}</span>
                 </div>
               </Link>
 
@@ -836,7 +842,7 @@ export default function DashboardHome() {
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.needToSign}</div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-[#7E33F7]" />
-                  <span className="text-sm text-gray-700">Waiting for your signature</span>
+                  <span className="text-sm text-gray-700">{locale === 'fr' ? 'En attente de votre signature' : 'Waiting for your signature'}</span>
                 </div>
               </Link>
 
@@ -848,7 +854,7 @@ export default function DashboardHome() {
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.drafts}</div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-gray-400" />
-                  <span className="text-sm text-gray-700">Drafts</span>
+                  <span className="text-sm text-gray-700">{locale === 'fr' ? 'Brouillons' : 'Drafts'}</span>
                 </div>
               </Link>
 
@@ -860,7 +866,7 @@ export default function DashboardHome() {
                 <div className="text-2xl font-semibold text-gray-900 mb-2">{stats.completed}</div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-[#08CF65]" />
-                  <span className="text-sm text-gray-700">Signed</span>
+                  <span className="text-sm text-gray-700">{locale === 'fr' ? 'Signés' : 'Signed'}</span>
                 </div>
               </Link>
             </div>
@@ -892,7 +898,7 @@ export default function DashboardHome() {
               {isUploading ? (
                 <div className="text-center">
                   <div className="w-12 h-12 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600 font-medium">Uploading...</p>
+                  <p className="text-gray-600 font-medium">{t('dashboard.uploading')}</p>
                 </div>
               ) : (
                 <>
@@ -902,10 +908,10 @@ export default function DashboardHome() {
                   </div>
                   
                   <h3 className="text-lg font-medium text-gray-800 mb-2">
-                    Drop your document here to get it signed
+                    {locale === 'fr' ? 'Déposez votre document ici pour le faire signer' : 'Drop your document here to get it signed'}
                   </h3>
                   <p className="text-gray-500 text-sm mb-6">
-                    Supported files: PDF
+                    {locale === 'fr' ? 'Fichiers supportés : PDF' : 'Supported files: PDF'}
                   </p>
                   
                   {/* Import button with dropdown */}
@@ -933,7 +939,7 @@ export default function DashboardHome() {
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                         >
                           <DeviceIcon />
-                          From my device
+                          {t('dashboard.fromDevice')}
                         </button>
                         <button
                           onClick={() => {
@@ -943,7 +949,7 @@ export default function DashboardHome() {
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                         >
                           <DrimeIcon />
-                          From Drime
+                          {t('dashboard.fromDrime')}
                         </button>
                       </div>
                     )}

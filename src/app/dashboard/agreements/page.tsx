@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
+import LanguageSelector from '@/components/LanguageSelector'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface User {
   id: string
@@ -146,6 +148,7 @@ const XIcon = () => (
 function AgreementsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { t, locale } = useTranslation()
   const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
@@ -311,7 +314,7 @@ function AgreementsContent() {
     
     if (status === 'pending' && needsMySignature) {
       return { 
-        label: 'Need to sign', 
+        label: locale === 'fr' ? 'À signer' : 'Need to sign', 
         bgColor: 'bg-[#F3E8FF]',
         textColor: 'text-[#7E33F7]',
         icon: <PenIcon />
@@ -320,7 +323,7 @@ function AgreementsContent() {
     
     if (status === 'completed') {
       return { 
-        label: 'Approved', 
+        label: locale === 'fr' ? 'Approuvé' : 'Approved', 
         bgColor: 'bg-[#DCFCE7]',
         textColor: 'text-[#08CF65]',
         icon: <CheckIcon />
@@ -329,7 +332,7 @@ function AgreementsContent() {
     
     if (status === 'pending') {
       return { 
-        label: 'In progress', 
+        label: locale === 'fr' ? 'En cours' : 'In progress', 
         bgColor: 'bg-[#FFF4E5]',
         textColor: 'text-[#FFAD12]',
         icon: <ClockIcon />
@@ -338,7 +341,7 @@ function AgreementsContent() {
     
     if (status === 'rejected') {
       return { 
-        label: 'Rejected', 
+        label: locale === 'fr' ? 'Refusé' : 'Rejected', 
         bgColor: 'bg-[#FFEEF0]',
         textColor: 'text-[#ED3757]',
         icon: <XIcon />
@@ -346,7 +349,7 @@ function AgreementsContent() {
     }
     
     return { 
-      label: 'Draft', 
+      label: locale === 'fr' ? 'Brouillon' : 'Draft', 
       bgColor: 'bg-gray-100',
       textColor: 'text-gray-600',
       icon: null
@@ -355,12 +358,12 @@ function AgreementsContent() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString('fr-FR', { 
+    return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
       day: 'numeric', 
       month: 'short', 
       year: 'numeric',
@@ -704,7 +707,7 @@ function AgreementsContent() {
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search documents..."
+                placeholder={locale === 'fr' ? 'Rechercher des documents...' : 'Search documents...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-[10px] text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent transition-all"
@@ -721,13 +724,16 @@ function AgreementsContent() {
             </div>
           </div>
 
-          {/* Right side - Notifications & Profile */}
+          {/* Right side - Language, Notifications & Profile */}
           <div className="flex items-center gap-2 ml-auto">
+            {/* Language selector */}
+            <LanguageSelector compact />
+            
             {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -1050,14 +1056,14 @@ function AgreementsContent() {
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <HomeIcon />
-                  Dashboard
+                  {t('nav.home')}
                 </Link>
               </div>
             </div>
 
             {/* Agreements section */}
             <div>
-              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Agreements</p>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{t('nav.agreements')}</p>
               <div className="space-y-1">
                 <button
                   onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
@@ -1068,7 +1074,7 @@ function AgreementsContent() {
                   }`}
                 >
                   <DocumentIcon />
-                  My agreements
+                  {t('agreements.title')}
                 </button>
                 <button
                   onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
@@ -1079,14 +1085,14 @@ function AgreementsContent() {
                   }`}
                 >
                   <MailIcon />
-                  Sent to me
+                  {locale === 'fr' ? 'Reçus' : 'Sent to me'}
                 </button>
               </div>
             </div>
 
             {/* Filtered by status */}
             <div>
-              <p className="text-xs font-medium text-gray-500 px-3 mb-2">Filtered by status</p>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{locale === 'fr' ? 'Filtrer par statut' : 'Filtered by status'}</p>
               <div className="space-y-1">
                 <button
                   onClick={() => setFilterStatus('need_to_sign')}
@@ -1097,7 +1103,7 @@ function AgreementsContent() {
                   }`}
                 >
                   <PenIcon />
-                  Need to sign
+                  {locale === 'fr' ? 'À signer' : 'Need to sign'}
                 </button>
                 <button
                   onClick={() => setFilterStatus('in_progress')}
@@ -1108,7 +1114,7 @@ function AgreementsContent() {
                   }`}
                 >
                   <ClockIcon />
-                  In progress
+                  {locale === 'fr' ? 'En cours' : 'In progress'}
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
@@ -1119,7 +1125,7 @@ function AgreementsContent() {
                   }`}
                 >
                   <CheckIcon />
-                  Approved
+                  {locale === 'fr' ? 'Approuvés' : 'Approved'}
                 </button>
                 <button
                   onClick={() => setFilterStatus('rejected')}
@@ -1130,7 +1136,7 @@ function AgreementsContent() {
                   }`}
                 >
                   <XIcon />
-                  Rejected
+                  {locale === 'fr' ? 'Refusés' : 'Rejected'}
                 </button>
               </div>
             </div>
@@ -1144,13 +1150,13 @@ function AgreementsContent() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <h1 className="text-xl font-semibold text-gray-900">
-                  {viewType === 'my_documents' ? 'My agreements' : 'Sent to me'}
+                  {viewType === 'my_documents' ? t('agreements.title') : (locale === 'fr' ? 'Reçus' : 'Sent to me')}
                 </h1>
                 <span className="text-sm text-gray-500 flex items-center gap-1.5">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
-                  Visible only to you
+                  {locale === 'fr' ? 'Visible uniquement par vous' : 'Visible only to you'}
                 </span>
               </div>
               {/* Hidden file input */}
@@ -1175,7 +1181,7 @@ function AgreementsContent() {
                     <path d="M12.3012 3.48828C13.1905 3.48828 13.8317 4.34058 13.5865 5.19483L13.2382 6.40517C13.0455 7.07553 12.4326 7.53671 11.735 7.53671H6.5803C5.8827 7.53671 5.26975 7.07553 5.0771 6.40517L4.72879 5.19483C4.48263 4.34058 5.12478 3.48828 6.01405 3.48828H9.15763" />
                     <path d="M12.2617 20.5137C14.446 20.5137 14.446 19.7266 16.6293 19.7266C18.8145 19.7266 18.8145 20.5137 20.9997 20.5137" />
                   </svg>
-                  Sign securely
+                  {locale === 'fr' ? 'Signer' : 'Sign securely'}
                   <svg className={`w-4 h-4 transition-transform ${showSignDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -1191,7 +1197,7 @@ function AgreementsContent() {
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                     >
                       <DeviceIcon />
-                      From my device
+                      {t('dashboard.fromDevice')}
                     </button>
                     <button
                       onClick={() => {
@@ -1201,7 +1207,7 @@ function AgreementsContent() {
                       className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                     >
                       <DrimeIcon />
-                      From Drime
+                      {t('dashboard.fromDrime')}
                     </button>
                   </div>
                 )}
@@ -1271,13 +1277,13 @@ function AgreementsContent() {
                 <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <DocumentIcon />
                 </div>
-                <p className="text-gray-600 mb-1">No documents</p>
+                <p className="text-gray-600 mb-1">{locale === 'fr' ? 'Aucun document' : 'No documents'}</p>
                 <p className="text-gray-400 text-sm mb-4">
-                  {searchQuery ? 'No results found' : 'Create your first document'}
+                  {searchQuery ? (locale === 'fr' ? 'Aucun résultat trouvé' : 'No results found') : (locale === 'fr' ? 'Créez votre premier document' : 'Create your first document')}
                 </p>
                 {!searchQuery && (
                   <Link href="/send" className="text-[#08CF65] text-sm font-medium hover:underline">
-                    + New document
+                    + {locale === 'fr' ? 'Nouveau document' : 'New document'}
                   </Link>
                 )}
               </div>
@@ -1462,7 +1468,7 @@ function AgreementsContent() {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Rename document</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('modals.renameDocument')}</h3>
                 <button 
                   onClick={() => setRenameModalOpen(null)} 
                   className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
@@ -1486,13 +1492,13 @@ function AgreementsContent() {
                     onClick={() => setRenameModalOpen(null)}
                     className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={submitRename}
                     className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
                   >
-                    Rename
+                    {locale === 'fr' ? 'Renommer' : 'Rename'}
                   </button>
                 </div>
               </div>
@@ -1658,7 +1664,7 @@ function AgreementsContent() {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900">Delete this agreement?</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{t('modals.deleteConfirm')}</h3>
                 <button 
                   onClick={() => setDeleteConfirmModal(null)} 
                   className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
@@ -1670,20 +1676,20 @@ function AgreementsContent() {
               </div>
               <div className="p-6">
                 <p className="text-sm text-gray-600 mb-6">
-                  This action can&apos;t be undone.
+                  {t('modals.deleteWarning')}
                 </p>
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setDeleteConfirmModal(null)}
                     className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     onClick={confirmDelete}
                     className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>

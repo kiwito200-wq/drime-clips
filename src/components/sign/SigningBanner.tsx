@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import SignaturePad from 'signature_pad'
 import { Field, FieldType } from './types'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface SigningBannerProps {
   fields: Field[]
@@ -37,6 +38,7 @@ export default function SigningBanner({
   signerEmail = '',
   isAuthenticated = false,
 }: SigningBannerProps) {
+  const { t, locale } = useTranslation()
   const currentField = fields[currentFieldIndex]
   const totalFields = fields.length
   const [hasStarted, setHasStarted] = useState(false)
@@ -305,7 +307,7 @@ export default function SigningBanner({
               onClick={() => setHasStarted(true)}
               className="w-full py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors"
             >
-              Commencer →
+              {locale === 'fr' ? 'Commencer →' : 'Start →'}
             </button>
           </div>
         ) : showConfirmation ? (
@@ -313,14 +315,14 @@ export default function SigningBanner({
             {/* Confirmation step - styled like a field */}
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-              <span className="text-sm font-medium text-gray-900">Confirmation</span>
-              <span className="text-xs text-gray-400">Dernière étape</span>
+              <span className="text-sm font-medium text-gray-900">{locale === 'fr' ? 'Confirmation' : 'Confirmation'}</span>
+              <span className="text-xs text-gray-400">{locale === 'fr' ? 'Dernière étape' : 'Last step'}</span>
             </div>
             
             {/* Content */}
             <div className="px-4 py-4">
               <p className="text-sm text-gray-700 mb-4 text-center">
-                Confirmez votre signature pour la rendre officielle
+                {t('signing.confirmSignature')}
               </p>
               
               {/* Styled checkbox like Drime/Transfr login */}
@@ -341,13 +343,13 @@ export default function SigningBanner({
                   )}
                 </button>
                 <span className="text-sm text-gray-600 leading-tight">
-                  J&apos;accepte les{' '}
+                  {t('signing.agreeToTerms')}{' '}
                   <a href="https://drime.cloud/terms-of-services" target="_blank" rel="noopener noreferrer" className="text-[#08CF65] hover:underline">
-                    CGU
+                    {t('signing.termsOfService')}
                   </a>
-                  {' '}et la{' '}
+                  {' '}{locale === 'fr' ? 'et la' : 'and'}{' '}
                   <a href="https://drime.cloud/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-[#08CF65] hover:underline">
-                    Politique de confidentialité
+                    {t('signing.privacyPolicy')}
                   </a>
                 </span>
               </label>
@@ -359,7 +361,7 @@ export default function SigningBanner({
                 onClick={() => { setShowConfirmation(false); setAgreedToTerms(false) }}
                 className="text-sm text-gray-500 hover:text-gray-700"
               >
-                ← Retour
+                ← {t('common.back')}
               </button>
               
               <button
@@ -370,10 +372,10 @@ export default function SigningBanner({
                 {isCompleting ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Signature...
+                    {locale === 'fr' ? 'Signature...' : 'Signing...'}
                   </span>
                 ) : (
-                  'Confirmer →'
+                  `${t('common.confirm')} →`
                 )}
               </button>
             </div>
@@ -386,8 +388,8 @@ export default function SigningBanner({
                 <span className="font-medium text-gray-900">
                   {currentField.label || getFieldLabel(currentField.type)}
                 </span>
-                {currentField.required && <span className="text-gray-400 text-sm">(requis)</span>}
-                {!currentField.required && <span className="text-gray-400 text-sm">(optionnel)</span>}
+                {currentField.required && <span className="text-gray-400 text-sm">({locale === 'fr' ? 'requis' : 'required'})</span>}
+                {!currentField.required && <span className="text-gray-400 text-sm">({locale === 'fr' ? 'optionnel' : 'optional'})</span>}
               </div>
               <span className="text-gray-400 text-sm">{currentFieldIndex + 1} / {totalFields}</span>
             </div>
@@ -452,7 +454,7 @@ export default function SigningBanner({
                             <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-sm text-gray-500">Cliquez pour uploader</span>
+                            <span className="text-sm text-gray-500">{locale === 'fr' ? 'Cliquez pour uploader' : 'Click to upload'}</span>
                           </div>
                           <input
                             ref={fileInputRef}
@@ -528,7 +530,7 @@ export default function SigningBanner({
                           signatureMode === 'type' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
-                        Taper
+                        {t('signing.typeSignature')}
                       </button>
                       <button
                         onClick={() => setSignatureMode('draw')}
@@ -536,7 +538,7 @@ export default function SigningBanner({
                           signatureMode === 'draw' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
-                        Dessiner
+                        {t('signing.drawSignature')}
                       </button>
                       <button
                         onClick={() => setSignatureMode('upload')}
@@ -544,7 +546,7 @@ export default function SigningBanner({
                           signatureMode === 'upload' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
-                        Upload
+                        {t('signing.uploadSignature')}
                       </button>
                     </div>
                   </div>
@@ -569,7 +571,7 @@ export default function SigningBanner({
                     )}
                   </button>
                   <span className="text-gray-600 text-sm">
-                    Cliquez pour {fieldValues[currentField.id] === 'true' ? 'décocher' : 'cocher'}
+                    {locale === 'fr' ? `Cliquez pour ${fieldValues[currentField.id] === 'true' ? 'décocher' : 'cocher'}` : `Click to ${fieldValues[currentField.id] === 'true' ? 'uncheck' : 'check'}`}
                   </span>
                 </div>
               )}
@@ -587,7 +589,7 @@ export default function SigningBanner({
                     onClick={() => setDateValue(new Date().toISOString().split('T')[0])}
                     className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-xl hover:bg-gray-200 transition-colors"
                   >
-                    Aujourd&apos;hui
+                    {locale === 'fr' ? "Aujourd'hui" : 'Today'}
                   </button>
                 </div>
               )}
@@ -667,7 +669,7 @@ export default function SigningBanner({
                   disabled={currentField.required && !isValid()}
                   className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  Suivant →
+                  {t('common.next')} →
                 </button>
               )}
             </div>
