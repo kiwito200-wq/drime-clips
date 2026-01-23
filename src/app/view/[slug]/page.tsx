@@ -182,32 +182,34 @@ export default function ViewDocumentPage() {
               </svg>
             </button>
             <div>
-              {isEditingName ? (
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={nameInputRef}
-                    type="text"
-                    value={editedName}
-                    onChange={(e) => setEditedName(e.target.value)}
-                    onBlur={saveName}
-                    onKeyDown={handleNameKeyDown}
-                    disabled={isSavingName}
-                    className="font-semibold text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 -ml-1 min-w-[200px]"
-                  />
-                  {isSavingName && (
-                    <div className="w-4 h-4 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
-                  )}
-                </div>
-              ) : (
-                <h1 
-                  onClick={startEditingName}
-                  className="font-semibold text-gray-900 cursor-pointer hover:text-[#08CF65] transition-colors flex items-center gap-2"
-                  title="Cliquez pour renommer"
-                >
-                  {envelope.name}
-                  <img src="/icons/rename.svg" alt="" className="w-4 h-4 opacity-50 hover:opacity-100 transition-opacity" />
-                </h1>
-              )}
+              <div className="h-6 flex items-center">
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={nameInputRef}
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      onBlur={saveName}
+                      onKeyDown={handleNameKeyDown}
+                      disabled={isSavingName}
+                      className="font-semibold text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none min-w-[200px]"
+                    />
+                    {isSavingName && (
+                      <div className="w-4 h-4 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                ) : (
+                  <h1 
+                    onClick={startEditingName}
+                    className="font-semibold text-gray-900 cursor-pointer hover:text-[#08CF65] transition-colors flex items-center gap-2"
+                    title="Cliquez pour renommer"
+                  >
+                    {envelope.name}
+                    <img src="/icons/rename.svg" alt="" className="w-4 h-4 opacity-50 hover:opacity-100 transition-opacity" />
+                  </h1>
+                )}
+              </div>
               <p className="text-sm text-gray-500">
                 Créé le {formatDate(envelope.createdAt)}
               </p>

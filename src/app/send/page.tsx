@@ -37,11 +37,12 @@ export interface DocumentData {
   slug: string | null
 }
 
-// Step labels will be translated dynamically (Document step removed - handled by dashboard)
+// Step labels will be translated dynamically
 const getSteps = (locale: string) => [
-  { id: 2, displayId: 1, label: locale === 'fr' ? 'Signataires' : 'Signers' },
-  { id: 3, displayId: 2, label: locale === 'fr' ? 'Champs' : 'Fields' },
-  { id: 4, displayId: 3, label: locale === 'fr' ? 'Envoyer' : 'Send' },
+  { id: 1, label: locale === 'fr' ? 'Document' : 'Document' },
+  { id: 2, label: locale === 'fr' ? 'Signataires' : 'Signers' },
+  { id: 3, label: locale === 'fr' ? 'Champs' : 'Fields' },
+  { id: 4, label: locale === 'fr' ? 'Envoyer' : 'Send' },
 ]
 
 // Drime official accent colors
@@ -447,7 +448,7 @@ function SendPageContent() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         ) : (
-                          step.displayId
+                          step.id
                         )}
                       </div>
                       <span className={`text-xs mt-1 ${isActive || isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>
