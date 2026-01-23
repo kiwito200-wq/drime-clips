@@ -729,7 +729,7 @@ function AgreementsContent() {
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="relative p-2.5 text-gray-500 bg-gray-50 hover:bg-gray-100 hover:text-gray-700 rounded-xl transition-all duration-200"
+                className="relative p-2.5 text-gray-900 hover:bg-gray-100 rounded-xl transition-all duration-200"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
@@ -1022,28 +1022,19 @@ function AgreementsContent() {
                       {t('profile.pricingFeatures')}
                     </a>
                     <div className="border-t border-gray-100 my-1" />
-                    {/* Language selector */}
-                    <div className="px-4 py-2">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{locale === 'fr' ? 'Langue' : 'Language'}</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setLocale('fr')}
-                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            locale === 'fr' ? 'bg-[#E0F5EA] text-[#08CF65]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          🇫🇷 Français
-                        </button>
-                        <button
-                          onClick={() => setLocale('en')}
-                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                            locale === 'en' ? 'bg-[#E0F5EA] text-[#08CF65]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          🇬🇧 English
-                        </button>
+                    {/* Language toggle */}
+                    <button
+                      onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                        </svg>
+                        <span>{locale === 'fr' ? 'Langue' : 'Language'}</span>
                       </div>
-                    </div>
+                      <span className="text-gray-500">{locale === 'fr' ? '🇫🇷 FR' : '🇬🇧 EN'}</span>
+                    </button>
                     <div className="border-t border-gray-100 my-1" />
                     <button
                       onClick={clearSessionAndRedirect}
@@ -1430,7 +1421,7 @@ function AgreementsContent() {
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                             >
                               <AddRecipientsIcon />
-                              {locale === 'fr' ? 'Ajouter des destinataires' : 'Add recipients'}
+                              <span className="text-left whitespace-pre-line">{locale === 'fr' ? 'Ajouter des\ndestinataires' : 'Add\nrecipients'}</span>
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleAuditTrail(envelope) }}
