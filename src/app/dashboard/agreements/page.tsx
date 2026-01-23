@@ -1556,14 +1556,14 @@ function AgreementsContent() {
                   </div>
 
                   {/* Signers */}
-                  <div className="flex items-start gap-4">
+                  <div className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                      <div className={`w-8 h-8 flex-shrink-0 rounded-full flex items-center justify-center text-white text-sm font-medium ${
                         signingOrderModal.signers.every(s => s.status === 'signed') ? 'bg-[#08CF65]' : 'bg-[#7E33F7]'
                       }`}>
                         2
                       </div>
-                      <div className="w-px h-6 bg-gray-200 border-l border-dashed border-gray-300" />
+                      <div className="w-px flex-1 min-h-[24px] border-l border-dashed border-gray-300" />
                     </div>
                     <div className="flex-1 pb-4">
                       <div className="flex items-center gap-3 mb-2">
