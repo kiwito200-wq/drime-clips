@@ -543,7 +543,10 @@ export default function DashboardHome() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'general').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">{t('notifications.noNotifications')}</p>
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">{t('notifications.noNotifications')}</p>
+                          </div>
                         )}
                         <p className="px-4 py-3 text-sm text-gray-400 text-center border-t border-gray-100">
                           {locale === 'fr' ? 'Vous avez atteint la fin.' : "You've reached the end."}
@@ -588,12 +591,18 @@ export default function DashboardHome() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'invitation').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">{locale === 'fr' ? 'Aucune invitation' : 'No invitations'}</p>
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">{locale === 'fr' ? 'Aucune invitation' : 'No invitations'}</p>
+                          </div>
                         )}
                       </>
                     )}
                     {notificationTab === 'requests' && (
-                      <p className="px-4 py-8 text-sm text-gray-500 text-center">{locale === 'fr' ? 'Aucune demande' : 'No requests'}</p>
+                      <div className="py-6 text-center">
+                        <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                        <p className="text-sm text-gray-500">{locale === 'fr' ? 'Aucune demande' : 'No requests'}</p>
+                      </div>
                     )}
                   </div>
                 </div>

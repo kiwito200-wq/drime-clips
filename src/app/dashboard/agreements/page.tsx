@@ -855,7 +855,10 @@ function AgreementsContent() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'general').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune notification</p>
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">Aucune notification</p>
+                          </div>
                         )}
                         <p className="px-4 py-3 text-sm text-gray-400 text-center border-t border-gray-100">
                           Vous avez atteint la fin.
@@ -900,12 +903,18 @@ function AgreementsContent() {
                           </div>
                         ))}
                         {notifications.filter(n => n.type === 'invitation').length === 0 && (
-                          <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune invitation</p>
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">Aucune invitation</p>
+                          </div>
                         )}
                       </>
                     )}
                     {notificationTab === 'requests' && (
-                      <p className="px-4 py-8 text-sm text-gray-500 text-center">Aucune demande</p>
+                      <div className="py-6 text-center">
+                        <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                        <p className="text-sm text-gray-500">Aucune demande</p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -1285,10 +1294,12 @@ function AgreementsContent() {
           {/* Scrollable documents list */}
           <div className="flex-1 overflow-y-auto">
             {filteredEnvelopes.length === 0 ? (
-              <div className="py-20 text-center px-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <DocumentIcon />
-                </div>
+              <div className="py-16 text-center px-8">
+                <img 
+                  src="/empty-documents.png" 
+                  alt="" 
+                  className="w-32 h-32 mx-auto mb-4 object-contain"
+                />
                 <p className="text-gray-600 mb-1">{locale === 'fr' ? 'Aucun document' : 'No documents'}</p>
                 <p className="text-gray-400 text-sm mb-4">
                   {searchQuery ? (locale === 'fr' ? 'Aucun résultat trouvé' : 'No results found') : (locale === 'fr' ? 'Créez votre premier document' : 'Create your first document')}
