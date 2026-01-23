@@ -81,19 +81,24 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   // Fetch workspaces
   const fetchWorkspaces = useCallback(async () => {
     try {
+      console.log('[DrimeFilePicker] Fetching workspaces...')
       const res = await fetch('/api/drime/workspaces', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setWorkspaces(data.workspaces || [])
+        console.log('[DrimeFilePicker] Got workspaces:', data.workspaces)
+        const ws = data.workspaces || []
+        setWorkspaces(ws)
         // Default to personal workspace
-        if (data.workspaces?.length > 0 && !selectedWorkspace) {
-          setSelectedWorkspace(data.workspaces[0])
+        if (ws.length > 0) {
+          setSelectedWorkspace(ws[0])
         }
+      } else {
+        console.error('[DrimeFilePicker] Failed to fetch workspaces:', res.status)
       }
     } catch (err) {
-      console.error('Failed to fetch workspaces:', err)
+      console.error('[DrimeFilePicker] Error fetching workspaces:', err)
     }
-  }, [selectedWorkspace])
+  }, [])
 
   // Close workspace dropdown when clicking outside
   useEffect(() => {
@@ -141,18 +146,21 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       setBreadcrumbs([{ id: null, name: 'Drime' }])
       setCurrentFolderId(null)
       setSelectedFile(null)
+      setSelectedWorkspace(null)
+      setWorkspaces([])
       fetchWorkspaces()
     }
-  }, [isOpen, fetchWorkspaces])
+  }, [isOpen])
 
   // Fetch files when workspace changes
   useEffect(() => {
     if (isOpen && selectedWorkspace !== null) {
+      console.log('[DrimeFilePicker] Workspace changed to:', selectedWorkspace.name, 'id:', selectedWorkspace.id)
       setCurrentFolderId(null)
       setBreadcrumbs([{ id: null, name: 'Drime' }])
-      fetchFiles(null, searchQuery, selectedWorkspace.id)
+      fetchFiles(null, '', selectedWorkspace.id)
     }
-  }, [selectedWorkspace, isOpen])
+  }, [selectedWorkspace])
 
   // Instant search with debounce
   useEffect(() => {
@@ -260,8 +268,8 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               className="h-7 w-auto"
             />
             
-            {/* Workspace selector */}
-            {workspaces.length > 1 && (
+            {/* Workspace selector - always show if workspaces loaded */}
+            {workspaces.length > 0 && (
               <div className="relative" ref={workspaceDropdownRef}>
                 <button
                   onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
