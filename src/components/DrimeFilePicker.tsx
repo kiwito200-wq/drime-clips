@@ -160,16 +160,17 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-lg shadow-2xl w-full max-w-xl flex flex-col overflow-hidden"
-        style={{ maxHeight: '600px' }}
+        className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-xl flex flex-col"
+        style={{ height: '550px' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header with Drime logo */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
           <Image 
             src="/drime-logo-black.png" 
             alt="Drime" 
@@ -179,16 +180,16 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
           />
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Search bar */}
-        <div className="px-5 py-3 border-b border-gray-200">
+        <div className="px-5 py-3 border-b border-gray-100 flex-shrink-0">
           <form onSubmit={handleSearch}>
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,14 +200,14 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Rechercher"
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#08CF65] focus:border-transparent"
               />
             </div>
           </form>
         </div>
 
         {/* Breadcrumbs */}
-        <div className="px-5 py-2 border-b border-gray-200">
+        <div className="px-5 py-2 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center gap-1 text-sm">
             {breadcrumbs.map((crumb, index) => (
               <div key={index} className="flex items-center">
@@ -227,13 +228,13 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
+            <div className="flex items-center justify-center h-full">
               <div className="w-6 h-6 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center h-full">
               <p className="text-gray-500 text-sm mb-2">{error}</p>
               <button 
                 onClick={() => fetchFiles(currentFolderId)}
@@ -243,7 +244,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               </button>
             </div>
           ) : folders.length === 0 && files.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
+            <div className="flex flex-col items-center justify-center h-full">
               <p className="text-gray-500 text-sm">Aucun fichier PDF trouvé</p>
             </div>
           ) : (
@@ -253,7 +254,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                 <button
                   key={folder.id}
                   onClick={() => handleFolderClick(folder)}
-                  className="w-full flex items-center gap-3 px-5 py-3 hover:bg-blue-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-5 py-3 hover:bg-[#08CF65]/5 transition-colors text-left"
                 >
                   <FolderIcon />
                   <span className="text-sm text-gray-900 truncate flex-1">{folder.name}</span>
@@ -268,14 +269,14 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                     key={file.id}
                     onClick={() => handleFileSelect(file)}
                     className={`w-full flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-blue-100' : 'hover:bg-blue-50'
+                      isSelected ? 'bg-[#08CF65]/10' : 'hover:bg-[#08CF65]/5'
                     }`}
                   >
                     {/* Checkbox */}
                     <div 
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
                         isSelected 
-                          ? 'bg-[#0061FE] border-[#0061FE]' 
+                          ? 'bg-[#08CF65] border-[#08CF65]' 
                           : 'border-gray-300 bg-white'
                       }`}
                     >
@@ -295,7 +296,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100 flex-shrink-0">
           <div className="text-sm text-gray-600">
             {selectedFile ? (
               <span className="flex items-center gap-2">
@@ -322,9 +323,9 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
             <button
               onClick={handleConfirmSelection}
               disabled={!selectedFile || downloading}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
                 selectedFile && !downloading
-                  ? 'bg-[#0061FE] hover:bg-[#0052D4]' 
+                  ? 'bg-[#08CF65] hover:bg-[#06B557]' 
                   : 'bg-gray-300 cursor-not-allowed'
               }`}
             >
