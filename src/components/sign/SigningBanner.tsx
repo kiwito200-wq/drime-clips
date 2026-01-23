@@ -94,6 +94,19 @@ export default function SigningBanner({
     }
   }, [signatureLoaded])
   
+  // Track previous field index to detect user navigation
+  const prevFieldIndexRef = useRef(currentFieldIndex)
+  
+  // Reset confirmation screen when user clicks on a different field (e.g., clicking directly on PDF)
+  useEffect(() => {
+    // If user navigates to any field while in confirmation mode, reset to show that field
+    if (showConfirmation && prevFieldIndexRef.current !== currentFieldIndex) {
+      setShowConfirmation(false)
+      setAgreedToTerms(false)
+    }
+    prevFieldIndexRef.current = currentFieldIndex
+  }, [currentFieldIndex, showConfirmation])
+  
   // Save signature after completing (only if authenticated and in draw mode with a new signature)
   const saveSignatureToUser = useCallback(async (signatureDataUrl: string) => {
     if (!isAuthenticated) return
