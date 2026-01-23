@@ -6,8 +6,7 @@ import { useRouter } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
-import LanguageSelector from '@/components/LanguageSelector'
-import { useTranslation } from '@/lib/i18n/I18nContext'
+import { useI18n } from '@/lib/i18n/I18nContext'
 
 interface User {
   id: string
@@ -111,7 +110,7 @@ const getAvatarColor = (email: string) => {
 
 export default function DashboardHome() {
   const router = useRouter()
-  const { t, locale } = useTranslation()
+  const { t, locale, setLocale } = useI18n()
   const [user, setUser] = useState<User | null>(null)
   const [envelopes, setEnvelopes] = useState<Envelope[]>([])
   const [loading, setLoading] = useState(true)
@@ -412,11 +411,8 @@ export default function DashboardHome() {
           {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Right side - Language, Notifications & Profile */}
+          {/* Right side - Notifications & Profile */}
           <div className="flex items-center gap-2">
-            {/* Language selector */}
-            <LanguageSelector compact />
-
             {/* Notifications */}
             <div className="relative" ref={notificationsRef}>
               <button
@@ -713,6 +709,29 @@ export default function DashboardHome() {
                       </svg>
                       {t('profile.pricingFeatures')}
                     </a>
+                    <div className="border-t border-gray-100 my-1" />
+                    {/* Language selector */}
+                    <div className="px-4 py-2">
+                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{locale === 'fr' ? 'Langue' : 'Language'}</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setLocale('fr')}
+                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            locale === 'fr' ? 'bg-[#E0F5EA] text-[#08CF65]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          🇫🇷 Français
+                        </button>
+                        <button
+                          onClick={() => setLocale('en')}
+                          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            locale === 'en' ? 'bg-[#E0F5EA] text-[#08CF65]' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          🇬🇧 English
+                        </button>
+                      </div>
+                    </div>
                     <div className="border-t border-gray-100 my-1" />
                     <button
                       onClick={clearSessionAndRedirect}
