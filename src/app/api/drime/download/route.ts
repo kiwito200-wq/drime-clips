@@ -14,11 +14,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated with Drime' }, { status: 401 })
     }
 
-    const { fileId, fileName } = await request.json()
+    const { fileId, fileName, workspaceId = 0 } = await request.json()
     
     if (!fileId) {
       return NextResponse.json({ error: 'fileId is required' }, { status: 400 })
     }
+    
+    console.log('[Drime Download] Params:', { fileId, fileName, workspaceId })
 
     const xsrfMatch = cookieHeader.match(/XSRF-TOKEN=([^;]+)/)
     const xsrfToken = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : ''
@@ -36,8 +38,8 @@ export async function POST(request: NextRequest) {
 
     console.log('[Drime Download] Getting file info for ID:', fileId)
 
-    // First, get file info to get the hash
-    const listRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries?perPage=100`, {
+    // First, get file info to get the hash (include workspace)
+    const listRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries?perPage=100&workspaceId=${workspaceId}`, {
       method: 'GET',
       headers: { ...headers, 'Accept': 'application/json' },
     })
