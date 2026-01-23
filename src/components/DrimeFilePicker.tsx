@@ -61,6 +61,19 @@ const FolderIcon = () => (
   </svg>
 )
 
+// Cache structure for workspace files
+interface WorkspaceCache {
+  [workspaceId: number]: {
+    [folderId: string]: {
+      files: DrimeFile[]
+      folders: DrimeFolder[]
+      timestamp: number
+    }
+  }
+}
+
+const CACHE_TTL = 60000 // 1 minute cache
+
 export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFilePickerProps) {
   const { t, locale } = useTranslation()
   const [files, setFiles] = useState<DrimeFile[]>([])
@@ -77,6 +90,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const workspaceDropdownRef = useRef<HTMLDivElement>(null)
+  const cacheRef = useRef<WorkspaceCache>({})
 
   // Fetch workspaces
   const fetchWorkspaces = useCallback(async () => {
@@ -111,10 +125,28 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const fetchFiles = useCallback(async (folderId: string | null, search: string = '', workspaceId: number = 0) => {
-    setLoading(true)
+  const fetchFiles = useCallback(async (folderId: string | null, search: string = '', workspaceId: number = 0, forceRefresh: boolean = false) => {
     setError(null)
     setSelectedFile(null)
+    
+    const cacheKey = folderId || 'root'
+    
+    // Check cache first (only if no search query)
+    if (!search && !forceRefresh) {
+      const workspaceCache = cacheRef.current[workspaceId]
+      if (workspaceCache && workspaceCache[cacheKey]) {
+        const cached = workspaceCache[cacheKey]
+        if (Date.now() - cached.timestamp < CACHE_TTL) {
+          console.log('[DrimeFilePicker] Using cached data for workspace', workspaceId, 'folder', cacheKey)
+          setFolders(cached.folders)
+          setFiles(cached.files)
+          setLoading(false)
+          return
+        }
+      }
+    }
+    
+    setLoading(true)
     
     try {
       let url = `/api/drime/files?perPage=100&workspaceId=${workspaceId}`
@@ -128,8 +160,23 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       const res = await fetch(url, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        setFolders(data.folders || [])
-        setFiles(data.files || [])
+        const newFolders = data.folders || []
+        const newFiles = data.files || []
+        
+        setFolders(newFolders)
+        setFiles(newFiles)
+        
+        // Save to cache (only if no search query)
+        if (!search) {
+          if (!cacheRef.current[workspaceId]) {
+            cacheRef.current[workspaceId] = {}
+          }
+          cacheRef.current[workspaceId][cacheKey] = {
+            files: newFiles,
+            folders: newFolders,
+            timestamp: Date.now()
+          }
+        }
       } else {
         setError('Impossible de charger les fichiers')
       }
@@ -148,6 +195,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       setSelectedFile(null)
       setSelectedWorkspace(null)
       setWorkspaces([])
+      // Don't clear cache - keep it for faster switching
       fetchWorkspaces()
     }
   }, [isOpen])
