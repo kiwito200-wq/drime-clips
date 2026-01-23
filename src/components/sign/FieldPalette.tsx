@@ -198,7 +198,7 @@ export default function FieldPalette({
                               e.stopPropagation()
                               onDeleteRecipient(recipient.id)
                             }}
-                            className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                            className="p-1 text-gray-900 hover:text-red-500 transition-colors"
                           >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M14.9624 3.87898L15.7806 5.66377H18.42C19.2315 5.66377 19.8894 6.32166 19.8894 7.1332V8.2214C19.8894 8.77625 19.4396 9.22605 18.8848 9.22605H5.11501C4.56015 9.22605 4.11035 8.77625 4.11035 8.2214V7.1332C4.11035 6.32166 4.76823 5.66377 5.57978 5.66377H8.2192L9.0374 3.87898C9.28294 3.34338 9.8181 3 10.4073 3H13.5925C14.1817 3 14.7168 3.34338 14.9624 3.87898Z" />
@@ -284,7 +284,7 @@ export default function FieldPalette({
                     </button>
                     <button
                       onClick={() => onDeleteField(selectedField.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-500 transition-colors rounded"
+                      className="p-1.5 text-gray-900 hover:text-red-500 transition-colors rounded"
                       title="Supprimer"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

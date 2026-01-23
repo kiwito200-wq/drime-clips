@@ -1278,7 +1278,7 @@ function AgreementsContent() {
                   alt="" 
                   className="w-32 h-32 mx-auto mb-4 object-contain"
                 />
-                <p className="text-gray-600 mb-1">{locale === 'fr' ? 'Aucun document' : 'No documents'}</p>
+                <p className="text-gray-900 mb-1">{locale === 'fr' ? 'Aucun document' : 'No documents'}</p>
                 <p className="text-gray-400 text-sm mb-4">
                   {searchQuery ? (locale === 'fr' ? 'Aucun résultat trouvé' : 'No results found') : (locale === 'fr' ? 'Créez votre premier document' : 'Create your first document')}
                 </p>
@@ -1539,7 +1539,7 @@ function AgreementsContent() {
                 <div className="flex justify-end gap-3 mt-6">
                   <button
                     onClick={() => setRenameModalOpen(null)}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
@@ -1734,7 +1734,7 @@ function AgreementsContent() {
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setDeleteConfirmModal(null)}
-                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     {t('common.cancel')}
                   </button>
