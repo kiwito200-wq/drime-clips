@@ -31,6 +31,13 @@ interface BreadcrumbItem {
   name: string
 }
 
+interface Workspace {
+  id: number
+  name: string
+  avatar: string | null
+  isPersonal: boolean
+}
+
 interface DrimeFilePickerProps {
   isOpen: boolean
   onClose: () => void
@@ -65,15 +72,47 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: 'Drime' }])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<DrimeFile | null>(null)
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([])
+  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(null)
+  const [showWorkspaceDropdown, setShowWorkspaceDropdown] = useState(false)
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const workspaceDropdownRef = useRef<HTMLDivElement>(null)
 
-  const fetchFiles = useCallback(async (folderId: string | null, search: string = '') => {
+  // Fetch workspaces
+  const fetchWorkspaces = useCallback(async () => {
+    try {
+      const res = await fetch('/api/drime/workspaces', { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setWorkspaces(data.workspaces || [])
+        // Default to personal workspace
+        if (data.workspaces?.length > 0 && !selectedWorkspace) {
+          setSelectedWorkspace(data.workspaces[0])
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch workspaces:', err)
+    }
+  }, [selectedWorkspace])
+
+  // Close workspace dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (workspaceDropdownRef.current && !workspaceDropdownRef.current.contains(event.target as Node)) {
+        setShowWorkspaceDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const fetchFiles = useCallback(async (folderId: string | null, search: string = '', workspaceId: number = 0) => {
     setLoading(true)
     setError(null)
     setSelectedFile(null)
     
     try {
-      let url = '/api/drime/files?perPage=100'
+      let url = `/api/drime/files?perPage=100&workspaceId=${workspaceId}`
       if (folderId) {
         url += `&folderId=${folderId}`
       }
@@ -102,9 +141,18 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       setBreadcrumbs([{ id: null, name: 'Drime' }])
       setCurrentFolderId(null)
       setSelectedFile(null)
-      fetchFiles(null)
+      fetchWorkspaces()
     }
-  }, [isOpen, fetchFiles])
+  }, [isOpen, fetchWorkspaces])
+
+  // Fetch files when workspace changes
+  useEffect(() => {
+    if (isOpen && selectedWorkspace !== null) {
+      setCurrentFolderId(null)
+      setBreadcrumbs([{ id: null, name: 'Drime' }])
+      fetchFiles(null, searchQuery, selectedWorkspace.id)
+    }
+  }, [selectedWorkspace, isOpen])
 
   // Instant search with debounce
   useEffect(() => {
@@ -112,9 +160,11 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       clearTimeout(searchTimeoutRef.current)
     }
     
-    searchTimeoutRef.current = setTimeout(() => {
-      fetchFiles(currentFolderId, searchQuery)
-    }, 300)
+    if (selectedWorkspace !== null) {
+      searchTimeoutRef.current = setTimeout(() => {
+        fetchFiles(currentFolderId, searchQuery, selectedWorkspace.id)
+      }, 300)
+    }
 
     return () => {
       if (searchTimeoutRef.current) {
@@ -127,7 +177,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
     setCurrentFolderId(folder.id)
     setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }])
     setSearchQuery('')
-    fetchFiles(folder.id)
+    fetchFiles(folder.id, '', selectedWorkspace?.id || 0)
   }
 
   const handleBreadcrumbClick = (index: number) => {
@@ -135,7 +185,12 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
     setCurrentFolderId(item.id)
     setBreadcrumbs(breadcrumbs.slice(0, index + 1))
     setSearchQuery('')
-    fetchFiles(item.id)
+    fetchFiles(item.id, '', selectedWorkspace?.id || 0)
+  }
+
+  const handleWorkspaceSelect = (workspace: Workspace) => {
+    setSelectedWorkspace(workspace)
+    setShowWorkspaceDropdown(false)
   }
 
 
@@ -194,15 +249,75 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
             style={{ height: '550px' }}
             onClick={e => e.stopPropagation()}
           >
-        {/* Header with Drime logo */}
+        {/* Header with Drime logo and workspace selector */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
-          <Image 
-            src="/drime-logo-black.png" 
-            alt="Drime" 
-            width={100} 
-            height={28}
-            className="h-7 w-auto"
-          />
+          <div className="flex items-center gap-4">
+            <Image 
+              src="/drime-logo-black.png" 
+              alt="Drime" 
+              width={100} 
+              height={28}
+              className="h-7 w-auto"
+            />
+            
+            {/* Workspace selector */}
+            {workspaces.length > 1 && (
+              <div className="relative" ref={workspaceDropdownRef}>
+                <button
+                  onClick={() => setShowWorkspaceDropdown(!showWorkspaceDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+                >
+                  {selectedWorkspace?.isPersonal ? (
+                    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                    </svg>
+                  )}
+                  <span className="max-w-[120px] truncate">{selectedWorkspace?.name}</span>
+                  <svg className={`w-4 h-4 text-gray-500 transition-transform ${showWorkspaceDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                
+                {showWorkspaceDropdown && (
+                  <div className="absolute top-full left-0 mt-1 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                    <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase">
+                      {locale === 'fr' ? 'Workspaces' : 'Workspaces'}
+                    </div>
+                    {workspaces.map((ws) => (
+                      <button
+                        key={ws.id}
+                        onClick={() => handleWorkspaceSelect(ws)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-100 transition-colors ${
+                          selectedWorkspace?.id === ws.id ? 'bg-[#08CF65]/10 text-[#08CF65]' : 'text-gray-700'
+                        }`}
+                      >
+                        {ws.isPersonal ? (
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                          </svg>
+                        )}
+                        <span className="truncate">{ws.name}</span>
+                        {selectedWorkspace?.id === ws.id && (
+                          <svg className="w-4 h-4 ml-auto text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"

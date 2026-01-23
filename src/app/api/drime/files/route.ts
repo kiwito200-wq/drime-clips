@@ -20,9 +20,10 @@ export async function GET(request: NextRequest) {
     const perPage = searchParams.get('perPage') || '50'
     const folderId = searchParams.get('folderId') || ''
     const search = searchParams.get('search') || ''
+    const workspaceId = searchParams.get('workspaceId') || '0'
 
     // Build Drime API URL
-    let apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?page=${page}&perPage=${perPage}`
+    let apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?page=${page}&perPage=${perPage}&workspaceId=${workspaceId}`
     
     if (folderId) {
       // Use parentIds for folder filtering

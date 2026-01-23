@@ -1273,11 +1273,11 @@ function AgreementsContent() {
                 </button>
               </div>
             ) : (
-              <div className="w-[420px] flex-shrink-0">{locale === 'fr' ? 'Nom' : 'Name'}</div>
+              <div className="w-[400px] flex-shrink-0">{locale === 'fr' ? 'Nom' : 'Name'}</div>
             )}
             
-            <div className="w-[160px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Statut' : 'Status')}</div>
-            <div className="w-[160px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Destinataires' : 'Recipients')}</div>
+            <div className="w-[180px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Statut' : 'Status')}</div>
+            <div className="w-[180px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Destinataires' : 'Recipients')}</div>
             <div className="flex-1">{selectedDocs.length === 0 && (locale === 'fr' ? 'Mis à jour' : 'Last updated')}</div>
             <div className="w-10"></div>
           </div>
@@ -1331,7 +1331,7 @@ function AgreementsContent() {
                       </div>
 
                       {/* Document name with thumbnail */}
-                      <div className="w-[420px] flex-shrink-0 flex items-center gap-3 min-w-0">
+                      <div className="w-[400px] flex-shrink-0 flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded bg-white border border-gray-200 shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {envelope.thumbnailUrl ? (
                             <img 
@@ -1354,7 +1354,7 @@ function AgreementsContent() {
                       </div>
 
                       {/* Status */}
-                      <div className="w-[160px] flex-shrink-0">
+                      <div className="w-[180px] flex-shrink-0">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge.bgColor} ${statusBadge.textColor}`}>
                           {statusBadge.icon}
                           {statusBadge.label}
@@ -1362,7 +1362,7 @@ function AgreementsContent() {
                       </div>
 
                       {/* Recipients - clickable to show signing order */}
-                      <div className="w-[160px] flex-shrink-0">
+                      <div className="w-[180px] flex-shrink-0">
                         <Tooltip content="Click to see recipient list" position="top">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSigningOrderModal(envelope) }}
