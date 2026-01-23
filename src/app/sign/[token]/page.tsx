@@ -294,49 +294,62 @@ export default function SignPage() {
   if (completed) {
     return (
       <div className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-4">
-        {/* Animated signature using Lottie */}
-        <div className="relative mb-8">
-          <div className="w-[500px] h-[400px] flex items-center justify-center">
+        {/* Animated signature using Lottie - BIGGER */}
+        <div className="relative mb-4">
+          <div className="w-[700px] h-[500px] flex items-center justify-center">
             <Lottie
               animationData={signatureAnimation}
               loop={false}
-              style={{ width: 500, height: 400, opacity: 0.3 }}
+              style={{ width: 700, height: 500, opacity: 0.3 }}
             />
           </div>
           
-          {/* Text overlay */}
+          {/* Text overlay - BIGGER */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.4 }}
-              className="text-4xl font-bold text-[#7E33F7]"
+              className="text-6xl font-bold text-[#7E33F7]"
             >
               Terminé !
             </motion.h1>
           </div>
         </div>
         
-        {/* Thank you message */}
+        {/* Thank you message - BIGGER */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2, duration: 0.4 }}
-          className="text-center max-w-md"
+          className="text-center max-w-lg"
         >
-          <p className="text-gray-700 text-lg mb-2">
+          <p className="text-gray-700 text-xl mb-2">
             Merci d&apos;avoir signé <strong className="text-gray-900">&ldquo;{data?.envelope.name}&rdquo;</strong>.
           </p>
-          <p className="text-gray-500 mb-8">
+          <p className="text-gray-500 text-base mb-6">
             Vous recevrez une copie par email une fois que tous les signataires auront signé.
           </p>
           
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-400">
+          <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-8">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             Signature vérifiée
           </div>
+          
+          {/* Button to return to dashboard (if authenticated) */}
+          {isAuthenticated && (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 2.5 }}
+              onClick={() => router.push('/dashboard')}
+              className="px-6 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
+            >
+              Retour au tableau de bord
+            </motion.button>
+          )}
         </motion.div>
       </div>
     )
