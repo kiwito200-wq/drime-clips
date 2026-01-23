@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Use staging like auth
-const DRIME_API_URL = 'https://staging.drime.cloud'
+const DRIME_API_URL = 'https://front.preprod.drime.cloud'
 
 /**
  * Download a file from Drime
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
       'Cookie': cookieHeader,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Origin': 'https://staging.drime.cloud',
-      'Referer': 'https://staging.drime.cloud/',
+      'Origin': 'https://front.preprod.drime.cloud',
+      'Referer': 'https://front.preprod.drime.cloud/',
     }
     
     if (xsrfToken) {
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: If we have a shareable URL, download from it
     if (shareableUrl) {
-      // The shareable URL might be like: https://staging.drime.cloud/drive/s/xxxxx
+      // The shareable URL might be like: https://front.preprod.drime.cloud/drive/s/xxxxx
       // We need to get the actual file from it
       console.log('[Drime Download] Downloading from shareable URL:', shareableUrl)
       

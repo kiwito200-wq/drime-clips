@@ -3,7 +3,7 @@ import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 
-const DRIME_API_URL = 'https://staging.drime.cloud'
+const DRIME_API_URL = 'https://front.preprod.drime.cloud'
 
 // GET /api/auth/me - Check local session OR forward cookies to Drime
 export async function GET(request: NextRequest) {

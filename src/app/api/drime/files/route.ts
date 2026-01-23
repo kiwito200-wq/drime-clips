@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 // Drime API configuration - use staging like auth
-const DRIME_API_URL = 'https://staging.drime.cloud'
+const DRIME_API_URL = 'https://front.preprod.drime.cloud'
 
 /**
  * Proxy to Drime API to get user's files
@@ -50,8 +50,8 @@ export async function GET(request: NextRequest) {
       'Cookie': cookieHeader,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Origin': 'https://staging.drime.cloud',
-      'Referer': 'https://staging.drime.cloud/',
+      'Origin': 'https://front.preprod.drime.cloud',
+      'Referer': 'https://front.preprod.drime.cloud/',
     }
     
     // Add XSRF token header if present (Laravel expects this)

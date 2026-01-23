@@ -34,7 +34,7 @@ interface Envelope {
 type FilterStatus = 'all' | 'need_to_sign' | 'in_progress' | 'completed' | 'rejected' | 'draft'
 type ViewType = 'my_documents' | 'sent_to_me'
 
-const DRIME_LOGIN_URL = 'https://staging.drime.cloud/login'
+const DRIME_LOGIN_URL = 'https://front.preprod.drime.cloud/login'
 
 // Menu Icons
 const ViewIcon = () => (
