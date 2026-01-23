@@ -55,13 +55,21 @@ export async function GET(request: NextRequest) {
     if (drimeRes.ok) {
       const drimeData = await drimeRes.json()
       if (drimeData.user) {
+        // Extract avatar URL - same logic as Transfr
+        let avatarUrl = drimeData.user.avatar_url || drimeData.user.avatar || null
+        
+        // If avatar is a relative path, prepend the Drime API URL
+        if (avatarUrl && !avatarUrl.startsWith('http')) {
+          avatarUrl = `${DRIME_API_URL}/${avatarUrl.replace(/^\//, '')}`
+        }
+        
         drimeUser = {
           id: String(drimeData.user.id),
           email: drimeData.user.email,
           name: drimeData.user.name || drimeData.user.display_name || null,
-          avatarUrl: drimeData.user.avatar_url || null,
+          avatarUrl: avatarUrl,
         }
-        console.log('[Auth Check] Drime user found:', drimeUser.email)
+        console.log('[Auth Check] Drime user found:', drimeUser.email, 'avatar:', avatarUrl)
       } else {
         // Drime returned OK but no user = logged out
         console.log('[Auth Check] Drime returned no user - session expired')
@@ -110,14 +118,22 @@ export async function GET(request: NextRequest) {
 
         // Check if emails match
         if (localUser.email === drimeUser.email) {
-          // Same user - return local session
+          // Same user - update avatar if changed, then return session
+          if (drimeUser.avatarUrl && drimeUser.avatarUrl !== localUser.avatarUrl) {
+            await prisma.user.update({
+              where: { id: localUser.id },
+              data: { avatarUrl: drimeUser.avatarUrl },
+            })
+            localUser.avatarUrl = drimeUser.avatarUrl
+          }
+          
           console.log('[Auth Check] Session valid for:', localUser.email)
           return NextResponse.json({
             user: {
               id: localUser.id,
               email: localUser.email,
               name: localUser.name,
-              avatarUrl: localUser.avatarUrl,
+              avatarUrl: localUser.avatarUrl || drimeUser.avatarUrl,
             }
           })
         } else {

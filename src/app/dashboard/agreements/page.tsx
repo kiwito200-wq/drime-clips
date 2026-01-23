@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
@@ -154,6 +155,7 @@ function AgreementsContent() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [renameModalOpen, setRenameModalOpen] = useState<string | null>(null)
   const [signingOrderModal, setSigningOrderModal] = useState<Envelope | null>(null)
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<Envelope | null>(null)
   const [newName, setNewName] = useState('')
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const [showSignDropdown, setShowSignDropdown] = useState(false)
@@ -460,23 +462,27 @@ function AgreementsContent() {
     setRenameModalOpen(envelope.slug)
   }
 
-  const handleDelete = async (envelope: Envelope) => {
+  const handleDelete = (envelope: Envelope) => {
     setOpenMenuId(null)
-    if (confirm(`Are you sure you want to delete "${envelope.name}"?`)) {
-      try {
-        const res = await fetch(`/api/envelopes/${envelope.slug}`, {
-          method: 'DELETE',
-          credentials: 'include',
-        })
-        if (res.ok) {
-          setEnvelopes(prev => prev.filter(e => e.id !== envelope.id))
-        } else {
-          alert('Failed to delete document')
-        }
-      } catch (error) {
-        console.error('Delete error:', error)
+    setDeleteConfirmModal(envelope)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmModal) return
+    try {
+      const res = await fetch(`/api/envelopes/${deleteConfirmModal.slug}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setEnvelopes(prev => prev.filter(e => e.id !== deleteConfirmModal.id))
+        setDeleteConfirmModal(null)
+      } else {
         alert('Failed to delete document')
       }
+    } catch (error) {
+      console.error('Delete error:', error)
+      alert('Failed to delete document')
     }
   }
 
@@ -1435,181 +1441,256 @@ function AgreementsContent() {
         </main>
       </div>
 
-      {/* Rename Modal - Transfr style */}
-      {renameModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setRenameModalOpen(null)}
-        >
-          <div 
-            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
-            onClick={e => e.stopPropagation()}
+      {/* Rename Modal - Transfr style with animation */}
+      <AnimatePresence>
+        {renameModalOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setRenameModalOpen(null)}
           >
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Rename document</h3>
-              <button 
-                onClick={() => setRenameModalOpen(null)} 
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-[10px] text-sm focus:outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20"
-                placeholder="Document name"
-                autoFocus
-              />
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => setRenameModalOpen(null)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Rename document</h3>
+                <button 
+                  onClick={() => setRenameModalOpen(null)} 
+                  className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitRename}
-                  className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Rename
+                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+              <div className="p-6">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-[10px] text-sm focus:outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20"
+                  placeholder="Document name"
+                  autoFocus
+                />
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => setRenameModalOpen(null)}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={submitRename}
+                    className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Rename
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Signing Order Modal - Transfr style */}
-      {signingOrderModal && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => setSigningOrderModal(null)}
-        >
-          <div 
-            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
-            onClick={e => e.stopPropagation()}
+      {/* Signing Order Modal - Transfr style with animation */}
+      <AnimatePresence>
+        {signingOrderModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setSigningOrderModal(null)}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Signing order</h3>
-              <button
-                onClick={() => setSigningOrderModal(null)}
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Signing order</h3>
+                <button
+                  onClick={() => setSigningOrderModal(null)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
 
-            {/* Content */}
-            <div className="p-6">
-              <div className="space-y-0">
-                {/* Sender */}
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-[#08CF65] flex items-center justify-center text-white text-sm font-medium">
-                      1
-                    </div>
-                    <div className="w-px h-6 bg-gray-200 border-l border-dashed border-gray-300" />
-                  </div>
-                  <div className="flex-1 flex items-center gap-3 pb-4">
-                    <span className="text-sm text-gray-600">Sender</span>
-                    <Tooltip content={user?.name || user?.email || 'Sender'} position="bottom">
-                      <div className={`w-9 h-9 rounded-full ${getAvatarColor(signingOrderModal.createdBy || user?.email || '')} flex items-center justify-center text-xs font-semibold text-gray-800`}>
-                        {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+              {/* Content */}
+              <div className="p-6">
+                <div className="space-y-0">
+                  {/* Sender */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className="w-8 h-8 rounded-full bg-[#08CF65] flex items-center justify-center text-white text-sm font-medium">
+                        1
                       </div>
-                    </Tooltip>
+                      <div className="w-px h-6 bg-gray-200 border-l border-dashed border-gray-300" />
+                    </div>
+                    <div className="flex-1 flex items-center gap-3 pb-4">
+                      <span className="text-sm text-gray-600">Sender</span>
+                      <Tooltip content={user?.name || user?.email || 'Sender'} position="bottom">
+                        <div className={`w-9 h-9 rounded-full ${getAvatarColor(signingOrderModal.createdBy || user?.email || '')} flex items-center justify-center text-xs font-semibold text-gray-800`}>
+                          {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                        </div>
+                      </Tooltip>
+                    </div>
                   </div>
-                </div>
 
-                {/* Signers */}
-                <div className="flex items-start gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                      signingOrderModal.signers.every(s => s.status === 'signed') ? 'bg-[#08CF65]' : 'bg-[#7E33F7]'
-                    }`}>
-                      2
+                  {/* Signers */}
+                  <div className="flex items-start gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
+                        signingOrderModal.signers.every(s => s.status === 'signed') ? 'bg-[#08CF65]' : 'bg-[#7E33F7]'
+                      }`}>
+                        2
+                      </div>
+                      <div className="w-px h-6 bg-gray-200 border-l border-dashed border-gray-300" />
                     </div>
-                    <div className="w-px h-6 bg-gray-200 border-l border-dashed border-gray-300" />
-                  </div>
-                  <div className="flex-1 pb-4">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm text-gray-600">Signers</span>
-                      {signingOrderModal.signers.every(s => s.status === 'signed') ? (
-                        <span className="flex items-center gap-1 text-xs text-[#08CF65]">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          Approved
-                        </span>
-                      ) : signingOrderModal.signers.some(s => s.status === 'pending') ? (
-                        <span className="flex items-center gap-1 text-xs text-[#FFAD12]">
-                          <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                          Need to sign
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {signingOrderModal.signers.map((signer, i) => (
-                        <Tooltip 
-                          key={i} 
-                          content={`${signer.name || signer.email}${signer.status === 'signed' ? ' - Signé ✓' : ' - En attente'}`} 
-                          position="bottom"
-                        >
-                          <div className="relative">
-                            <div
-                              className={`w-9 h-9 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800 ${signer.status === 'signed' ? 'ring-2 ring-[#08CF65]' : ''}`}
-                            >
-                              {(signer.name || signer.email).slice(0, 2).toUpperCase()}
-                            </div>
-                            {signer.status === 'signed' && (
-                              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#08CF65] rounded-full flex items-center justify-center">
-                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+                    <div className="flex-1 pb-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-sm text-gray-600">Signers</span>
+                        {signingOrderModal.signers.every(s => s.status === 'signed') ? (
+                          <span className="flex items-center gap-1 text-xs text-[#08CF65]">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Approved
+                          </span>
+                        ) : signingOrderModal.signers.some(s => s.status === 'pending') ? (
+                          <span className="flex items-center gap-1 text-xs text-[#FFAD12]">
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            Need to sign
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {signingOrderModal.signers.map((signer, i) => (
+                          <Tooltip 
+                            key={i} 
+                            content={`${signer.name || signer.email}${signer.status === 'signed' ? ' - Signé ✓' : ' - En attente'}`} 
+                            position="bottom"
+                          >
+                            <div className="relative">
+                              <div
+                                className={`w-9 h-9 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800 ${signer.status === 'signed' ? 'ring-2 ring-[#08CF65]' : ''}`}
+                              >
+                                {(signer.name || signer.email).slice(0, 2).toUpperCase()}
                               </div>
-                            )}
-                          </div>
-                        </Tooltip>
-                      ))}
+                              {signer.status === 'signed' && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#08CF65] rounded-full flex items-center justify-center">
+                                  <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </Tooltip>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Final status */}
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      signingOrderModal.status === 'completed' ? 'bg-[#08CF65] text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                      {signingOrderModal.status === 'completed' ? (
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : '3'}
+                  {/* Final status */}
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        signingOrderModal.status === 'completed' ? 'bg-[#08CF65] text-white' : 'bg-gray-200 text-gray-500'
+                      }`}>
+                        {signingOrderModal.status === 'completed' ? (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : '3'}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex-1">
-                    <span className="text-sm text-gray-600">
-                      {signingOrderModal.status === 'completed' ? 'Approved' : 'In progress'}
-                    </span>
+                    <div className="flex-1">
+                      <span className="text-sm text-gray-600">
+                        {signingOrderModal.status === 'completed' ? 'Approved' : 'In progress'}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal with animation */}
+      <AnimatePresence>
+        {deleteConfirmModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setDeleteConfirmModal(null)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">Delete this agreement?</h3>
+                <button 
+                  onClick={() => setDeleteConfirmModal(null)} 
+                  className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-600 mb-6">
+                  This action can&apos;t be undone.
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setDeleteConfirmModal(null)}
+                    className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Drime File Picker Modal */}
       <DrimeFilePicker
