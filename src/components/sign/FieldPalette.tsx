@@ -189,7 +189,7 @@ export default function FieldPalette({
                               e.stopPropagation()
                               setEditingRecipientId(recipient.id)
                             }}
-                            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="p-1 text-gray-900 hover:text-gray-600 transition-colors"
                           >
                             <img src="/icons/rename.svg" alt="" className="w-4 h-4" />
                           </button>

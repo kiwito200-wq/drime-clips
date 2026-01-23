@@ -365,7 +365,8 @@ export default function StepFields({
                   onBlur={saveName}
                   onKeyDown={handleNameKeyDown}
                   disabled={isSavingName}
-                  className="font-medium text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none py-0.5 px-1 min-w-[200px]"
+                  className="font-medium text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none"
+                  style={{ width: `${Math.max(editedName.length * 8, 100)}px` }}
                 />
                 {isSavingName && (
                   <div className="w-3 h-3 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
