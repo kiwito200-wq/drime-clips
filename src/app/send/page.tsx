@@ -410,20 +410,19 @@ function SendPageContent() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header compact style HelloSign */}
       <header className="bg-white border-b">
-        <div className="max-w-5xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Close - go back to previous page */}
-            <button
-              onClick={() => router.back()}
-              className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+        <div className="px-4 py-3 relative">
+          {/* Close - positioned on the left, aligned with document name below */}
+          <button
+            onClick={() => router.back()}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-            {/* Steps - Style HelloSign compact */}
-            <div className="flex items-center gap-1">
+          {/* Steps - Centered in viewport */}
+          <div className="flex items-center justify-center gap-1">
               {STEPS.map((step, index) => {
                 const isActive = currentStep === step.id
                 const isCompleted = currentStep > step.id
@@ -459,10 +458,6 @@ function SendPageContent() {
                 )
               })}
             </div>
-
-            {/* Spacer */}
-            <div className="w-9" />
-          </div>
         </div>
       </header>
 
