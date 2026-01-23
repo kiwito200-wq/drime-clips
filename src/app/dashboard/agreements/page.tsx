@@ -61,7 +61,10 @@ const RenameIcon = () => (
 )
 
 const DeleteIcon = () => (
-  <img src="/icons/delete.svg" alt="" className="w-5 h-5" />
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14.9624 3.87898L15.7806 5.66377H18.42C19.2315 5.66377 19.8894 6.32166 19.8894 7.1332V8.2214C19.8894 8.77625 19.4396 9.22605 18.8848 9.22605H5.11501C4.56015 9.22605 4.11035 8.77625 4.11035 8.2214V7.1332C4.11035 6.32166 4.76823 5.66377 5.57978 5.66377H8.2192L9.0374 3.87898C9.28294 3.34338 9.8181 3 10.4073 3H13.5925C14.1817 3 14.7168 3.34338 14.9624 3.87898Z" />
+    <path d="M18.3504 9.30078V17.9865C18.3504 19.6511 17.0177 21.0005 15.3738 21.0005H8.62696C6.98305 21.0005 5.65039 19.6511 5.65039 17.9865V9.30078" />
+  </svg>
 )
 
 // Import dropdown icons
@@ -103,16 +106,24 @@ const PenIcon = () => (
   <img src="/icons/to-sign.svg" alt="" className="w-4 h-4" />
 )
 
-const ClockIcon = () => (
-  <img src="/icons/clock.svg" alt="" className="w-4 h-4" />
+const ClockIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 21C16.9709 21 21 16.9699 21 12C21 7.02908 16.9709 3 12 3C7.02908 3 3 7.02908 3 12C3 16.9699 7.02908 21 12 21Z" />
+    <path d="M15.7096 12.0766L12 12.0766V6.47766" />
+  </svg>
 )
 
-const CheckIcon = () => (
-  <img src="/icons/check.svg" alt="" className="w-4 h-4" />
+const CheckIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M19 7.1875L9.375 16.8125L5 12.4375" />
+  </svg>
 )
 
-const XIcon = () => (
-  <img src="/icons/close.svg" alt="" className="w-4 h-4" />
+const XIcon = ({ className = "w-4 h-4" }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6 6L18 18" />
+    <path d="M18 6L6 18" />
+  </svg>
 )
 
 function AgreementsContent() {
@@ -1016,7 +1027,11 @@ function AgreementsContent() {
                       onClick={clearSessionAndRedirect}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <img src="/icons/logout.svg" alt="" className="w-5 h-5" />
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12.5039 11.1235V12.8763" />
+                        <path d="M9.44385 18.5843V5.41567C9.44385 3.72606 10.9973 2.46304 12.6529 2.80665L17.8757 3.89066C19.113 4.14748 20 5.23688 20 6.49968V17.5003C20 18.7631 19.113 19.8525 17.8757 20.1093L12.6529 21.1933C10.9973 21.537 9.44385 20.2739 9.44385 18.5843Z" />
+                        <path d="M9.30548 4.87524H6.45336C5.09841 4.87524 4 5.97283 4 7.32677V16.6731C4 18.027 5.09841 19.1246 6.45336 19.1246H9.30548" />
+                      </svg>
                       {t('profile.logout')}
                     </button>
                   </div>

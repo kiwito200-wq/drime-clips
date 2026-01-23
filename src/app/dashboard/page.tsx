@@ -73,7 +73,7 @@ const XIcon = () => (
 )
 
 const UploadIcon = () => (
-  <img src="/icons/upload-document.svg" alt="" className="w-16 h-16" />
+  <img src="/icons/upload-document.svg" alt="" className="w-12 h-12" />
 )
 
 // Avatar colors based on email hash
@@ -710,7 +710,11 @@ export default function DashboardHome() {
                       onClick={clearSessionAndRedirect}
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                     >
-                      <img src="/icons/logout.svg" alt="" className="w-5 h-5" />
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12.5039 11.1235V12.8763" />
+                        <path d="M9.44385 18.5843V5.41567C9.44385 3.72606 10.9973 2.46304 12.6529 2.80665L17.8757 3.89066C19.113 4.14748 20 5.23688 20 6.49968V17.5003C20 18.7631 19.113 19.8525 17.8757 20.1093L12.6529 21.1933C10.9973 21.537 9.44385 20.2739 9.44385 18.5843Z" />
+                        <path d="M9.30548 4.87524H6.45336C5.09841 4.87524 4 5.97283 4 7.32677V16.6731C4 18.027 5.09841 19.1246 6.45336 19.1246H9.30548" />
+                      </svg>
                       {t('profile.logout')}
                     </button>
                   </div>
