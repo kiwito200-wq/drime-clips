@@ -857,17 +857,25 @@ function AgreementsContent() {
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all"
+                className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all overflow-hidden"
               >
-                {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
+                )}
               </button>
 
               {showProfileMenu && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] overflow-hidden z-50">
                   {/* User info */}
                   <div className="p-4 flex flex-col items-center border-b border-gray-100">
-                    <div className="w-14 h-14 rounded-full bg-[#E0F5EA] flex items-center justify-center text-lg font-semibold text-[#08CF65] mb-2">
-                      {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                    <div className="w-14 h-14 rounded-full bg-[#E0F5EA] flex items-center justify-center text-lg font-semibold text-[#08CF65] mb-2 overflow-hidden">
+                      {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <p className="font-semibold text-gray-900">{user?.name || 'Utilisateur'}</p>
                     <p className="text-sm text-gray-500">{user?.email}</p>
@@ -1119,7 +1127,7 @@ function AgreementsContent() {
           </div>
 
           {/* Column headers with integrated selection toolbar */}
-          <div className="flex items-center px-8 h-10 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
+          <div className="flex items-center px-8 h-12 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
             {/* Checkbox - only visible when selecting */}
             <div className="w-8 mr-3 flex items-center justify-center">
               {selectedDocs.length > 0 && (
