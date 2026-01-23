@@ -1276,8 +1276,8 @@ function AgreementsContent() {
               <div className="w-[420px] flex-shrink-0">{locale === 'fr' ? 'Nom' : 'Name'}</div>
             )}
             
-            <div className="w-[140px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Statut' : 'Status')}</div>
-            <div className="w-[140px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Destinataires' : 'Recipients')}</div>
+            <div className="w-[160px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Statut' : 'Status')}</div>
+            <div className="w-[160px] flex-shrink-0">{selectedDocs.length === 0 && (locale === 'fr' ? 'Destinataires' : 'Recipients')}</div>
             <div className="flex-1">{selectedDocs.length === 0 && (locale === 'fr' ? 'Mis à jour' : 'Last updated')}</div>
             <div className="w-10"></div>
           </div>
@@ -1354,7 +1354,7 @@ function AgreementsContent() {
                       </div>
 
                       {/* Status */}
-                      <div className="w-[140px] flex-shrink-0">
+                      <div className="w-[160px] flex-shrink-0">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${statusBadge.bgColor} ${statusBadge.textColor}`}>
                           {statusBadge.icon}
                           {statusBadge.label}
@@ -1362,7 +1362,7 @@ function AgreementsContent() {
                       </div>
 
                       {/* Recipients - clickable to show signing order */}
-                      <div className="w-[140px] flex-shrink-0">
+                      <div className="w-[160px] flex-shrink-0">
                         <Tooltip content="Click to see recipient list" position="top">
                           <button
                             onClick={(e) => { e.stopPropagation(); setSigningOrderModal(envelope) }}
