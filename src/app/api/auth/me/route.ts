@@ -54,18 +54,14 @@ export async function GET(request: NextRequest) {
             // Log all user fields to find the avatar
             console.log('[Auth] Drime user fields:', Object.keys(drimeData.user))
             
-            // Extract avatar URL - try multiple field names (common in Laravel/PHP APIs)
-            const avatarUrl = drimeData.user.avatar_url 
-              || drimeData.user.avatar 
-              || drimeData.user.avatarUrl 
-              || drimeData.user.profile_photo_url 
-              || drimeData.user.profile_photo_path
-              || drimeData.user.photo_url
-              || drimeData.user.photo
-              || drimeData.user.picture
-              || drimeData.user.image
-              || drimeData.user.image_url
-              || null
+            // Extract avatar URL - same logic as Transfr
+            let avatarUrl = drimeData.user.avatar_url || drimeData.user.avatar || null
+            
+            // If avatar is a relative path, prepend the Drime API URL
+            if (avatarUrl && !avatarUrl.startsWith('http')) {
+              avatarUrl = `${DRIME_API_URL}/${avatarUrl.replace(/^\//, '')}`
+            }
+            
             console.log('[Auth] Avatar URL found:', avatarUrl)
             
             // Create local user and session

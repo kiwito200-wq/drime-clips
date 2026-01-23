@@ -749,14 +749,14 @@ export default function DashboardHome() {
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <DocumentIcon />
                   My agreements
                 </Link>
                 <Link
                   href="/dashboard/agreements?view=sent"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <MailIcon />
                   Sent to me
@@ -770,28 +770,28 @@ export default function DashboardHome() {
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements?filter=need_to_sign"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <PenIcon />
                   Need to sign
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=in_progress"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <ClockIcon />
                   In progress
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=completed"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <CheckIcon />
                   Approved
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=rejected"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <XIcon />
                   Rejected

@@ -1041,7 +1041,7 @@ function AgreementsContent() {
               <div className="space-y-1">
                 <Link
                   href="/dashboard"
-                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-gray-900 hover:bg-[#ECEEF0] transition-colors"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <HomeIcon />
                   Dashboard
@@ -1055,9 +1055,9 @@ function AgreementsContent() {
               <div className="space-y-1">
                 <button
                   onClick={() => { setViewType('my_documents'); setFilterStatus('all') }}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     viewType === 'my_documents' && filterStatus === 'all'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1066,9 +1066,9 @@ function AgreementsContent() {
                 </button>
                 <button
                   onClick={() => { setViewType('sent_to_me'); setFilterStatus('all') }}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     viewType === 'sent_to_me'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1084,9 +1084,9 @@ function AgreementsContent() {
               <div className="space-y-1">
                 <button
                   onClick={() => setFilterStatus('need_to_sign')}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     filterStatus === 'need_to_sign'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1095,9 +1095,9 @@ function AgreementsContent() {
                 </button>
                 <button
                   onClick={() => setFilterStatus('in_progress')}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     filterStatus === 'in_progress'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1106,9 +1106,9 @@ function AgreementsContent() {
                 </button>
                 <button
                   onClick={() => setFilterStatus('completed')}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     filterStatus === 'completed'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1117,9 +1117,9 @@ function AgreementsContent() {
                 </button>
                 <button
                   onClick={() => setFilterStatus('rejected')}
-                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                  className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     filterStatus === 'rejected'
-                      ? 'bg-[#ECEEF0] text-gray-900 font-medium'
+                      ? 'bg-[#ECEEF0] text-gray-900'
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
@@ -1324,7 +1324,7 @@ function AgreementsContent() {
                             </svg>
                           )}
                         </div>
-                        <span className="text-sm text-gray-900 truncate">
+                        <span className="text-[15px] text-gray-900 truncate">
                           {envelope.name}
                         </span>
                       </div>
