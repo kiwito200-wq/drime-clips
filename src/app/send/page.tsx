@@ -427,16 +427,15 @@ function SendPageContent() {
       if (res.ok) {
         const data = await res.json()
         
-        // Redirect to success page
-        const successParams = new URLSearchParams()
-        successParams.set('name', document.name)
-        
-        // If self-sign, add the signing URL to redirect to
+        // If self-sign, redirect directly to signing page (skip success screen)
         if (data.isSelfSign && data.selfSignUrl) {
-          successParams.set('selfSign', data.selfSignUrl)
+          router.push(data.selfSignUrl)
+        } else {
+          // Otherwise show success page
+          const successParams = new URLSearchParams()
+          successParams.set('name', document.name)
+          router.push(`/send/success?${successParams.toString()}`)
         }
-        
-        router.push(`/send/success?${successParams.toString()}`)
       } else {
         const error = await res.json()
         alert(error.error || 'Échec de l\'envoi')

@@ -51,18 +51,22 @@ export async function GET(request: NextRequest) {
           console.log('[Auth] Drime response:', JSON.stringify(drimeData).substring(0, 200))
           
           if (drimeData.user) {
+            // Extract avatar URL - try multiple field names
+            const avatarUrl = drimeData.user.avatar_url || drimeData.user.avatar || drimeData.user.avatarUrl || drimeData.user.profile_photo_url || drimeData.user.image || null
+            console.log('[Auth] Avatar URL found:', avatarUrl)
+            
             // Create local user and session
             const user = await prisma.user.upsert({
               where: { email: drimeData.user.email },
               update: {
                 name: drimeData.user.name || drimeData.user.display_name,
-                avatarUrl: drimeData.user.avatar_url,
+                avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
               },
               create: {
                 email: drimeData.user.email,
                 name: drimeData.user.name || drimeData.user.display_name,
-                avatarUrl: drimeData.user.avatar_url,
+                avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
               },
             })

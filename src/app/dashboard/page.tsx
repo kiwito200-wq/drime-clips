@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
+import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
 
 interface User {
@@ -117,6 +118,8 @@ export default function DashboardHome() {
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showSignatureEditor, setShowSignatureEditor] = useState(false)
+  const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [readNotifications, setReadNotifications] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('readNotifications')
@@ -189,6 +192,20 @@ export default function DashboardHome() {
   useEffect(() => {
     checkAuthAndFetch()
   }, [checkAuthAndFetch])
+
+  // Load saved signature
+  useEffect(() => {
+    if (user) {
+      fetch('/api/user/signature', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.signatureData) {
+            setSavedSignature(data.signatureData)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [user])
 
   // Calculate stats
   const stats = {
@@ -583,17 +600,25 @@ export default function DashboardHome() {
             <div className="relative" ref={profileMenuRef}>
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all"
+                className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all overflow-hidden"
               >
-                {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
+                )}
               </button>
 
               {showProfileMenu && (
                 <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] overflow-hidden z-50">
                   {/* User info */}
                   <div className="p-4 flex flex-col items-center border-b border-gray-100">
-                    <div className="w-14 h-14 rounded-full bg-[#E0F5EA] flex items-center justify-center text-lg font-semibold text-[#08CF65] mb-2">
-                      {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                    <div className="w-14 h-14 rounded-full bg-[#E0F5EA] flex items-center justify-center text-lg font-semibold text-[#08CF65] mb-2 overflow-hidden">
+                      {user?.avatarUrl ? (
+                        <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
+                      )}
                     </div>
                     <p className="font-semibold text-gray-900">{user?.name || 'Utilisateur'}</p>
                     <p className="text-sm text-gray-500">{user?.email}</p>
@@ -645,6 +670,34 @@ export default function DashboardHome() {
                       </svg>
                       Mes paramètres
                     </a>
+                    {/* Signature section */}
+                    <div className="px-4 py-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Ma signature</span>
+                        <button
+                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                          className="text-xs text-[#08CF65] hover:text-[#06B557] font-medium"
+                        >
+                          Modifier
+                        </button>
+                      </div>
+                      {savedSignature ? (
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                          <img
+                            src={savedSignature}
+                            alt="Ma signature"
+                            className="h-12 object-contain mx-auto"
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                          className="w-full py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#08CF65] hover:text-[#08CF65] transition-colors"
+                        >
+                          + Ajouter une signature
+                        </button>
+                      )}
+                    </div>
                     <a
                       href="https://drime.cloud/fr/pricing"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F5F5] transition-colors"
@@ -907,6 +960,17 @@ export default function DashboardHome() {
         isOpen={showDrimeFilePicker}
         onClose={() => setShowDrimeFilePicker(false)}
         onSelect={handleDrimeFileSelect}
+      />
+
+      {/* Signature Editor Modal */}
+      <SignatureEditorModal
+        isOpen={showSignatureEditor}
+        onClose={() => setShowSignatureEditor(false)}
+        savedSignature={savedSignature}
+        onSave={(data) => {
+          setSavedSignature(data)
+          setShowSignatureEditor(false)
+        }}
       />
     </div>
   )

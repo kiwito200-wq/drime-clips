@@ -14,7 +14,7 @@ import signatureAnimation from '../../../../public/signature-animation.json'
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const selfSignUrl = searchParams.get('selfSign')
+  const documentName = searchParams.get('name')
 
   return (
     <div className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-4">
@@ -24,67 +24,53 @@ function SuccessContent() {
           <Lottie
             animationData={signatureAnimation}
             loop={false}
-            style={{ width: 500, height: 400 }}
+            style={{ width: 500, height: 400, opacity: 0.3 }}
           />
         </div>
 
         {/* "Terminé !" text overlay */}
-        <motion.h1
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.2, duration: 0.4 }}
-          className="absolute inset-0 flex items-center justify-center text-6xl font-bold text-[#7E33F7]"
-        >
-          Terminé !
-        </motion.h1>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.5, duration: 0.4 }}
+            className="text-4xl font-bold text-[#7E33F7]"
+          >
+            Terminé !
+          </motion.h1>
+        </div>
       </div>
 
       {/* Message */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.5 }}
-        className="text-center mb-8"
+        transition={{ delay: 2, duration: 0.4 }}
+        className="text-center max-w-md"
       >
-        <p className="text-xl font-semibold text-gray-900 mb-2">
-          Parfait ! Votre document a été envoyé.
+        <p className="text-gray-700 text-lg mb-2">
+          Votre document {documentName && <strong className="text-gray-900">&ldquo;{documentName}&rdquo;</strong>} a été envoyé.
         </p>
-        {selfSignUrl && (
-          <p className="text-gray-500">
-            C&apos;est à vous de signer le document.
-          </p>
-        )}
-      </motion.div>
-
-      {/* Action buttons */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.8 }}
-        className="flex flex-col items-center gap-4"
-      >
-        {selfSignUrl ? (
-          <button
-            onClick={() => router.push(selfSignUrl)}
-            className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
-          >
-            Signer mon document
-          </button>
-        ) : (
+        <p className="text-gray-500 mb-8">
+          Les destinataires recevront un email avec le lien pour signer.
+        </p>
+        
+        {/* Action buttons */}
+        <div className="flex flex-col items-center gap-4">
           <button
             onClick={() => router.push('/dashboard/agreements')}
             className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors"
           >
             Voir mes documents
           </button>
-        )}
-        
-        <button
-          onClick={() => router.push('/dashboard')}
-          className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
-        >
-          Retour au tableau de bord
-        </button>
+          
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
+          >
+            Retour au tableau de bord
+          </button>
+        </div>
       </motion.div>
     </div>
   )
