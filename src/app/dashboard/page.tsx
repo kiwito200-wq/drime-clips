@@ -40,9 +40,7 @@ const DeviceIcon = () => (
 )
 
 const DrimeIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 11H5a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1zm-7-9L4 9h16l-8-7z"/>
-  </svg>
+  <img src="/drime-icon.png" alt="Drime" className="w-5 h-5" />
 )
 
 // SVG Icons - Black color for sidebar
@@ -891,7 +889,7 @@ export default function DashboardHome() {
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
                         >
-                          <span className="text-[#08CF65]"><DrimeIcon /></span>
+                          <DrimeIcon />
                           From Drime
                         </button>
                       </div>
