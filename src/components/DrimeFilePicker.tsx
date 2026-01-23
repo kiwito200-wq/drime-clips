@@ -360,8 +360,9 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               )}
             </button>
           </div>
+        </div>
+          </motion.div>
         </motion.div>
-      </motion.div>
       )}
     </AnimatePresence>
   )
