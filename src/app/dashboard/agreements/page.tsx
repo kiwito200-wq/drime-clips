@@ -50,9 +50,9 @@ const AddRecipientsIcon = () => (
   </svg>
 )
 
-const CalendarIcon = () => (
+const DownloadIcon = () => (
   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
   </svg>
 )
 
@@ -152,11 +152,9 @@ function AgreementsContent() {
   const [viewType, setViewType] = useState<ViewType>('my_documents')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [renameModalOpen, setRenameModalOpen] = useState<string | null>(null)
-  const [dueDateModalOpen, setDueDateModalOpen] = useState<string | null>(null)
   const [signingOrderModal, setSigningOrderModal] = useState<Envelope | null>(null)
   const [newName, setNewName] = useState('')
-  const [selectedDueDate, setSelectedDueDate] = useState<number>(7)
-  const [showDueDateDropdown, setShowDueDateDropdown] = useState(false)
+  const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const [showSignDropdown, setShowSignDropdown] = useState(false)
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -177,7 +175,6 @@ function AgreementsContent() {
     }
   }, [readNotifications])
   const menuRef = useRef<HTMLDivElement>(null)
-  const dueDateDropdownRef = useRef<HTMLDivElement>(null)
   const signDropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
@@ -188,9 +185,6 @@ function AgreementsContent() {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setOpenMenuId(null)
-      }
-      if (dueDateDropdownRef.current && !dueDateDropdownRef.current.contains(event.target as Node)) {
-        setShowDueDateDropdown(false)
       }
       if (signDropdownRef.current && !signDropdownRef.current.contains(event.target as Node)) {
         setShowSignDropdown(false)
@@ -437,11 +431,6 @@ function AgreementsContent() {
     router.push(`/send?slug=${envelope.slug}&step=2`)
   }
 
-  const handleChangeDueDate = (envelope: Envelope) => {
-    setOpenMenuId(null)
-    setDueDateModalOpen(envelope.slug)
-  }
-
   const handleAuditTrail = (envelope: Envelope) => {
     setOpenMenuId(null)
     router.push(`/view/${envelope.slug}?tab=audit`)
@@ -496,28 +485,46 @@ function AgreementsContent() {
     }
   }
 
-  const submitDueDate = async () => {
-    if (!dueDateModalOpen) return
-    try {
-      const dueDate = new Date()
-      dueDate.setDate(dueDate.getDate() + selectedDueDate)
-      
-      const res = await fetch(`/api/envelopes/${dueDateModalOpen}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dueDate: dueDate.toISOString() }),
-        credentials: 'include',
-      })
-      if (res.ok) {
-        setDueDateModalOpen(null)
-        fetchEnvelopes() // Refresh to get updated data
-      } else {
-        alert('Failed to update due date')
-      }
-    } catch (error) {
-      console.error('Due date error:', error)
-      alert('Failed to update due date')
+  // Selection handlers
+  const toggleDocSelection = (docId: string) => {
+    setSelectedDocs(prev => 
+      prev.includes(docId) 
+        ? prev.filter(id => id !== docId)
+        : [...prev, docId]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedDocs.length === filteredEnvelopes.length) {
+      setSelectedDocs([])
+    } else {
+      setSelectedDocs(filteredEnvelopes.map(e => e.id))
     }
+  }
+
+  const handleBulkDownload = async () => {
+    for (const docId of selectedDocs) {
+      const envelope = envelopes.find(e => e.id === docId)
+      if (envelope) {
+        window.open(`/api/envelopes/${envelope.slug}/download`, '_blank')
+      }
+    }
+  }
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Supprimer ${selectedDocs.length} document(s) ?`)) return
+    
+    for (const docId of selectedDocs) {
+      const envelope = envelopes.find(e => e.id === docId)
+      if (envelope) {
+        await fetch(`/api/envelopes/${envelope.slug}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+      }
+    }
+    setSelectedDocs([])
+    fetchEnvelopes()
   }
 
   const getAvatarColor = (str: string) => {
@@ -1111,9 +1118,68 @@ function AgreementsContent() {
             </div>
           </div>
 
+          {/* Selection toolbar */}
+          {selectedDocs.length > 0 && (
+            <div className="flex items-center gap-4 px-8 py-3 bg-gray-50 border-b border-gray-200 flex-shrink-0">
+              <button
+                onClick={toggleSelectAll}
+                className="flex items-center gap-2 text-sm text-gray-700"
+              >
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  selectedDocs.length === filteredEnvelopes.length 
+                    ? 'bg-[#08CF65] border-[#08CF65]' 
+                    : 'border-gray-300 bg-white'
+                }`}>
+                  {selectedDocs.length === filteredEnvelopes.length ? (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : selectedDocs.length > 0 ? (
+                    <div className="w-2 h-0.5 bg-gray-400 rounded" />
+                  ) : null}
+                </div>
+                <span className="font-medium">{selectedDocs.length}/{filteredEnvelopes.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}</span>
+              </button>
+              
+              <div className="h-5 w-px bg-gray-300" />
+              
+              <button
+                onClick={handleBulkDownload}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                <DownloadIcon />
+                Télécharger
+              </button>
+              
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <DeleteIcon />
+                Supprimer
+              </button>
+            </div>
+          )}
+
           {/* Column headers */}
           <div className="flex items-center px-8 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
-            <div className="flex-1 pl-2">Name</div>
+            <div className="w-8 mr-3">
+              <button
+                onClick={toggleSelectAll}
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                  selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0
+                    ? 'bg-[#08CF65] border-[#08CF65]' 
+                    : 'border-gray-300 bg-white hover:border-gray-400'
+                }`}
+              >
+                {selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0 && (
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="flex-1">Name</div>
             <div className="w-32">Status</div>
             <div className="w-32">Recipients</div>
             <div className="w-28">Last updated</div>
@@ -1146,10 +1212,30 @@ function AgreementsContent() {
                     <div
                       key={envelope.id}
                       onClick={() => handleDocumentClick(envelope)}
-                      className="flex items-center py-3.5 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group"
+                      className={`flex items-center py-3.5 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group ${
+                        selectedDocs.includes(envelope.id) ? 'bg-[#08CF65]/5' : ''
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <div className="w-8 mr-3 flex-shrink-0">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleDocSelection(envelope.id) }}
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                            selectedDocs.includes(envelope.id)
+                              ? 'bg-[#08CF65] border-[#08CF65]' 
+                              : 'border-gray-300 bg-white hover:border-gray-400'
+                          }`}
+                        >
+                          {selectedDocs.includes(envelope.id) && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+
                       {/* Document name with thumbnail */}
-                      <div className="flex-1 flex items-center gap-3 min-w-0 pl-2">
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
                         <div className="w-8 h-8 rounded bg-white border border-gray-200 shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden">
                           {envelope.thumbnailUrl ? (
                             <img 
@@ -1243,15 +1329,6 @@ function AgreementsContent() {
                               <AddRecipientsIcon />
                               Add recipients
                             </button>
-                            {envelope.status !== 'completed' && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleChangeDueDate(envelope) }}
-                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
-                              >
-                                <CalendarIcon />
-                                Change due date
-                              </button>
-                            )}
                             <button
                               onClick={(e) => { e.stopPropagation(); handleAuditTrail(envelope) }}
                               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
@@ -1329,90 +1406,6 @@ function AgreementsContent() {
                   className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
                 >
                   Rename
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Due Date Modal - Transfr style */}
-      {dueDateModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}
-        >
-          <div 
-            className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-md"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900">Change due date</h3>
-              <button 
-                onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }} 
-                className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Expiration</label>
-              <div className="relative" ref={dueDateDropdownRef}>
-                <button
-                  type="button"
-                  onClick={() => setShowDueDateDropdown(!showDueDateDropdown)}
-                  className="w-full border border-gray-200 rounded-[10px] px-3 py-2.5 text-sm outline-none focus:border-[#08CF65] focus:ring-[3px] focus:ring-[#08CF65]/20 transition-colors cursor-pointer hover:border-gray-300 bg-white text-left flex items-center justify-between"
-                >
-                  <span>{selectedDueDate === 1 ? '1 day' : `${selectedDueDate} days`}</span>
-                  <svg className={`w-4 h-4 transition-transform ${showDueDateDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-                {showDueDateDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-1 z-[60]">
-                    {[
-                      { value: 1, label: '1 day' },
-                      { value: 3, label: '3 days' },
-                      { value: 5, label: '5 days' },
-                      { value: 7, label: '7 days' },
-                      { value: 15, label: '15 days' },
-                      { value: 30, label: '30 days' },
-                      { value: 60, label: '60 days' },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => {
-                          setSelectedDueDate(option.value)
-                          setShowDueDateDropdown(false)
-                        }}
-                        className={`w-full flex items-center px-3 py-2 text-sm text-left transition-colors ${
-                          selectedDueDate === option.value
-                            ? 'bg-[#08CF65]/10 text-[#08CF65] font-medium'
-                            : 'text-gray-900 hover:bg-[#F5F5F5]'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  onClick={() => { setDueDateModalOpen(null); setShowDueDateDropdown(false) }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={submitDueDate}
-                  className="px-4 py-2 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
-                >
-                  Save
                 </button>
               </div>
             </div>
