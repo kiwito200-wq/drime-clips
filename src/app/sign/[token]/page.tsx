@@ -53,6 +53,7 @@ export default function SignPage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [completed, setCompleted] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [pages, setPages] = useState<{ width: number; height: number }[]>([])
@@ -62,6 +63,18 @@ export default function SignPage() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.user) {
+          setIsAuthenticated(true)
+        }
+      })
+      .catch(() => {})
+  }, [])
   
   // Convert fields to Field format and sort by position (page first, then Y position top to bottom)
   const internalFields: Field[] = useMemo(() => {
@@ -424,6 +437,7 @@ export default function SignPage() {
           isCompleting={submitting}
           signerName={data?.name || ''}
           signerEmail={data?.email || ''}
+          isAuthenticated={isAuthenticated}
         />
       )}
     </div>

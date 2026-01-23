@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'rea
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
+import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
 
 interface User {
@@ -159,6 +160,9 @@ function AgreementsContent() {
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showSignatureEditor, setShowSignatureEditor] = useState(false)
+  const [savedSignature, setSavedSignature] = useState<string | null>(null)
+  const [signatureLoading, setSignatureLoading] = useState(false)
   const [readNotifications, setReadNotifications] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('readNotifications')
@@ -247,6 +251,20 @@ function AgreementsContent() {
   useEffect(() => {
     checkAuthAndFetch()
   }, [checkAuthAndFetch])
+
+  // Load saved signature
+  useEffect(() => {
+    if (user) {
+      fetch('/api/user/signature', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.signatureData) {
+            setSavedSignature(data.signatureData)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [user])
 
   const filteredEnvelopes = useMemo(() => {
     let result = envelopes
@@ -927,6 +945,34 @@ function AgreementsContent() {
                       </svg>
                       Mes paramètres
                     </a>
+                    {/* Signature section */}
+                    <div className="px-4 py-3 border-t border-gray-100">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Ma signature</span>
+                        <button
+                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                          className="text-xs text-[#08CF65] hover:text-[#06B557] font-medium"
+                        >
+                          Modifier
+                        </button>
+                      </div>
+                      {savedSignature ? (
+                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                          <img
+                            src={savedSignature}
+                            alt="Ma signature"
+                            className="h-12 object-contain mx-auto"
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                          className="w-full py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#08CF65] hover:text-[#08CF65] transition-colors"
+                        >
+                          + Ajouter une signature
+                        </button>
+                      )}
+                    </div>
                     <a
                       href="https://drime.cloud/fr/pricing"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#F5F5F5] transition-colors"
@@ -1539,6 +1585,17 @@ function AgreementsContent() {
         isOpen={showDrimeFilePicker}
         onClose={() => setShowDrimeFilePicker(false)}
         onSelect={handleDrimeFileSelect}
+      />
+
+      {/* Signature Editor Modal */}
+      <SignatureEditorModal
+        isOpen={showSignatureEditor}
+        onClose={() => setShowSignatureEditor(false)}
+        savedSignature={savedSignature}
+        onSave={(data) => {
+          setSavedSignature(data)
+          setShowSignatureEditor(false)
+        }}
       />
     </div>
   )

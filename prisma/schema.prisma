@@ -21,6 +21,9 @@ model User {
   avatarUrl       String?
   passwordHash    String?
   
+  // Saved signature (base64 data URL)
+  signatureData   String?   @db.Text
+  
   // Drime integration
   drimeUserId     String?   @unique
   drimeToken      String?

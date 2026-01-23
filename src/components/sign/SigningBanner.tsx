@@ -15,6 +15,7 @@ interface SigningBannerProps {
   isCompleting: boolean
   signerName?: string
   signerEmail?: string
+  isAuthenticated?: boolean // If user is logged in, we can save/load signatures
 }
 
 const SIGNATURE_FONTS = [
@@ -34,6 +35,7 @@ export default function SigningBanner({
   isCompleting,
   signerName = '',
   signerEmail = '',
+  isAuthenticated = false,
 }: SigningBannerProps) {
   const currentField = fields[currentFieldIndex]
   const totalFields = fields.length
@@ -50,7 +52,7 @@ export default function SigningBanner({
   const signaturePadRef = useRef<SignaturePad | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [signatureMode, setSignatureMode] = useState<'type' | 'draw' | 'upload'>('type')
+  const [signatureMode, setSignatureMode] = useState<'type' | 'draw' | 'upload'>('draw') // Default to draw if saved signature exists
   const [typedSignature, setTypedSignature] = useState(signerName)
   const [selectedFont, setSelectedFont] = useState(0)
   const [hasDrawn, setHasDrawn] = useState(false)
@@ -60,19 +62,64 @@ export default function SigningBanner({
   const [showFontDropdown, setShowFontDropdown] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
+  const [savedSignature, setSavedSignature] = useState<string | null>(null)
+  const [signatureLoaded, setSignatureLoaded] = useState(false)
+  
+  // Load saved signature on mount
+  useEffect(() => {
+    if (isAuthenticated && !signatureLoaded) {
+      fetch('/api/user/signature', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.signatureData) {
+            setSavedSignature(data.signatureData)
+            setSignatureMode('draw') // Show draw mode with saved signature
+          } else {
+            setSignatureMode('type') // Fall back to type mode
+          }
+          setSignatureLoaded(true)
+        })
+        .catch(() => {
+          setSignatureMode('type')
+          setSignatureLoaded(true)
+        })
+    } else if (!isAuthenticated) {
+      setSignatureMode('type')
+      setSignatureLoaded(true)
+    }
+  }, [isAuthenticated, signatureLoaded])
+  
+  // Save signature after completing (only if authenticated and in draw mode with a new signature)
+  const saveSignatureToUser = useCallback(async (signatureDataUrl: string) => {
+    if (!isAuthenticated) return
+    try {
+      await fetch('/api/user/signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ signatureData: signatureDataUrl }),
+      })
+    } catch (err) {
+      console.error('Failed to save signature:', err)
+    }
+  }, [isAuthenticated])
   
   // Reset when field changes
   useEffect(() => {
     if (!currentField) return
     
     if (currentField.type === 'signature' || currentField.type === 'initials') {
-      setSignatureMode('type')
+      // If we have a saved signature, default to draw mode and pre-fill it
+      if (savedSignature && currentField.type === 'signature') {
+        setSignatureMode('draw')
+        setHasDrawn(true) // Treat saved signature as already drawn
+      } else {
+        setSignatureMode('type')
+      }
       setTypedSignature(currentField.type === 'initials' 
         ? signerName.split(' ').map(n => n[0] || '').join('').toUpperCase()
         : signerName)
-      setHasDrawn(false)
       setUploadedImage(null)
-      if (signaturePadRef.current) signaturePadRef.current.clear()
     } else if (currentField.type === 'text' || currentField.type === 'name' || currentField.type === 'email') {
       const existing = fieldValues[currentField.id] || ''
       if (currentField.type === 'name' && !existing) setTextValue(signerName)
@@ -81,7 +128,7 @@ export default function SigningBanner({
     } else if (currentField.type === 'date') {
       setDateValue(fieldValues[currentField.id] || '')
     }
-  }, [currentField?.id, currentField?.type, signerName, signerEmail, fieldValues])
+  }, [currentField?.id, currentField?.type, signerName, signerEmail, fieldValues, savedSignature])
   
   // Close font dropdown when clicking outside
   useEffect(() => {
@@ -107,10 +154,35 @@ export default function SigningBanner({
       })
       
       signaturePadRef.current.addEventListener('endStroke', () => setHasDrawn(true))
+      
+      // Load saved signature into canvas if available (only for signature type, not initials)
+      if (savedSignature && currentField?.type === 'signature') {
+        const img = new Image()
+        img.onload = () => {
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            // Clear and fill with white background
+            ctx.fillStyle = 'rgb(255, 255, 255)'
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+            
+            // Calculate scaling to fit the signature
+            const scale = Math.min(
+              (canvas.offsetWidth * 0.9) / img.width,
+              (canvas.offsetHeight * 0.9) / img.height
+            )
+            const x = (canvas.offsetWidth - img.width * scale) / 2
+            const y = (canvas.offsetHeight - img.height * scale) / 2
+            
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
+            setHasDrawn(true)
+          }
+        }
+        img.src = savedSignature
+      }
     }
     
     return () => { signaturePadRef.current?.off() }
-  }, [signatureMode, currentField?.type])
+  }, [signatureMode, currentField?.type, savedSignature])
   
   // Handle file upload
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,10 +201,21 @@ export default function SigningBanner({
     if (!currentField) return
     
     if (currentField.type === 'signature' || currentField.type === 'initials') {
+      let signatureDataUrl: string | null = null
+      
       if (signatureMode === 'draw' && signaturePadRef.current && hasDrawn) {
-        onValueChange(currentField.id, signaturePadRef.current.toDataURL('image/png'))
+        signatureDataUrl = signaturePadRef.current.toDataURL('image/png')
+        onValueChange(currentField.id, signatureDataUrl)
+        // Save signature for future use (only for signature type, not initials)
+        if (currentField.type === 'signature' && isAuthenticated) {
+          saveSignatureToUser(signatureDataUrl)
+        }
       } else if (signatureMode === 'upload' && uploadedImage) {
         onValueChange(currentField.id, uploadedImage)
+        // Save uploaded signature for future use
+        if (currentField.type === 'signature' && isAuthenticated) {
+          saveSignatureToUser(uploadedImage)
+        }
       } else if (signatureMode === 'type' && typedSignature.trim()) {
         const canvas = document.createElement('canvas')
         canvas.width = 400
@@ -146,7 +229,8 @@ export default function SigningBanner({
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillText(typedSignature, 200, 60)
-          onValueChange(currentField.id, canvas.toDataURL('image/png'))
+          signatureDataUrl = canvas.toDataURL('image/png')
+          onValueChange(currentField.id, signatureDataUrl)
         }
       }
     } else if (currentField.type === 'checkbox') {
@@ -160,7 +244,7 @@ export default function SigningBanner({
     if (currentFieldIndex < totalFields - 1) {
       onFieldChange(currentFieldIndex + 1)
     }
-  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange, isAuthenticated, saveSignatureToUser])
   
   const handleBack = () => {
     if (currentFieldIndex > 0) onFieldChange(currentFieldIndex - 1)
