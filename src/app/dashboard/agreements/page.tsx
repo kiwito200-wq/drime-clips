@@ -1119,9 +1119,9 @@ function AgreementsContent() {
           </div>
 
           {/* Column headers with integrated selection toolbar */}
-          <div className="flex items-center px-8 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
+          <div className="flex items-center px-8 h-10 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
             {/* Checkbox - only visible when selecting */}
-            <div className="w-8 mr-3">
+            <div className="w-8 mr-3 flex items-center justify-center">
               {selectedDocs.length > 0 && (
                 <button
                   onClick={toggleSelectAll}
@@ -1144,20 +1144,20 @@ function AgreementsContent() {
             
             {/* Show selection info or column name */}
             {selectedDocs.length > 0 ? (
-              <div className="flex-1 flex items-center gap-4">
+              <div className="flex-1 flex items-center gap-3">
                 <span className="text-sm font-medium text-gray-700 normal-case tracking-normal">
                   {selectedDocs.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}
                 </span>
                 <button
                   onClick={handleBulkDownload}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors normal-case tracking-normal"
+                  className="flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors normal-case tracking-normal"
                 >
                   <DownloadIcon />
                   Télécharger
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors normal-case tracking-normal"
+                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 transition-colors normal-case tracking-normal"
                 >
                   <DeleteIcon />
                   Supprimer
@@ -1174,9 +1174,9 @@ function AgreementsContent() {
           </div>
 
           {/* Scrollable documents list */}
-          <div className="flex-1 overflow-y-auto px-8">
+          <div className="flex-1 overflow-y-auto">
             {filteredEnvelopes.length === 0 ? (
-              <div className="py-20 text-center">
+              <div className="py-20 text-center px-8">
                 <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <DocumentIcon />
                 </div>
@@ -1199,12 +1199,12 @@ function AgreementsContent() {
                     <div
                       key={envelope.id}
                       onClick={() => handleDocumentClick(envelope)}
-                      className={`flex items-center py-3.5 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group ${
+                      className={`flex items-center py-2.5 px-8 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group ${
                         selectedDocs.includes(envelope.id) ? 'bg-[#08CF65]/5' : ''
                       }`}
                     >
                       {/* Checkbox - visible on hover or when selected */}
-                      <div className="w-8 mr-3 flex-shrink-0">
+                      <div className="w-8 mr-3 flex-shrink-0 flex items-center justify-center">
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleDocSelection(envelope.id) }}
                           className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
