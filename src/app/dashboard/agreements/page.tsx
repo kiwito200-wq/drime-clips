@@ -1393,9 +1393,13 @@ function AgreementsContent() {
                             {envelope.signers.slice(0, 3).map((signer, i) => (
                               <div
                                 key={i}
-                                className={`w-7 h-7 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-[10px] font-semibold text-gray-800 ring-2 ring-white`}
+                                className={`w-7 h-7 rounded-full ${signer.email === user?.email && user?.avatarUrl ? '' : getAvatarColor(signer.email)} flex items-center justify-center text-[10px] font-semibold text-gray-800 ring-2 ring-white overflow-hidden`}
                               >
-                                {(signer.name || signer.email).slice(0, 2).toUpperCase()}
+                                {signer.email === user?.email && user?.avatarUrl ? (
+                                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  (signer.name || signer.email).slice(0, 2).toUpperCase()
+                                )}
                               </div>
                             ))}
                             {envelope.signers.length > 3 && (
@@ -1644,9 +1648,13 @@ function AgreementsContent() {
                           >
                             <div className="relative">
                               <div
-                                className={`w-9 h-9 rounded-full ${getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800 ${signer.status === 'signed' ? 'ring-2 ring-[#08CF65]' : ''}`}
+                                className={`w-9 h-9 rounded-full ${signer.email === user?.email && user?.avatarUrl ? '' : getAvatarColor(signer.email)} flex items-center justify-center text-xs font-semibold text-gray-800 ${signer.status === 'signed' ? 'ring-2 ring-[#08CF65]' : ''} overflow-hidden`}
                               >
-                                {(signer.name || signer.email).slice(0, 2).toUpperCase()}
+                                {signer.email === user?.email && user?.avatarUrl ? (
+                                  <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  (signer.name || signer.email).slice(0, 2).toUpperCase()
+                                )}
                               </div>
                               {signer.status === 'signed' && (
                                 <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-[#08CF65] rounded-full flex items-center justify-center">
