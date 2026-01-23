@@ -425,6 +425,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
             </div>
           ) : folders.length === 0 && files.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full">
+              <img src="/empty-files.png" alt="" className="w-24 h-24 mb-3 object-contain" />
               <p className="text-gray-500 text-sm">{t('drime.noFilesFound')}</p>
             </div>
           ) : (

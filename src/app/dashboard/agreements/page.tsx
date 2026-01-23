@@ -161,6 +161,7 @@ function AgreementsContent() {
   const [newName, setNewName] = useState('')
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const [showSignDropdown, setShowSignDropdown] = useState(false)
+  const [showEmptySignDropdown, setShowEmptySignDropdown] = useState(false)
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -184,6 +185,7 @@ function AgreementsContent() {
   }, [readNotifications])
   const menuRef = useRef<HTMLDivElement>(null)
   const signDropdownRef = useRef<HTMLDivElement>(null)
+  const emptySignDropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
@@ -196,6 +198,9 @@ function AgreementsContent() {
       }
       if (signDropdownRef.current && !signDropdownRef.current.contains(event.target as Node)) {
         setShowSignDropdown(false)
+      }
+      if (emptySignDropdownRef.current && !emptySignDropdownRef.current.contains(event.target as Node)) {
+        setShowEmptySignDropdown(false)
       }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
@@ -1305,9 +1310,49 @@ function AgreementsContent() {
                   {searchQuery ? (locale === 'fr' ? 'Aucun résultat trouvé' : 'No results found') : (locale === 'fr' ? 'Créez votre premier document' : 'Create your first document')}
                 </p>
                 {!searchQuery && (
-                  <Link href="/send" className="text-[#08CF65] text-sm font-medium hover:underline">
-                    + {locale === 'fr' ? 'Nouveau document' : 'New document'}
-                  </Link>
+                  <div className="relative inline-block" ref={emptySignDropdownRef}>
+                    <button 
+                      onClick={() => setShowEmptySignDropdown(!showEmptySignDropdown)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white text-sm font-medium rounded-lg transition-colors"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M11.3987 7.5332L15.1494 12.7706C15.3994 13.1296 15.3576 13.6063 15.0492 13.907C13.9128 14.9762 11.3238 17.5818 9.91202 20.0715C9.74467 20.3634 9.45279 20.5055 9.15993 20.5055C8.85929 20.5055 8.56741 20.3634 8.40006 20.0715C6.99707 17.5818 4.39931 14.9762 3.27167 13.907C2.95351 13.6063 2.91168 13.1296 3.1627 12.7706L5.03805 10.1519" />
+                        <path d="M9.1582 14.4102L9.15836 20.5118" />
+                        <path fillRule="evenodd" clipRule="evenodd" d="M10.5289 13.0398C10.5289 12.2819 9.91493 11.668 9.15701 11.668C8.40006 11.668 7.78516 12.2819 7.78516 13.0398C7.78516 13.7977 8.40006 14.4117 9.15701 14.4117C9.91493 14.4117 10.5289 13.7977 10.5289 13.0398Z" />
+                        <path d="M12.3012 3.48828C13.1905 3.48828 13.8317 4.34058 13.5865 5.19483L13.2382 6.40517C13.0455 7.07553 12.4326 7.53671 11.735 7.53671H6.5803C5.8827 7.53671 5.26975 7.07553 5.0771 6.40517L4.72879 5.19483C4.48263 4.34058 5.12478 3.48828 6.01405 3.48828H9.15763" />
+                        <path d="M12.2617 20.5137C14.446 20.5137 14.446 19.7266 16.6293 19.7266C18.8145 19.7266 18.8145 20.5137 20.9997 20.5137" />
+                      </svg>
+                      {locale === 'fr' ? 'Nouveau document' : 'New document'}
+                      <svg className={`w-4 h-4 transition-transform ${showEmptySignDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showEmptySignDropdown && (
+                      <div className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-2 min-w-[200px] z-10">
+                        <button
+                          onClick={() => {
+                            setShowEmptySignDropdown(false)
+                            fileInputRef.current?.click()
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          <DeviceIcon />
+                          {t('dashboard.fromDevice')}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowEmptySignDropdown(false)
+                            setShowDrimeFilePicker(true)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                        >
+                          <DrimeIcon />
+                          {t('dashboard.fromDrime')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
@@ -1428,6 +1473,17 @@ function AgreementsContent() {
                             >
                               <ViewIcon />
                               {locale === 'fr' ? 'Voir' : 'View'}
+                            </button>
+                            <button
+                              onClick={(e) => { 
+                                e.stopPropagation()
+                                window.open(`/api/envelopes/${envelope.slug}/download`, '_blank')
+                                setOpenMenuId(null)
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                            >
+                              <DownloadIcon />
+                              {locale === 'fr' ? 'Télécharger' : 'Download'}
                             </button>
                             <button
                               onClick={(e) => { e.stopPropagation(); handleAddRecipients(envelope) }}
