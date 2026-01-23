@@ -1173,7 +1173,7 @@ function AgreementsContent() {
           </div>
 
           {/* Column headers with integrated selection toolbar */}
-          <div className="flex items-center px-8 h-12 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
+          <div className="flex items-center px-8 h-14 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
             {/* Checkbox - only visible when selecting */}
             <div className="w-8 mr-3 flex items-center justify-center">
               {selectedDocs.length > 0 && (
@@ -1198,20 +1198,20 @@ function AgreementsContent() {
             
             {/* Show selection info or column name */}
             {selectedDocs.length > 0 ? (
-              <div className="flex-1 flex items-center gap-3">
+              <div className="flex-1 flex items-center gap-4">
                 <span className="text-sm font-medium text-gray-700 normal-case tracking-normal">
                   {selectedDocs.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}
                 </span>
                 <button
                   onClick={handleBulkDownload}
-                  className="flex items-center gap-1.5 text-sm text-gray-700 hover:text-gray-900 transition-colors normal-case tracking-normal"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors normal-case tracking-normal"
                 >
                   <DownloadIcon />
                   Télécharger
                 </button>
                 <button
                   onClick={handleBulkDelete}
-                  className="flex items-center gap-1.5 text-sm text-red-600 hover:text-red-700 transition-colors normal-case tracking-normal"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors normal-case tracking-normal"
                 >
                   <DeleteIcon />
                   Supprimer
