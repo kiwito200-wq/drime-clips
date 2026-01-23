@@ -28,194 +28,138 @@ export async function POST(request: NextRequest) {
     
     const headers: Record<string, string> = {
       'Cookie': cookieHeader,
-      'Accept': 'application/json, application/pdf, */*',
-      'Origin': 'https://front.preprod.drime.cloud',
-      'Referer': 'https://front.preprod.drime.cloud/',
+      'Accept': 'application/json, application/pdf, application/octet-stream, */*',
+      'Origin': DRIME_API_URL,
+      'Referer': `${DRIME_API_URL}/`,
     }
     
     if (xsrfToken) {
       headers['X-XSRF-TOKEN'] = xsrfToken
     }
 
-    // Method 1: Try direct download endpoint
-    console.log('[Drime Download] Method 1: Trying /drive/file-entries/{id}/download')
-    const downloadRes1 = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries/${fileId}/download`, {
-      method: 'GET',
-      headers,
-      redirect: 'follow',
-    })
+    // First, get file info from listing to find disk_prefix/file_name
+    console.log('[Drime Download] Getting file info for ID:', fileId)
     
-    console.log('[Drime Download] Download endpoint status:', downloadRes1.status)
-    
-    if (downloadRes1.ok) {
-      const result = await checkAndReturnPDF(downloadRes1, fileName)
-      if (result) return result
-    }
-
-    // Method 2: Try preview endpoint
-    console.log('[Drime Download] Method 2: Trying /drive/file-entries/{id}/preview')
-    const previewRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries/${fileId}/preview`, {
-      method: 'GET',
-      headers,
-      redirect: 'follow',
-    })
-    
-    console.log('[Drime Download] Preview endpoint status:', previewRes.status)
-    
-    if (previewRes.ok) {
-      const result = await checkAndReturnPDF(previewRes, fileName)
-      if (result) return result
-    }
-
-    // Method 3: Get file entry info and look for URL
-    console.log('[Drime Download] Method 3: Getting file entry info')
-    const entryRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries/${fileId}`, {
-      method: 'GET',
-      headers: { ...headers, 'Accept': 'application/json' },
-    })
-    
-    console.log('[Drime Download] File entry status:', entryRes.status)
-    
-    if (entryRes.ok) {
-      const contentType = entryRes.headers.get('content-type') || ''
-      const arrayBuffer = await entryRes.arrayBuffer()
-      
-      // Check if it's directly a PDF
-      const bytes = new Uint8Array(arrayBuffer.slice(0, 5))
-      const header = String.fromCharCode.apply(null, Array.from(bytes))
-      
-      if (header.startsWith('%PDF')) {
-        console.log('[Drime Download] Got PDF directly from file entry!')
-        return new NextResponse(arrayBuffer, {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
-            'Content-Length': String(arrayBuffer.byteLength),
-          },
-        })
-      }
-      
-      // Try to parse as JSON
-      if (contentType.includes('json')) {
-        try {
-          const text = new TextDecoder().decode(arrayBuffer)
-          const data = JSON.parse(text)
-          console.log('[Drime Download] File entry data:', JSON.stringify(data).substring(0, 500))
-          
-          const file = data.fileEntry || data.data || data.file || data
-          
-          // Look for any URL field
-          const possibleUrls = [
-            file?.url,
-            file?.file_url,
-            file?.download_url,
-            file?.preview_url,
-            file?.path ? `${DRIME_API_URL}${file.path.startsWith('/') ? '' : '/'}${file.path}` : null,
-          ].filter(Boolean) as string[]
-          
-          console.log('[Drime Download] Possible URLs:', possibleUrls)
-          
-          for (const url of possibleUrls) {
-            console.log('[Drime Download] Trying URL:', url)
-            try {
-              const directRes = await fetch(url, { 
-                headers: { 'Cookie': cookieHeader },
-                redirect: 'follow' 
-              })
-              if (directRes.ok) {
-                const result = await checkAndReturnPDF(directRes, fileName)
-                if (result) return result
-              }
-            } catch (e) {
-              console.log('[Drime Download] URL failed:', url, e)
-            }
-          }
-        } catch (e) {
-          console.log('[Drime Download] Failed to parse JSON:', e)
-        }
-      }
-    } else {
-      const errorText = await entryRes.text()
-      console.error('[Drime Download] File entry error:', entryRes.status, errorText.substring(0, 200))
-    }
-
-    // Method 4: Try shareable link
-    console.log('[Drime Download] Method 4: Creating shareable link')
-    const createLinkRes = await fetch(`${DRIME_API_URL}/api/v1/drive/shareable-link`, {
-      method: 'POST',
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        entryId: fileId,
-        allowDownload: true,
-        allowEdit: false,
-      }),
-    })
-    
-    console.log('[Drime Download] Shareable link status:', createLinkRes.status)
-    
-    if (createLinkRes.ok) {
-      const linkData = await createLinkRes.json()
-      console.log('[Drime Download] Shareable link response:', JSON.stringify(linkData).substring(0, 300))
-      
-      const shareUrl = linkData.link?.url || linkData.link || linkData.url
-      if (shareUrl) {
-        console.log('[Drime Download] Got shareable URL:', shareUrl)
-        
-        // Try to download from shareable link
-        const shareRes = await fetch(shareUrl, { redirect: 'follow' })
-        if (shareRes.ok) {
-          const result = await checkAndReturnPDF(shareRes, fileName)
-          if (result) return result
-        }
-        
-        // Try adding /download
-        const shareDownloadRes = await fetch(`${shareUrl}/download`, { redirect: 'follow' })
-        if (shareDownloadRes.ok) {
-          const result = await checkAndReturnPDF(shareDownloadRes, fileName)
-          if (result) return result
-        }
-      }
-    }
-
-    // Method 5: Try S3 style URL if available in file listing
-    console.log('[Drime Download] Method 5: Trying to get file info from listing')
     const listRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries?perPage=100`, {
       method: 'GET',
       headers: { ...headers, 'Accept': 'application/json' },
     })
     
-    if (listRes.ok) {
-      const listData = await listRes.json()
-      const files = listData.data || []
-      const targetFile = files.find((f: { id: number | string }) => String(f.id) === String(fileId))
+    if (!listRes.ok) {
+      console.error('[Drime Download] Failed to get file listing:', listRes.status)
+      return NextResponse.json({ error: 'Failed to get file listing' }, { status: 500 })
+    }
+    
+    const listData = await listRes.json()
+    const files = listData.data || []
+    const targetFile = files.find((f: { id: number | string }) => String(f.id) === String(fileId))
+    
+    if (!targetFile) {
+      console.error('[Drime Download] File not found in listing')
+      return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    }
+    
+    console.log('[Drime Download] Found file:', JSON.stringify(targetFile).substring(0, 600))
+    
+    const diskPrefix = targetFile.disk_prefix || targetFile.file_name
+    const storageName = targetFile.file_name
+    
+    // Try multiple download patterns used by Drime/BeDrive
+    const downloadPatterns = [
+      // Pattern 1: Storage endpoint with disk prefix
+      `${DRIME_API_URL}/storage/${diskPrefix}`,
+      // Pattern 2: Uploads endpoint
+      `${DRIME_API_URL}/uploads/${diskPrefix}`,
+      // Pattern 3: Storage with path
+      `${DRIME_API_URL}/storage/${storageName}`,
+      // Pattern 4: API download endpoint with query params
+      `${DRIME_API_URL}/api/v1/drive/file-entries/download/${fileId}`,
+      // Pattern 5: Drive download with file ID
+      `${DRIME_API_URL}/api/v1/drive/downloads/${fileId}`,
+      // Pattern 6: File entry download with query string
+      `${DRIME_API_URL}/api/v1/file-entries/${fileId}?download=true`,
+      // Pattern 7: Secure/signed URL pattern
+      `${DRIME_API_URL}/secure/uploads/${diskPrefix}`,
+      // Pattern 8: Public storage
+      `${DRIME_API_URL}/storage/uploads/${diskPrefix}`,
+    ]
+    
+    for (let i = 0; i < downloadPatterns.length; i++) {
+      const url = downloadPatterns[i]
+      console.log(`[Drime Download] Trying pattern ${i + 1}: ${url}`)
       
-      if (targetFile) {
-        console.log('[Drime Download] Found file in listing:', JSON.stringify(targetFile).substring(0, 500))
+      try {
+        const res = await fetch(url, {
+          method: 'GET',
+          headers,
+          redirect: 'follow',
+        })
         
+        console.log(`[Drime Download] Pattern ${i + 1} status:`, res.status, 'content-type:', res.headers.get('content-type'))
+        
+        if (res.ok) {
+          const result = await checkAndReturnPDF(res, fileName || targetFile.name)
+          if (result) {
+            console.log(`[Drime Download] Success with pattern ${i + 1}!`)
+            return result
+          }
+        }
+      } catch (e) {
+        console.log(`[Drime Download] Pattern ${i + 1} failed:`, e)
+      }
+    }
+    
+    // Try to get download URL from the API
+    console.log('[Drime Download] Trying to get download URL from API...')
+    
+    // Get file entry directly to see if there's a download URL
+    const entryRes = await fetch(`${DRIME_API_URL}/api/v1/drive/file-entries/${fileId}`, {
+      method: 'GET',
+      headers: { ...headers, 'Accept': 'application/json' },
+    })
+    
+    if (entryRes.ok) {
+      const contentType = entryRes.headers.get('content-type') || ''
+      console.log('[Drime Download] Entry response content-type:', contentType)
+      
+      if (contentType.includes('json')) {
+        const entryData = await entryRes.json()
+        console.log('[Drime Download] Entry data:', JSON.stringify(entryData).substring(0, 800))
+        
+        const entry = entryData.fileEntry || entryData.data || entryData
+        
+        // Look for any URL field
         const possibleUrls = [
-          targetFile.url,
-          targetFile.file_url,
-          targetFile.download_url,
-          targetFile.preview_url,
+          entry?.url,
+          entry?.download_url,
+          entry?.file_url,
+          entry?.src,
+          entry?.preview_url,
         ].filter(Boolean) as string[]
         
-        for (const url of possibleUrls) {
-          console.log('[Drime Download] Trying file URL from listing:', url)
+        for (const rawUrl of possibleUrls) {
+          // Make sure URL is absolute
+          const url = rawUrl.startsWith('http') ? rawUrl : `${DRIME_API_URL}/${rawUrl.replace(/^\//, '')}`
+          console.log('[Drime Download] Trying URL from entry:', url)
+          
           try {
-            const directRes = await fetch(url, { redirect: 'follow' })
-            if (directRes.ok) {
-              const result = await checkAndReturnPDF(directRes, fileName)
+            const res = await fetch(url, { headers, redirect: 'follow' })
+            if (res.ok) {
+              const result = await checkAndReturnPDF(res, fileName || targetFile.name)
               if (result) return result
             }
           } catch (e) {
-            console.log('[Drime Download] URL failed:', url, e)
+            console.log('[Drime Download] URL failed:', e)
           }
         }
       }
     }
 
     console.error('[Drime Download] All methods failed')
-    return NextResponse.json({ error: 'Failed to download file from Drime - no valid download method found' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Failed to download file from Drime',
+      details: 'Could not find a valid download endpoint. The file exists but cannot be downloaded.'
+    }, { status: 500 })
   } catch (error) {
     console.error('[Drime Download] Error:', error)
     return NextResponse.json({ error: 'Failed to download file' }, { status: 500 })
@@ -227,11 +171,14 @@ export async function POST(request: NextRequest) {
  */
 async function checkAndReturnPDF(response: Response, fileName: string): Promise<NextResponse | null> {
   try {
+    const contentType = response.headers.get('content-type') || ''
     const arrayBuffer = await response.arrayBuffer()
+    
+    // Check for PDF magic bytes
     const bytes = new Uint8Array(arrayBuffer.slice(0, 5))
     const header = String.fromCharCode.apply(null, Array.from(bytes))
     
-    console.log('[Drime Download] Response size:', arrayBuffer.byteLength, 'bytes, header:', header)
+    console.log('[Drime Download] Response size:', arrayBuffer.byteLength, 'bytes, header:', header.substring(0, 10), 'content-type:', contentType)
     
     if (header.startsWith('%PDF')) {
       console.log('[Drime Download] Success! Got PDF')
@@ -244,7 +191,18 @@ async function checkAndReturnPDF(response: Response, fileName: string): Promise<
       })
     }
     
-    console.log('[Drime Download] Response is not a PDF')
+    // Also accept if content-type says PDF and size is reasonable
+    if ((contentType.includes('pdf') || contentType.includes('octet-stream')) && arrayBuffer.byteLength > 1000) {
+      console.log('[Drime Download] Content-type indicates PDF, returning...')
+      return new NextResponse(arrayBuffer, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${fileName || 'document.pdf'}"`,
+          'Content-Length': String(arrayBuffer.byteLength),
+        },
+      })
+    }
+    
     return null
   } catch (e) {
     console.log('[Drime Download] Error checking PDF:', e)
