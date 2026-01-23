@@ -65,29 +65,32 @@ export default function SigningBanner({
   const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [signatureLoaded, setSignatureLoaded] = useState(false)
   
-  // Load saved signature on mount
+  // Load saved signature on mount - always try to load even if not authenticated
   useEffect(() => {
-    if (isAuthenticated && !signatureLoaded) {
+    if (!signatureLoaded) {
       fetch('/api/user/signature', { credentials: 'include' })
-        .then(res => res.json())
+        .then(res => {
+          if (res.ok) return res.json()
+          throw new Error('Not authenticated')
+        })
         .then(data => {
+          console.log('[SigningBanner] Loaded signature:', data.signatureData ? 'yes' : 'no')
           if (data.signatureData) {
             setSavedSignature(data.signatureData)
             setSignatureMode('draw') // Show draw mode with saved signature
+            setHasDrawn(true) // Mark as already drawn
           } else {
-            setSignatureMode('type') // Fall back to type mode
+            setSignatureMode('type')
           }
           setSignatureLoaded(true)
         })
         .catch(() => {
+          console.log('[SigningBanner] No saved signature or not authenticated')
           setSignatureMode('type')
           setSignatureLoaded(true)
         })
-    } else if (!isAuthenticated) {
-      setSignatureMode('type')
-      setSignatureLoaded(true)
     }
-  }, [isAuthenticated, signatureLoaded])
+  }, [signatureLoaded])
   
   // Save signature after completing (only if authenticated and in draw mode with a new signature)
   const saveSignatureToUser = useCallback(async (signatureDataUrl: string) => {
@@ -157,7 +160,9 @@ export default function SigningBanner({
       
       // Load saved signature into canvas if available (only for signature type, not initials)
       if (savedSignature && currentField?.type === 'signature') {
+        console.log('[SigningBanner] Loading saved signature into canvas')
         const img = new Image()
+        img.crossOrigin = 'anonymous'
         img.onload = () => {
           const ctx = canvas.getContext('2d')
           if (ctx) {
@@ -175,14 +180,18 @@ export default function SigningBanner({
             
             ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
             setHasDrawn(true)
+            console.log('[SigningBanner] Saved signature loaded into canvas')
           }
+        }
+        img.onerror = (e) => {
+          console.error('[SigningBanner] Failed to load saved signature:', e)
         }
         img.src = savedSignature
       }
     }
     
     return () => { signaturePadRef.current?.off() }
-  }, [signatureMode, currentField?.type, savedSignature])
+  }, [signatureMode, currentField?.type, savedSignature, hasStarted])
   
   // Handle file upload
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

@@ -48,11 +48,24 @@ export async function GET(request: NextRequest) {
         
         if (drimeRes.ok) {
           const drimeData = await drimeRes.json()
-          console.log('[Auth] Drime response:', JSON.stringify(drimeData).substring(0, 200))
+          console.log('[Auth] Drime full response:', JSON.stringify(drimeData).substring(0, 500))
           
           if (drimeData.user) {
-            // Extract avatar URL - try multiple field names
-            const avatarUrl = drimeData.user.avatar_url || drimeData.user.avatar || drimeData.user.avatarUrl || drimeData.user.profile_photo_url || drimeData.user.image || null
+            // Log all user fields to find the avatar
+            console.log('[Auth] Drime user fields:', Object.keys(drimeData.user))
+            
+            // Extract avatar URL - try multiple field names (common in Laravel/PHP APIs)
+            const avatarUrl = drimeData.user.avatar_url 
+              || drimeData.user.avatar 
+              || drimeData.user.avatarUrl 
+              || drimeData.user.profile_photo_url 
+              || drimeData.user.profile_photo_path
+              || drimeData.user.photo_url
+              || drimeData.user.photo
+              || drimeData.user.picture
+              || drimeData.user.image
+              || drimeData.user.image_url
+              || null
             console.log('[Auth] Avatar URL found:', avatarUrl)
             
             // Create local user and session

@@ -28,6 +28,11 @@ const allura = Allura({
 export const metadata: Metadata = {
   title: 'Drime Sign - Electronic Signatures',
   description: 'Secure and modern electronic signature service',
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
 }
 
 export default function RootLayout({

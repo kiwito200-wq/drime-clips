@@ -521,10 +521,41 @@ function AgreementsContent() {
   }
 
   const handleBulkDownload = async () => {
-    for (const docId of selectedDocs) {
-      const envelope = envelopes.find(e => e.id === docId)
+    if (selectedDocs.length === 1) {
+      // Single file - direct download
+      const envelope = envelopes.find(e => e.id === selectedDocs[0])
       if (envelope) {
         window.open(`/api/envelopes/${envelope.slug}/download`, '_blank')
+      }
+    } else {
+      // Multiple files - create ZIP
+      const slugs = selectedDocs
+        .map(docId => envelopes.find(e => e.id === docId)?.slug)
+        .filter(Boolean)
+      
+      if (slugs.length === 0) return
+      
+      try {
+        const res = await fetch('/api/envelopes/download-zip', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ slugs }),
+        })
+        
+        if (res.ok) {
+          const blob = await res.blob()
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `documents_${new Date().toISOString().split('T')[0]}.zip`
+          document.body.appendChild(a)
+          a.click()
+          window.URL.revokeObjectURL(url)
+          document.body.removeChild(a)
+        }
+      } catch (err) {
+        console.error('Failed to download ZIP:', err)
       }
     }
   }
