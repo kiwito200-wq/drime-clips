@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import StepUpload from '@/components/send/StepUpload'
 import StepSigners from '@/components/send/StepSigners'
 import StepFields from '@/components/send/StepFields'
 import StepReview from '@/components/send/StepReview'
@@ -38,12 +37,11 @@ export interface DocumentData {
   slug: string | null
 }
 
-// Step labels will be translated dynamically
+// Step labels will be translated dynamically (Document step removed - handled by dashboard)
 const getSteps = (locale: string) => [
-  { id: 1, label: locale === 'fr' ? 'Document' : 'Document' },
-  { id: 2, label: locale === 'fr' ? 'Signataires' : 'Signers' },
-  { id: 3, label: locale === 'fr' ? 'Champs' : 'Fields' },
-  { id: 4, label: locale === 'fr' ? 'Envoyer' : 'Send' },
+  { id: 2, displayId: 1, label: locale === 'fr' ? 'Signataires' : 'Signers' },
+  { id: 3, displayId: 2, label: locale === 'fr' ? 'Champs' : 'Fields' },
+  { id: 4, displayId: 3, label: locale === 'fr' ? 'Envoyer' : 'Send' },
 ]
 
 // Drime official accent colors
@@ -63,7 +61,7 @@ function SendPageContent() {
   
   const STEPS = getSteps(locale)
   
-  const [currentStep, setCurrentStep] = useState(1)
+  const [currentStep, setCurrentStep] = useState(2) // Start at signers step (Document handled by dashboard)
   const [document, setDocument] = useState<DocumentData>({
     file: null,
     name: '',
@@ -135,52 +133,6 @@ function SendPageContent() {
       setIsLoading(false)
     }
   }
-
-  // Upload document
-  const handleDocumentUpload = useCallback(async (file: File, name: string) => {
-    setIsLoading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('name', name)
-      
-      // Generate thumbnail client-side
-      try {
-        const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
-        const thumbnail = await generatePdfThumbnail(file, 128)
-        if (thumbnail) {
-          formData.append('thumbnail', thumbnail)
-        }
-      } catch (e) {
-        console.error('Thumbnail generation failed:', e)
-      }
-      
-      const res = await fetch('/api/envelopes', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      })
-      
-      if (res.ok) {
-        const data = await res.json()
-        setDocument({
-          file,
-          name,
-          pdfUrl: data.envelope.pdfUrl,
-          envelopeId: data.envelope.id,
-          slug: data.envelope.slug,
-        })
-        setCurrentStep(2)
-      } else {
-        alert('Échec de l\'upload')
-      }
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('Échec de l\'upload')
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
 
   // Self-sign - je suis le seul signataire
   const handleSelfSign = useCallback(async () => {
@@ -495,7 +447,7 @@ function SendPageContent() {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                           </svg>
                         ) : (
-                          step.id
+                          step.displayId
                         )}
                       </div>
                       <span className={`text-xs mt-1 ${isActive || isCompleted ? 'text-gray-700' : 'text-gray-400'}`}>
@@ -516,18 +468,6 @@ function SendPageContent() {
       {/* Main content */}
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {currentStep === 1 && (
-            <motion.div
-              key="step1"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-            >
-              <StepUpload onUpload={handleDocumentUpload} isLoading={isLoading} />
-            </motion.div>
-          )}
-
           {currentStep === 2 && (
             <motion.div
               key="step2"
@@ -542,7 +482,7 @@ function SendPageContent() {
                 onRemoveSigner={removeSigner}
                 onUpdateSigner={updateSigner}
                 onSelfSign={handleSelfSign}
-                onBack={() => setCurrentStep(1)}
+                onBack={() => router.push('/dashboard/agreements')}
                 onNext={async () => {
                   const saved = await saveSigners()
                   if (saved) setCurrentStep(3)
