@@ -1118,71 +1118,58 @@ function AgreementsContent() {
             </div>
           </div>
 
-          {/* Selection toolbar */}
-          {selectedDocs.length > 0 && (
-            <div className="flex items-center gap-4 px-8 py-3 bg-gray-50 border-b border-gray-200 flex-shrink-0">
-              <button
-                onClick={toggleSelectAll}
-                className="flex items-center gap-2 text-sm text-gray-700"
-              >
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                  selectedDocs.length === filteredEnvelopes.length 
-                    ? 'bg-[#08CF65] border-[#08CF65]' 
-                    : 'border-gray-300 bg-white'
-                }`}>
-                  {selectedDocs.length === filteredEnvelopes.length ? (
+          {/* Column headers with integrated selection toolbar */}
+          <div className="flex items-center px-8 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
+            {/* Checkbox - only visible when selecting */}
+            <div className="w-8 mr-3">
+              {selectedDocs.length > 0 && (
+                <button
+                  onClick={toggleSelectAll}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0
+                      ? 'bg-[#08CF65] border-[#08CF65]' 
+                      : 'border-gray-300 bg-white hover:border-gray-400'
+                  }`}
+                >
+                  {selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0 ? (
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
-                  ) : selectedDocs.length > 0 ? (
+                  ) : (
                     <div className="w-2 h-0.5 bg-gray-400 rounded" />
-                  ) : null}
-                </div>
-                <span className="font-medium">{selectedDocs.length}/{filteredEnvelopes.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}</span>
-              </button>
-              
-              <div className="h-5 w-px bg-gray-300" />
-              
-              <button
-                onClick={handleBulkDownload}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-              >
-                <DownloadIcon />
-                Télécharger
-              </button>
-              
-              <button
-                onClick={handleBulkDelete}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <DeleteIcon />
-                Supprimer
-              </button>
+                  )}
+                </button>
+              )}
             </div>
-          )}
-
-          {/* Column headers */}
-          <div className="flex items-center px-8 py-3 border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0">
-            <div className="w-8 mr-3">
-              <button
-                onClick={toggleSelectAll}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                  selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0
-                    ? 'bg-[#08CF65] border-[#08CF65]' 
-                    : 'border-gray-300 bg-white hover:border-gray-400'
-                }`}
-              >
-                {selectedDocs.length === filteredEnvelopes.length && filteredEnvelopes.length > 0 && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </button>
-            </div>
-            <div className="flex-1">Name</div>
-            <div className="w-32">Status</div>
-            <div className="w-32">Recipients</div>
-            <div className="w-28">Last updated</div>
+            
+            {/* Show selection info or column name */}
+            {selectedDocs.length > 0 ? (
+              <div className="flex-1 flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700 normal-case tracking-normal">
+                  {selectedDocs.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={handleBulkDownload}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors normal-case tracking-normal"
+                >
+                  <DownloadIcon />
+                  Télécharger
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors normal-case tracking-normal"
+                >
+                  <DeleteIcon />
+                  Supprimer
+                </button>
+              </div>
+            ) : (
+              <div className="flex-1">Name</div>
+            )}
+            
+            <div className="w-32">{selectedDocs.length === 0 && 'Status'}</div>
+            <div className="w-32">{selectedDocs.length === 0 && 'Recipients'}</div>
+            <div className="w-28">{selectedDocs.length === 0 && 'Last updated'}</div>
             <div className="w-10"></div>
           </div>
 
@@ -1216,14 +1203,14 @@ function AgreementsContent() {
                         selectedDocs.includes(envelope.id) ? 'bg-[#08CF65]/5' : ''
                       }`}
                     >
-                      {/* Checkbox */}
+                      {/* Checkbox - visible on hover or when selected */}
                       <div className="w-8 mr-3 flex-shrink-0">
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleDocSelection(envelope.id) }}
-                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                             selectedDocs.includes(envelope.id)
-                              ? 'bg-[#08CF65] border-[#08CF65]' 
-                              : 'border-gray-300 bg-white hover:border-gray-400'
+                              ? 'bg-[#08CF65] border-[#08CF65] opacity-100' 
+                              : 'border-gray-300 bg-white hover:border-gray-400 opacity-0 group-hover:opacity-100'
                           }`}
                         >
                           {selectedDocs.includes(envelope.id) && (
