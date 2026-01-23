@@ -140,6 +140,7 @@ function AgreementsContent() {
   const [renameModalOpen, setRenameModalOpen] = useState<string | null>(null)
   const [signingOrderModal, setSigningOrderModal] = useState<Envelope | null>(null)
   const [deleteConfirmModal, setDeleteConfirmModal] = useState<Envelope | null>(null)
+  const [bulkDeleteConfirmModal, setBulkDeleteConfirmModal] = useState(false)
   const [newName, setNewName] = useState('')
   const [selectedDocs, setSelectedDocs] = useState<string[]>([])
   const [showSignDropdown, setShowSignDropdown] = useState(false)
@@ -555,9 +556,11 @@ function AgreementsContent() {
     }
   }
 
-  const handleBulkDelete = async () => {
-    if (!confirm(`Supprimer ${selectedDocs.length} document(s) ?`)) return
-    
+  const handleBulkDelete = () => {
+    setBulkDeleteConfirmModal(true)
+  }
+
+  const confirmBulkDelete = async () => {
     for (const docId of selectedDocs) {
       const envelope = envelopes.find(e => e.id === docId)
       if (envelope) {
@@ -568,6 +571,7 @@ function AgreementsContent() {
       }
     }
     setSelectedDocs([])
+    setBulkDeleteConfirmModal(false)
     fetchEnvelopes()
   }
 
@@ -959,6 +963,35 @@ function AgreementsContent() {
                     </a>
                   </div>
 
+                  {/* Signature section - moved up */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.mySignature')}</span>
+                      <button
+                        onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                        className="text-xs text-[#08CF65] hover:text-[#06B557] font-medium"
+                      >
+                        {t('profile.editSignature')}
+                      </button>
+                    </div>
+                    {savedSignature ? (
+                      <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                        <img
+                          src={savedSignature}
+                          alt={t('profile.mySignature')}
+                          className="h-12 object-contain mx-auto"
+                        />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
+                        className="w-full py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#08CF65] hover:text-[#08CF65] transition-colors"
+                      >
+                        {t('profile.addSignature')}
+                      </button>
+                    )}
+                  </div>
+
                   {/* Menu items */}
                   <div className="py-2">
                     <a
@@ -975,34 +1008,6 @@ function AgreementsContent() {
                       <img src="/icons/settings.svg" alt="" className="w-5 h-5" />
                       {t('profile.settings')}
                     </a>
-                    {/* Signature section */}
-                    <div className="px-4 py-3 border-t border-gray-100">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">{t('profile.mySignature')}</span>
-                        <button
-                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
-                          className="text-xs text-[#08CF65] hover:text-[#06B557] font-medium"
-                        >
-                          {t('profile.editSignature')}
-                        </button>
-                      </div>
-                      {savedSignature ? (
-                        <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                          <img
-                            src={savedSignature}
-                            alt={t('profile.mySignature')}
-                            className="h-12 object-contain mx-auto"
-                          />
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => { setShowProfileMenu(false); setShowSignatureEditor(true) }}
-                          className="w-full py-3 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#08CF65] hover:text-[#08CF65] transition-colors"
-                        >
-                          {t('profile.addSignature')}
-                        </button>
-                      )}
-                    </div>
                     <a
                       href="https://drime.cloud/fr/pricing"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
@@ -1740,6 +1745,66 @@ function AgreementsContent() {
                   </button>
                   <button
                     onClick={confirmDelete}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    {t('common.delete')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <AnimatePresence>
+        {bulkDeleteConfirmModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={() => setBulkDeleteConfirmModal(false)}
+          >
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] w-full max-w-lg"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {locale === 'fr' ? 'Supprimer les documents' : 'Delete documents'}
+                </h3>
+                <button 
+                  onClick={() => setBulkDeleteConfirmModal(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-600 mb-6">
+                  {locale === 'fr' 
+                    ? `Êtes-vous sûr de vouloir supprimer ${selectedDocs.length} document(s) ? Cette action est irréversible.`
+                    : `Are you sure you want to delete ${selectedDocs.length} document(s)? This action cannot be undone.`
+                  }
+                </p>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setBulkDeleteConfirmModal(false)}
+                    className="px-4 py-2 text-sm text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                  <button
+                    onClick={confirmBulkDelete}
                     className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors"
                   >
                     {t('common.delete')}
