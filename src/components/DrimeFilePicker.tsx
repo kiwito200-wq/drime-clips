@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 
 interface DrimeFile {
   id: string
@@ -51,27 +52,21 @@ const FolderIcon = () => (
   </svg>
 )
 
-// Drime Logo
-const DrimeLogo = () => (
-  <svg viewBox="0 0 100 100" className="w-6 h-6">
-    <rect width="100" height="100" rx="20" fill="#08CF65"/>
-    <path d="M30 35h40v10H40v10h25v10H40v10h30v10H30V35z" fill="white"/>
-  </svg>
-)
-
 export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFilePickerProps) {
   const [files, setFiles] = useState<DrimeFile[]>([])
   const [folders, setFolders] = useState<DrimeFolder[]>([])
   const [loading, setLoading] = useState(true)
-  const [downloading, setDownloading] = useState<string | null>(null)
+  const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [breadcrumbs, setBreadcrumbs] = useState<BreadcrumbItem[]>([{ id: null, name: 'Drime' }])
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<DrimeFile | null>(null)
 
   const fetchFiles = useCallback(async (folderId: string | null, search: string = '') => {
     setLoading(true)
     setError(null)
+    setSelectedFile(null)
     
     try {
       let url = '/api/drime/files?perPage=100'
@@ -102,6 +97,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       setSearchQuery('')
       setBreadcrumbs([{ id: null, name: 'Drime' }])
       setCurrentFolderId(null)
+      setSelectedFile(null)
       fetchFiles(null)
     }
   }, [isOpen, fetchFiles])
@@ -126,19 +122,29 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
     fetchFiles(currentFolderId, searchQuery)
   }
 
-  const handleSelectFile = async (file: DrimeFile) => {
-    setDownloading(file.id)
+  const handleFileSelect = (file: DrimeFile) => {
+    if (selectedFile?.id === file.id) {
+      setSelectedFile(null)
+    } else {
+      setSelectedFile(file)
+    }
+  }
+
+  const handleConfirmSelection = async () => {
+    if (!selectedFile) return
+    
+    setDownloading(true)
     try {
       const res = await fetch('/api/drime/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId: file.id, fileName: file.name }),
+        body: JSON.stringify({ fileId: selectedFile.id, fileName: selectedFile.name }),
         credentials: 'include',
       })
 
       if (res.ok) {
         const blob = await res.blob()
-        onSelect(file, blob)
+        onSelect(selectedFile, blob)
         onClose()
       } else {
         setError('Échec du téléchargement')
@@ -146,7 +152,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
     } catch {
       setError('Échec du téléchargement')
     } finally {
-      setDownloading(null)
+      setDownloading(false)
     }
   }
 
@@ -162,12 +168,15 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
         style={{ maxHeight: '600px' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header with Drime branding */}
+        {/* Header with Drime logo */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            <DrimeLogo />
-            <span className="text-lg font-semibold text-gray-900">Drime</span>
-          </div>
+          <Image 
+            src="/drime-logo-black.png" 
+            alt="Drime" 
+            width={100} 
+            height={28}
+            className="h-7 w-auto"
+          />
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -197,7 +206,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
         </div>
 
         {/* Breadcrumbs */}
-        <div className="px-5 py-2 border-b border-gray-100 bg-gray-50">
+        <div className="px-5 py-2 border-b border-gray-200">
           <div className="flex items-center gap-1 text-sm">
             {breadcrumbs.map((crumb, index) => (
               <div key={index} className="flex items-center">
@@ -244,50 +253,91 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                 <button
                   key={folder.id}
                   onClick={() => handleFolderClick(folder)}
-                  className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-5 py-3 hover:bg-blue-50 transition-colors text-left"
                 >
                   <FolderIcon />
                   <span className="text-sm text-gray-900 truncate flex-1">{folder.name}</span>
                 </button>
               ))}
               
-              {/* PDF Files */}
-              {files.map((file) => (
-                <button
-                  key={file.id}
-                  onClick={() => handleSelectFile(file)}
-                  disabled={downloading !== null}
-                  className={`w-full flex items-center gap-3 px-5 py-3 transition-colors text-left ${
-                    downloading === file.id 
-                      ? 'bg-[#08CF65]/5' 
-                      : 'hover:bg-gray-50'
-                  } ${downloading !== null && downloading !== file.id ? 'opacity-50' : ''}`}
-                >
-                  <PDFIcon />
-                  <span className="text-sm text-gray-900 truncate flex-1">{file.name}</span>
-                  {downloading === file.id && (
-                    <div className="w-4 h-4 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
-                  )}
-                </button>
-              ))}
+              {/* PDF Files with checkbox */}
+              {files.map((file) => {
+                const isSelected = selectedFile?.id === file.id
+                return (
+                  <div
+                    key={file.id}
+                    onClick={() => handleFileSelect(file)}
+                    className={`w-full flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors ${
+                      isSelected ? 'bg-blue-100' : 'hover:bg-blue-50'
+                    }`}
+                  >
+                    {/* Checkbox */}
+                    <div 
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isSelected 
+                          ? 'bg-[#0061FE] border-[#0061FE]' 
+                          : 'border-gray-300 bg-white'
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                    <PDFIcon />
+                    <span className="text-sm text-gray-900 truncate flex-1">{file.name}</span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
-          >
-            Annuler
-          </button>
-          <button
-            disabled
-            className="px-4 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-md opacity-50 cursor-not-allowed"
-          >
-            Sélectionner
-          </button>
+        <div className="flex items-center justify-between px-5 py-4 border-t border-gray-200">
+          <div className="text-sm text-gray-600">
+            {selectedFile ? (
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+                1 sélectionné
+                <button 
+                  onClick={() => setSelectedFile(null)}
+                  className="text-gray-500 hover:text-gray-700 ml-1"
+                >
+                  Désélectionner
+                </button>
+              </span>
+            ) : null}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleConfirmSelection}
+              disabled={!selectedFile || downloading}
+              className={`px-4 py-2 text-sm font-medium text-white rounded-md transition-colors ${
+                selectedFile && !downloading
+                  ? 'bg-[#0061FE] hover:bg-[#0052D4]' 
+                  : 'bg-gray-300 cursor-not-allowed'
+              }`}
+            >
+              {downloading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Chargement...
+                </span>
+              ) : (
+                'Sélectionner'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
