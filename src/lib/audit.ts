@@ -15,6 +15,10 @@ export type AuditAction =
   | 'downloaded'
   | 'reminder_sent'
   | 'expired'
+  | 'phone_verified'
+  | 'phone_2fa_verified'
+  | 'renamed'
+  | 'due_date_changed'
 
 export interface AuditDetails {
   ip?: string
@@ -236,6 +240,10 @@ function formatActionLabel(action: string): string {
     downloaded: 'Document téléchargé',
     reminder_sent: 'Rappel envoyé',
     expired: 'Document expiré',
+    phone_verified: 'Téléphone vérifié (champ)',
+    phone_2fa_verified: 'Téléphone vérifié (2FA document)',
+    renamed: 'Document renommé',
+    due_date_changed: 'Date d\'échéance modifiée',
   }
   return labels[action] || action
 }
@@ -277,7 +285,19 @@ export function generateAuditTrailHtml(audit: AuditTrailDocument): string {
     </tr>
   `).join('')
   
-  const eventsHtml = audit.events.map(event => `
+  const eventsHtml = audit.events.map(event => {
+    // Build extra details for phone verification
+    let extraDetails = ''
+    if (event.details.phone) {
+      extraDetails += ` • Tél: ${event.details.phone}`
+    }
+    if (event.details.verificationType) {
+      extraDetails += event.details.verificationType === 'document_access_2fa' 
+        ? ' (Accès document)' 
+        : ' (Champ formulaire)'
+    }
+    
+    return `
     <tr>
       <td style="padding: 10px 12px; border-bottom: 1px solid #F3F4F6; white-space: nowrap; color: #6B7280; font-size: 13px;">
         ${formatDate(event.timestamp)}
@@ -287,10 +307,11 @@ export function generateAuditTrailHtml(audit: AuditTrailDocument): string {
         <span style="color: #6B7280; font-size: 13px;">
           ${event.actor.name || event.actor.email || 'Système'}
           ${event.details.ip ? ` • IP: ${event.details.ip}` : ''}
+          ${extraDetails}
         </span>
       </td>
     </tr>
-  `).join('')
+  `}).join('')
 
   return `
 <!DOCTYPE html>
@@ -829,6 +850,17 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       const eventDate = formatDate(event.timestamp)
       const actorName = event.actor.name || event.actor.email || 'Système'
       
+      // Build extra details string for phone verification
+      let extraInfo = ''
+      if (event.details.phone) {
+        extraInfo += ` | Tel: ${event.details.phone}`
+      }
+      if (event.details.verificationType) {
+        extraInfo += event.details.verificationType === 'document_access_2fa' 
+          ? ' (Acces doc)' 
+          : ' (Champ form)'
+      }
+      
       page.drawText(eventDate, {
         x: margin,
         y,
@@ -847,7 +879,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       
       y -= lineHeight * 0.8
       
-      page.drawText(`par ${actorName}${event.details.ip ? ` (IP: ${event.details.ip})` : ''}`, {
+      page.drawText(`par ${actorName}${event.details.ip ? ` (IP: ${event.details.ip})` : ''}${extraInfo}`, {
         x: margin + 120,
         y,
         size: 8,

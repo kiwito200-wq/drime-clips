@@ -40,6 +40,12 @@ export async function GET(request: NextRequest, { params }: Params) {
             signer: true,
           },
         },
+        auditLogs: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            signer: true,
+          },
+        },
       },
     })
 

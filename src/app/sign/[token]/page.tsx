@@ -484,6 +484,8 @@ export default function SignPage() {
           signerName={data?.name || ''}
           signerEmail={data?.email || ''}
           isAuthenticated={isAuthenticated}
+          signerId={data?.id}
+          envelopeSlug={data?.envelope?.slug}
         />
       )}
     </div>

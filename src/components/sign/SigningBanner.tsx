@@ -18,6 +18,8 @@ interface SigningBannerProps {
   signerName?: string
   signerEmail?: string
   isAuthenticated?: boolean // If user is logged in, we can save/load signatures
+  signerId?: string
+  envelopeSlug?: string
 }
 
 const SIGNATURE_FONTS = [
@@ -38,6 +40,8 @@ export default function SigningBanner({
   signerName = '',
   signerEmail = '',
   isAuthenticated = false,
+  signerId,
+  envelopeSlug,
 }: SigningBannerProps) {
   const { t, locale } = useTranslation()
   const currentField = fields[currentFieldIndex]
@@ -314,7 +318,7 @@ export default function SigningBanner({
     if (currentFieldIndex < totalFields - 1) {
       onFieldChange(currentFieldIndex + 1)
     }
-  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange, isAuthenticated, saveSignatureToUser])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, phoneValue, phoneVerified, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange, isAuthenticated, saveSignatureToUser])
   
   const handleBack = () => {
     if (currentFieldIndex > 0) onFieldChange(currentFieldIndex - 1)
@@ -806,6 +810,8 @@ export default function SigningBanner({
         onClose={() => setShowOTPModal(false)}
         onVerified={handleOTPVerified}
         phone={phoneValue}
+        envelopeSlug={envelopeSlug}
+        signerId={signerId}
         type="field"
         title="Vérification du téléphone"
         subtitle="Un code de vérification va être envoyé par SMS"

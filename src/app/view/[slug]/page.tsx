@@ -12,6 +12,15 @@ interface Signer {
   signedAt: string | null
 }
 
+interface AuditLog {
+  id: string
+  action: string
+  createdAt: string
+  details: string | null
+  ipAddress: string | null
+  signer: Signer | null
+}
+
 interface EnvelopeDetails {
   id: string
   slug: string
@@ -21,6 +30,7 @@ interface EnvelopeDetails {
   createdAt: string
   updatedAt: string
   signers: Signer[]
+  auditLogs: AuditLog[]
 }
 
 export default function ViewDocumentPage() {
@@ -136,6 +146,45 @@ export default function ViewDocumentPage() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const formatActionLabel = (action: string, details?: string | null): { label: string; extra: string } => {
+    const labels: Record<string, string> = {
+      created: 'Document créé',
+      sent: 'Document envoyé pour signature',
+      viewed: 'Document consulté',
+      opened_email: 'Email d\'invitation ouvert',
+      started_signing: 'Signature commencée',
+      signed: 'Document signé',
+      declined: 'Signature refusée',
+      completed: 'Toutes les signatures complétées',
+      downloaded: 'Document téléchargé',
+      reminder_sent: 'Rappel envoyé',
+      expired: 'Document expiré',
+      phone_verified: 'Téléphone vérifié',
+      phone_2fa_verified: 'Téléphone vérifié (2FA)',
+      renamed: 'Document renommé',
+      due_date_changed: 'Date d\'échéance modifiée',
+    }
+    
+    let extra = ''
+    if (details) {
+      try {
+        const parsed = JSON.parse(details)
+        if (parsed.phone) {
+          extra = `Tél: ${parsed.phone}`
+          if (parsed.verificationType === 'document_access_2fa') {
+            extra += ' (Accès document)'
+          } else if (parsed.verificationType === 'field_verification') {
+            extra += ' (Champ formulaire)'
+          }
+        }
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    return { label: labels[action] || action, extra }
   }
 
   if (loading) {
@@ -307,31 +356,57 @@ export default function ViewDocumentPage() {
           {/* Audit Trail */}
           <div className="mt-8">
             <h2 className="font-semibold text-gray-900 mb-4">Historique</h2>
-            <div className="space-y-3 text-sm">
-              <div className="flex items-start gap-2">
-                <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
-                <div>
-                  <p className="text-gray-900">Document créé</p>
-                  <p className="text-gray-500">{formatDate(envelope.createdAt)}</p>
-                </div>
-              </div>
-              {(envelope.signers || []).filter(s => s.status === 'signed').map(signer => (
-                <div key={signer.id} className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
-                  <div>
-                    <p className="text-gray-900">{signer.name || signer.email} a signé</p>
-                    <p className="text-gray-500">{formatDate(signer.signedAt)}</p>
+            <div className="space-y-3 text-sm max-h-[400px] overflow-y-auto pr-2">
+              {(envelope.auditLogs || []).length > 0 ? (
+                envelope.auditLogs.map((log) => {
+                  const { label, extra } = formatActionLabel(log.action, log.details)
+                  const actorName = log.signer?.name || log.signer?.email || 'Système'
+                  
+                  // Determine dot color based on action type
+                  const isPhoneVerification = log.action.includes('phone')
+                  const isNegative = log.action === 'declined' || log.action === 'expired'
+                  const dotColor = isPhoneVerification 
+                    ? 'bg-blue-500' 
+                    : isNegative 
+                      ? 'bg-red-500' 
+                      : 'bg-[#08CF65]'
+                  
+                  return (
+                    <div key={log.id} className="flex items-start gap-2">
+                      <div className={`w-2 h-2 ${dotColor} rounded-full mt-1.5 flex-shrink-0`} />
+                      <div className="min-w-0">
+                        <p className="text-gray-900">{label}</p>
+                        <p className="text-gray-500 text-xs">
+                          {actorName} • {formatDate(log.createdAt)}
+                          {log.ipAddress && <span className="ml-1">(IP: {log.ipAddress})</span>}
+                        </p>
+                        {extra && (
+                          <p className="text-blue-600 text-xs mt-0.5">{extra}</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                // Fallback if no audit logs
+                <>
+                  <div className="flex items-start gap-2">
+                    <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
+                    <div>
+                      <p className="text-gray-900">Document créé</p>
+                      <p className="text-gray-500 text-xs">{formatDate(envelope.createdAt)}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {envelope.status === 'completed' && (
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
-                  <div>
-                    <p className="text-gray-900">Document complété</p>
-                    <p className="text-gray-500">{formatDate(envelope.updatedAt)}</p>
-                  </div>
-                </div>
+                  {(envelope.signers || []).filter(s => s.status === 'signed').map(signer => (
+                    <div key={signer.id} className="flex items-start gap-2">
+                      <div className="w-2 h-2 bg-[#08CF65] rounded-full mt-1.5" />
+                      <div>
+                        <p className="text-gray-900">{signer.name || signer.email} a signé</p>
+                        <p className="text-gray-500 text-xs">{formatDate(signer.signedAt)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           </div>
