@@ -126,8 +126,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
     })
 
     const createdSigners = await Promise.all(
-      signers.map((s: { email: string; name?: string; color?: string; phone2FA?: boolean; phone2FANumber?: string }, index: number) =>
-        prisma.signer.create({
+      signers.map((s: { email: string; name?: string; color?: string; phone2FA?: boolean; phone2FANumber?: string; phoneCountry?: string }, index: number) => {
+        // Combine country code and phone number
+        let fullPhone = null
+        if (s.phone2FA && s.phone2FANumber) {
+          const country = s.phoneCountry || '+33'
+          fullPhone = country + s.phone2FANumber
+        }
+        
+        return prisma.signer.create({
           data: {
             envelopeId: envelope.id,
             email: s.email,
@@ -136,10 +143,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
             order: index,
             token: generateToken(),
             phone2FA: s.phone2FA || false,
-            phone2FANumber: s.phone2FANumber || null,
+            phone2FANumber: fullPhone,
           },
         })
-      )
+      })
     )
 
     return NextResponse.json({ signers: createdSigners })

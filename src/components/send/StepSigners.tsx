@@ -1,7 +1,55 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+// Country codes with flags
+const COUNTRIES = [
+  { code: 'FR', dial: '+33', name: 'France', flag: '🇫🇷' },
+  { code: 'BE', dial: '+32', name: 'Belgique', flag: '🇧🇪' },
+  { code: 'CH', dial: '+41', name: 'Suisse', flag: '🇨🇭' },
+  { code: 'CA', dial: '+1', name: 'Canada', flag: '🇨🇦' },
+  { code: 'US', dial: '+1', name: 'États-Unis', flag: '🇺🇸' },
+  { code: 'GB', dial: '+44', name: 'Royaume-Uni', flag: '🇬🇧' },
+  { code: 'DE', dial: '+49', name: 'Allemagne', flag: '🇩🇪' },
+  { code: 'ES', dial: '+34', name: 'Espagne', flag: '🇪🇸' },
+  { code: 'IT', dial: '+39', name: 'Italie', flag: '🇮🇹' },
+  { code: 'PT', dial: '+351', name: 'Portugal', flag: '🇵🇹' },
+  { code: 'NL', dial: '+31', name: 'Pays-Bas', flag: '🇳🇱' },
+  { code: 'LU', dial: '+352', name: 'Luxembourg', flag: '🇱🇺' },
+  { code: 'MC', dial: '+377', name: 'Monaco', flag: '🇲🇨' },
+  { code: 'MA', dial: '+212', name: 'Maroc', flag: '🇲🇦' },
+  { code: 'TN', dial: '+216', name: 'Tunisie', flag: '🇹🇳' },
+  { code: 'DZ', dial: '+213', name: 'Algérie', flag: '🇩🇿' },
+  { code: 'SN', dial: '+221', name: 'Sénégal', flag: '🇸🇳' },
+  { code: 'CI', dial: '+225', name: 'Côte d\'Ivoire', flag: '🇨🇮' },
+  { code: 'CM', dial: '+237', name: 'Cameroun', flag: '🇨🇲' },
+  { code: 'MG', dial: '+261', name: 'Madagascar', flag: '🇲🇬' },
+  { code: 'RE', dial: '+262', name: 'La Réunion', flag: '🇷🇪' },
+  { code: 'MQ', dial: '+596', name: 'Martinique', flag: '🇲🇶' },
+  { code: 'GP', dial: '+590', name: 'Guadeloupe', flag: '🇬🇵' },
+  { code: 'GF', dial: '+594', name: 'Guyane', flag: '🇬🇫' },
+  { code: 'PF', dial: '+689', name: 'Polynésie française', flag: '🇵🇫' },
+  { code: 'NC', dial: '+687', name: 'Nouvelle-Calédonie', flag: '🇳🇨' },
+  { code: 'AT', dial: '+43', name: 'Autriche', flag: '🇦🇹' },
+  { code: 'PL', dial: '+48', name: 'Pologne', flag: '🇵🇱' },
+  { code: 'RO', dial: '+40', name: 'Roumanie', flag: '🇷🇴' },
+  { code: 'GR', dial: '+30', name: 'Grèce', flag: '🇬🇷' },
+  { code: 'IE', dial: '+353', name: 'Irlande', flag: '🇮🇪' },
+  { code: 'SE', dial: '+46', name: 'Suède', flag: '🇸🇪' },
+  { code: 'NO', dial: '+47', name: 'Norvège', flag: '🇳🇴' },
+  { code: 'DK', dial: '+45', name: 'Danemark', flag: '🇩🇰' },
+  { code: 'FI', dial: '+358', name: 'Finlande', flag: '🇫🇮' },
+  { code: 'JP', dial: '+81', name: 'Japon', flag: '🇯🇵' },
+  { code: 'CN', dial: '+86', name: 'Chine', flag: '🇨🇳' },
+  { code: 'KR', dial: '+82', name: 'Corée du Sud', flag: '🇰🇷' },
+  { code: 'IN', dial: '+91', name: 'Inde', flag: '🇮🇳' },
+  { code: 'AU', dial: '+61', name: 'Australie', flag: '🇦🇺' },
+  { code: 'NZ', dial: '+64', name: 'Nouvelle-Zélande', flag: '🇳🇿' },
+  { code: 'BR', dial: '+55', name: 'Brésil', flag: '🇧🇷' },
+  { code: 'MX', dial: '+52', name: 'Mexique', flag: '🇲🇽' },
+  { code: 'AR', dial: '+54', name: 'Argentine', flag: '🇦🇷' },
+]
 
 interface Signer {
   id: string
@@ -10,6 +58,7 @@ interface Signer {
   color: string
   phone2FA?: boolean
   phone2FANumber?: string
+  phoneCountry?: string
 }
 
 interface StepSignersProps {
@@ -21,6 +70,117 @@ interface StepSignersProps {
   onBack: () => void
   onNext: () => void
   isLoading: boolean
+}
+
+// Country Code Dropdown Component
+function CountryCodeDropdown({ 
+  value, 
+  onChange,
+  signerId 
+}: { 
+  value: string
+  onChange: (dial: string) => void
+  signerId: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  
+  const selectedCountry = COUNTRIES.find(c => c.dial === value) || COUNTRIES[0]
+  
+  const filteredCountries = COUNTRIES.filter(c => 
+    c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.dial.includes(search) ||
+    c.code.toLowerCase().includes(search.toLowerCase())
+  )
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+        setSearch('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+  
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isOpen])
+  
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-1 px-2 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 transition-colors min-w-[90px]"
+      >
+        <span className="text-lg">{selectedCountry.flag}</span>
+        <span className="text-gray-600">{selectedCountry.dial}</span>
+        <svg className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.15 }}
+            className="absolute top-full left-0 mt-1 w-64 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden"
+          >
+            <div className="p-2 border-b border-gray-100">
+              <div className="relative">
+                <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Rechercher un pays..."
+                  className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
+                />
+              </div>
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {filteredCountries.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                  Aucun pays trouvé
+                </div>
+              ) : (
+                filteredCountries.map((country) => (
+                  <button
+                    key={`${signerId}-${country.code}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(country.dial)
+                      setIsOpen(false)
+                      setSearch('')
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                      country.dial === value ? 'bg-[#08CF65]/5 text-[#08CF65]' : 'text-gray-700'
+                    }`}
+                  >
+                    <span className="text-lg">{country.flag}</span>
+                    <span className="flex-1 text-left">{country.name}</span>
+                    <span className="text-gray-400">{country.dial}</span>
+                  </button>
+                ))
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
 }
 
 export default function StepSigners({
@@ -57,11 +217,18 @@ export default function StepSigners({
     setErrors({})
   }
 
-  const validatePhone = (phone?: string) => phone && phone.replace(/\D/g, '').length >= 10
+  const validatePhone = (phone?: string) => phone && phone.replace(/\D/g, '').length >= 6
   
   const canContinue = signers.length > 0 && signers.every(s => 
     validateEmail(s.email) && (!s.phone2FA || validatePhone(s.phone2FANumber))
   )
+  
+  // Format phone with country code for display/storage
+  const getFullPhoneNumber = (signer: Signer) => {
+    const country = signer.phoneCountry || '+33'
+    const number = signer.phone2FANumber || ''
+    return country + number
+  }
 
   return (
     <div className="max-w-xl mx-auto py-10 px-4">
@@ -161,17 +328,21 @@ export default function StepSigners({
                 
                 {signer.phone2FA && (
                   <div className="mt-2">
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">+33</span>
+                    <div className="flex gap-2">
+                      <CountryCodeDropdown
+                        value={signer.phoneCountry || '+33'}
+                        onChange={(dial) => onUpdateSigner(signer.id, { phoneCountry: dial })}
+                        signerId={signer.id}
+                      />
                       <input
                         type="tel"
-                        value={(signer.phone2FANumber || '').replace(/^0/, '')}
+                        value={signer.phone2FANumber || ''}
                         onChange={(e) => {
-                          const raw = e.target.value.replace(/\D/g, '').slice(0, 9)
-                          onUpdateSigner(signer.id, { phone2FANumber: '0' + raw })
+                          const raw = e.target.value.replace(/\D/g, '').slice(0, 15)
+                          onUpdateSigner(signer.id, { phone2FANumber: raw })
                         }}
                         placeholder="6 12 34 56 78"
-                        className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
+                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
                       />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">
