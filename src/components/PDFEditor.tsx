@@ -144,8 +144,9 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
 
   // Handle canvas click for placing elements
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
-    // Don't create element if clicking on an existing element
-    if ((e.target as HTMLElement).closest('[data-element]')) {
+    // Don't create element if clicking on an existing element or its children
+    const target = e.target as HTMLElement
+    if (target.closest('[data-element]') || target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
       return
     }
     
@@ -576,9 +577,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
             onClick={() => setActiveTool('text')}
             title="Ajouter du texte"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
+            <span className="text-lg font-bold">T</span>
           </ToolButton>
           
           <ToolButton
@@ -763,8 +762,20 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
               width: pages[currentPage]?.width * scale,
               height: pages[currentPage]?.height * scale,
             }}
-            onClick={(e) => handleCanvasClick(e, currentPage)}
-            onMouseDown={(e) => handleMouseDown(e, currentPage)}
+            onClick={(e) => {
+              // Only handle canvas click if not clicking on an element
+              const target = e.target as HTMLElement
+              if (!target.closest('[data-element]') && target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+                handleCanvasClick(e, currentPage)
+              }
+            }}
+            onMouseDown={(e) => {
+              // Only handle canvas mouse down if not on an element
+              const target = e.target as HTMLElement
+              if (!target.closest('[data-element]') && target.tagName !== 'TEXTAREA' && target.tagName !== 'INPUT') {
+                handleMouseDown(e, currentPage)
+              }
+            }}
             onMouseMove={(e) => {
               handleMouseMove(e)
               handleElementDrag(e)
@@ -793,14 +804,17 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                 <div
                   key={element.id}
                   data-element={element.id}
-                  className={`absolute cursor-move ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
+                  className={`absolute cursor-move pointer-events-auto z-10 ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
                   style={{
                     left: element.x * scale,
                     top: element.y * scale,
                     width: element.width * scale,
                     height: element.height * scale,
                   }}
-                  onMouseDown={(e) => handleElementMouseDown(e, element.id)}
+                  onMouseDown={(e) => {
+                    e.stopPropagation()
+                    handleElementMouseDown(e, element.id)
+                  }}
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedElementId(element.id)
@@ -822,7 +836,9 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                         value={element.content || ''}
                         onChange={(e) => updateTextContent(element.id, e.target.value)}
                         onBlur={() => setEditingTextId(null)}
-                        className="w-full h-full resize-none border-none outline-none bg-transparent p-1"
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="w-full h-full resize-none border-none outline-none bg-transparent p-1 pointer-events-auto"
                         style={{
                           fontSize: (element.fontSize || 14) * scale,
                           fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
@@ -833,7 +849,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                       />
                     ) : (
                       <div
-                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text"
+                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text pointer-events-auto"
                         style={{
                           fontSize: (element.fontSize || 14) * scale,
                           fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
