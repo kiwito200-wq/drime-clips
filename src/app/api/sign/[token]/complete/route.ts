@@ -195,8 +195,10 @@ export async function POST(request: NextRequest, { params }: Params) {
           signer.envelope.name
         )
       } catch (pdfError: any) {
-        console.error('[Complete] Failed to generate PDFs:', pdfError?.message || pdfError)
+        console.error('[Complete] ===== PDF GENERATION FAILED =====')
+        console.error('[Complete] Error:', pdfError?.message || pdfError)
         console.error('[Complete] Stack:', pdfError?.stack)
+        
         // Still mark as completed even if PDF generation fails
         await prisma.envelope.update({
           where: { id: signer.envelope.id },
@@ -210,53 +212,98 @@ export async function POST(request: NextRequest, { params }: Params) {
           totalSigners: allSigners.length,
           pdfGenerationError: String(pdfError?.message || pdfError),
         })
+        
+        // STILL send emails even without attachments - with download link
+        console.log('[Complete] Sending completion emails WITHOUT attachments...')
+        
+        try {
+          await sendCompletedEmail({
+            to: signer.envelope.user.email,
+            documentName: signer.envelope.name,
+            signerName: signer.envelope.user.name,
+            completedAt: signedAt,
+            downloadLink: `${process.env.NEXT_PUBLIC_APP_URL}/view/${signer.envelope.slug}`,
+          })
+          console.log('[Complete] Owner email sent (no attachments)')
+        } catch (e: any) {
+          console.error('[Complete] Failed to send owner email:', e?.message)
+        }
+        
+        for (let i = 0; i < allSigners.length; i++) {
+          if (i > 0) await new Promise(r => setTimeout(r, 600))
+          try {
+            await sendCompletedEmail({
+              to: allSigners[i].email,
+              documentName: signer.envelope.name,
+              signerName: allSigners[i].name,
+              completedAt: signedAt,
+            })
+            console.log(`[Complete] Signer ${allSigners[i].email} email sent (no attachments)`)
+          } catch (e: any) {
+            console.error(`[Complete] Failed to send signer ${allSigners[i].email} email:`, e?.message)
+          }
+        }
       }
       
       // Send completion emails to all signers and owner with attachments
       const completedAt = signedAt
       
-      console.log('[Complete] Sending completion emails with attachments...')
-      console.log('[Complete] signedPdfBuffer size:', signedPdfBuffer?.length || 0)
-      console.log('[Complete] auditTrailPdfBuffer size:', auditTrailPdfBuffer?.length || 0)
+      console.log('[Complete] ===== SENDING COMPLETION EMAILS =====')
+      console.log('[Complete] signedPdfBuffer:', signedPdfBuffer ? `Buffer(${signedPdfBuffer.length} bytes)` : 'UNDEFINED')
+      console.log('[Complete] auditTrailPdfBuffer:', auditTrailPdfBuffer ? `Buffer(${auditTrailPdfBuffer.length} bytes)` : 'UNDEFINED')
+      console.log('[Complete] Owner email:', signer.envelope.user.email)
+      console.log('[Complete] Signers to notify:', allSigners.map(s => s.email).join(', '))
       
-      // Send to owner
+      // Prepare attachments only if buffers exist
+      const attachments = {
+        signedPdf: signedPdfBuffer,
+        auditTrailPdf: auditTrailPdfBuffer,
+      }
+      const hasAttachments = !!signedPdfBuffer || !!auditTrailPdfBuffer
+      console.log('[Complete] Has attachments:', hasAttachments)
+      
+      // Send to owner FIRST
       try {
-        console.log('[Complete] Sending to owner:', signer.envelope.user.email)
+        console.log('[Complete] [1/N] Sending to owner:', signer.envelope.user.email)
         const ownerResult = await sendCompletedEmail({
           to: signer.envelope.user.email,
           documentName: signer.envelope.name,
           signerName: signer.envelope.user.name,
           completedAt,
-          downloadLink: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/${signer.envelope.slug}`,
-          attachments: {
-            signedPdf: signedPdfBuffer,
-            auditTrailPdf: auditTrailPdfBuffer,
-          },
+          downloadLink: `${process.env.NEXT_PUBLIC_APP_URL}/view/${signer.envelope.slug}`,
+          attachments,
         })
-        console.log('[Complete] Owner email result:', ownerResult)
+        console.log('[Complete] Owner email result:', JSON.stringify(ownerResult))
       } catch (e: any) {
-        console.error('[Complete] Failed to send completion email to owner:', e?.message || e)
+        console.error('[Complete] FAILED to send to owner:', e?.message || e)
+        console.error('[Complete] Owner error stack:', e?.stack)
       }
       
-      // Send to all signers
-      for (const s of allSigners) {
+      // Send to all signers with delay to avoid rate limiting
+      for (let i = 0; i < allSigners.length; i++) {
+        const s = allSigners[i]
+        
+        // Add delay between emails (Resend limit: 2/sec)
+        if (i > 0) {
+          await new Promise(resolve => setTimeout(resolve, 600))
+        }
+        
         try {
-          console.log('[Complete] Sending to signer:', s.email)
+          console.log(`[Complete] [${i + 2}/${allSigners.length + 1}] Sending to signer:`, s.email)
           const signerResult = await sendCompletedEmail({
             to: s.email,
             documentName: signer.envelope.name,
             signerName: s.name,
             completedAt,
-            attachments: {
-              signedPdf: signedPdfBuffer,
-              auditTrailPdf: auditTrailPdfBuffer,
-            },
+            attachments,
           })
-          console.log('[Complete] Signer email result:', signerResult)
+          console.log(`[Complete] Signer ${s.email} result:`, JSON.stringify(signerResult))
         } catch (e: any) {
-          console.error('[Complete] Failed to send completion email to signer:', s.email, e?.message || e)
+          console.error(`[Complete] FAILED to send to signer ${s.email}:`, e?.message || e)
         }
       }
+      
+      console.log('[Complete] ===== EMAILS SENT =====')
     }
     
     return NextResponse.json({ 
