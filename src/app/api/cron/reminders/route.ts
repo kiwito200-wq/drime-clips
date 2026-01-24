@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
             documentName: envelope.name,
             senderName: envelope.user.name || envelope.user.email,
             signingLink,
-            daysRemaining,
+            daysRemaining: daysRemaining ?? 30, // Default to 30 days if no expiry
           })
 
           remindersSent++
