@@ -327,44 +327,44 @@ export default function SignPage() {
   if (completed) {
     return (
       <div className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-4">
-        {/* Animated signature using Lottie - BIGGER */}
+        {/* Animated signature using Lottie - responsive */}
         <div className="relative mb-4">
-          <div className="w-[700px] h-[500px] flex items-center justify-center">
+          <div className="w-[300px] h-[200px] sm:w-[500px] sm:h-[350px] md:w-[700px] md:h-[500px] flex items-center justify-center">
             <Lottie
               animationData={signatureAnimation}
               loop={false}
-              style={{ width: 700, height: 500, opacity: 0.3 }}
+              className="w-full h-full opacity-30"
             />
           </div>
           
-          {/* Text overlay - BIGGER */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {/* Text overlay - responsive */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.5, duration: 0.4 }}
-              className="text-6xl font-bold text-[#7E33F7]"
+              className="text-2xl sm:text-4xl md:text-6xl font-bold text-[#7E33F7] text-center"
             >
               {t('success.signatureComplete')}
             </motion.h1>
           </div>
         </div>
         
-        {/* Thank you message - BIGGER */}
+        {/* Thank you message - responsive */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 2, duration: 0.4 }}
-          className="text-center max-w-lg"
+          className="text-center max-w-lg px-4"
         >
-          <p className="text-gray-700 text-xl mb-2">
+          <p className="text-gray-700 text-base sm:text-lg md:text-xl mb-2">
             {locale === 'fr' ? "Merci d'avoir signé" : 'Thank you for signing'} <strong className="text-gray-900">&ldquo;{data?.envelope.name}&rdquo;</strong>.
           </p>
-          <p className="text-gray-500 text-base mb-6">
+          <p className="text-gray-500 text-sm sm:text-base mb-6">
             {t('success.youWillReceiveCopy')}
           </p>
           
-          <div className="flex items-center justify-center gap-2 text-sm text-gray-400 mb-8">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-gray-400 mb-8">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
@@ -396,18 +396,18 @@ export default function SignPage() {
   }).length
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col pb-48">
+    <div className="min-h-screen bg-gray-100 flex flex-col pb-36 sm:pb-48">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-40">
-        <div className="w-full px-4 py-3 flex items-center justify-between">
+        <div className="w-full px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between">
           {/* Left - Logo */}
-          <div className="flex items-center">
-            <img src="/drime-logo.png" alt="Drime Sign" className="h-6" />
+          <div className="flex items-center flex-shrink-0">
+            <img src="/drime-logo.png" alt="Drime Sign" className="h-5 sm:h-6" />
           </div>
           
-          {/* Center - Document name */}
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <p className="text-sm text-gray-600">
+          {/* Center - Document name (hidden on mobile, visible on sm+) */}
+          <div className="hidden sm:block absolute left-1/2 -translate-x-1/2 max-w-[40%]">
+            <p className="text-sm text-gray-600 truncate">
               <span className="font-medium">{t('signing.title')}:</span> {data?.envelope.name}
             </p>
           </div>
@@ -417,12 +417,12 @@ export default function SignPage() {
             <a
               href={pdfUrl}
               download
-              className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+              className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 flex-shrink-0"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              {t('common.download')}
+              <span className="hidden sm:inline">{t('common.download')}</span>
             </a>
           )}
         </div>

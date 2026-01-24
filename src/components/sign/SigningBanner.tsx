@@ -548,20 +548,20 @@ export default function SigningBanner({
   if (!currentField) return null
   
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+    <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-[calc(100%-1rem)] sm:max-w-md px-2 sm:px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-2xl border border-gray-200"
+        className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-gray-200"
       >
         {/* Welcome state */}
         {!hasStarted ? (
-          <div className="p-5 text-center">
-            <h3 className="font-semibold text-gray-900 mb-1">Prêt à signer ?</h3>
-            <p className="text-gray-500 text-sm mb-4">{totalFields} champ{totalFields > 1 ? 's' : ''} à remplir</p>
+          <div className="p-4 sm:p-5 text-center">
+            <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Prêt à signer ?</h3>
+            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">{totalFields} champ{totalFields > 1 ? 's' : ''} à remplir</p>
             <button
               onClick={() => setHasStarted(true)}
-              className="w-full py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors"
+              className="w-full py-2 sm:py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors text-sm sm:text-base"
             >
               {locale === 'fr' ? 'Commencer →' : 'Start →'}
             </button>
@@ -612,10 +612,10 @@ export default function SigningBanner({
             </div>
             
             {/* Navigation */}
-            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+            <div className="flex items-center justify-between px-3 sm:px-4 py-2 sm:py-3 border-t border-gray-100">
               <button
                 onClick={() => { setShowConfirmation(false); setAgreedToTerms(false) }}
-                className="text-sm text-gray-500 hover:text-gray-700"
+                className="text-xs sm:text-sm text-gray-500 hover:text-gray-700"
               >
                 ← {t('common.back')}
               </button>
@@ -623,11 +623,11 @@ export default function SigningBanner({
               <button
                 onClick={() => { if (agreedToTerms) onComplete() }}
                 disabled={!agreedToTerms || isCompleting}
-                className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors disabled:cursor-not-allowed"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#08CF65] text-white text-xs sm:text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors disabled:cursor-not-allowed"
               >
                 {isCompleting ? (
                   <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     {locale === 'fr' ? 'Signature...' : 'Signing...'}
                   </span>
                 ) : (
@@ -639,25 +639,25 @@ export default function SigningBanner({
         ) : (
           <>
             {/* Header */}
-            <div className="px-4 pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">
+            <div className="px-3 sm:px-4 pt-2 sm:pt-3 pb-2 flex items-center justify-between border-b border-gray-100">
+              <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                <span className="font-medium text-gray-900 text-sm sm:text-base truncate">
                   {currentField.label || getFieldLabel(currentField.type)}
                 </span>
-                {currentField.required && <span className="text-gray-400 text-sm">({locale === 'fr' ? 'requis' : 'required'})</span>}
-                {!currentField.required && <span className="text-gray-400 text-sm">({locale === 'fr' ? 'optionnel' : 'optional'})</span>}
+                {currentField.required && <span className="text-gray-400 text-xs sm:text-sm flex-shrink-0">({locale === 'fr' ? 'requis' : 'required'})</span>}
+                {!currentField.required && <span className="text-gray-400 text-xs sm:text-sm flex-shrink-0">({locale === 'fr' ? 'optionnel' : 'optional'})</span>}
               </div>
-              <span className="text-gray-400 text-sm">{currentFieldIndex + 1} / {totalFields}</span>
+              <span className="text-gray-400 text-xs sm:text-sm flex-shrink-0">{currentFieldIndex + 1} / {totalFields}</span>
             </div>
             
             {/* Content */}
-            <div className="px-4 py-3">
+            <div className="px-3 sm:px-4 py-2 sm:py-3">
               {/* Signature / Initials */}
               {(currentField.type === 'signature' || currentField.type === 'initials') && (
                 <div>
                   {signatureMode === 'type' ? (
                     <div 
-                      className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 flex items-center justify-center cursor-text mb-3"
+                      className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-16 sm:h-20 flex items-center justify-center cursor-text mb-2 sm:mb-3"
                       onClick={() => inputRef.current?.focus()}
                     >
                       <input
@@ -675,7 +675,7 @@ export default function SigningBanner({
                     <div className="relative mb-3">
                       <canvas
                         ref={canvasRef}
-                        className="w-full h-20 bg-gray-50 rounded-xl border-2 border-[#08CF65] cursor-crosshair"
+                        className="w-full h-16 sm:h-20 bg-gray-50 rounded-xl border-2 border-[#08CF65] cursor-crosshair"
                         style={{ touchAction: 'none' }}
                       />
                       {hasDrawn && (
@@ -691,10 +691,10 @@ export default function SigningBanner({
                     </div>
                   ) : (
                     /* Upload mode */
-                    <div className="mb-3">
+                    <div className="mb-2 sm:mb-3">
                       {uploadedImage ? (
-                        <div className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 flex items-center justify-center">
-                          <img src={uploadedImage} alt="Signature" className="max-h-16 max-w-full object-contain" />
+                        <div className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-16 sm:h-20 flex items-center justify-center">
+                          <img src={uploadedImage} alt="Signature" className="max-h-12 sm:max-h-16 max-w-full object-contain" />
                           <button
                             onClick={() => setUploadedImage(null)}
                             className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-500 hover:text-gray-700"
@@ -705,12 +705,12 @@ export default function SigningBanner({
                           </button>
                         </div>
                       ) : (
-                        <label className="block bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 h-20 flex items-center justify-center cursor-pointer hover:border-[#08CF65] transition-colors">
+                        <label className="block bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 h-16 sm:h-20 flex items-center justify-center cursor-pointer hover:border-[#08CF65] transition-colors">
                           <div className="text-center">
-                            <svg className="w-6 h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                            <span className="text-sm text-gray-500">{locale === 'fr' ? 'Cliquez pour uploader' : 'Click to upload'}</span>
+                            <span className="text-xs sm:text-sm text-gray-500">{locale === 'fr' ? 'Cliquez pour uploader' : 'Click to upload'}</span>
                           </div>
                           <input
                             ref={fileInputRef}
@@ -782,7 +782,7 @@ export default function SigningBanner({
                     <div className="flex gap-1">
                       <button
                         onClick={() => setSignatureMode('type')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${
                           signatureMode === 'type' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -790,7 +790,7 @@ export default function SigningBanner({
                       </button>
                       <button
                         onClick={() => setSignatureMode('draw')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${
                           signatureMode === 'draw' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -798,7 +798,7 @@ export default function SigningBanner({
                       </button>
                       <button
                         onClick={() => setSignatureMode('upload')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                        className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-medium transition-colors ${
                           signatureMode === 'upload' ? 'bg-[#08CF65] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -965,7 +965,7 @@ export default function SigningBanner({
                         <p className="text-sm text-gray-600 mb-3">
                           Code envoyé au <span className="font-medium">{phoneCountry}***{phoneValue.slice(-4)}</span>
                         </p>
-                        <div className="flex justify-center gap-2">
+                        <div className="flex justify-center gap-1.5 sm:gap-2">
                           {otpCode.map((digit, index) => (
                             <input
                               key={index}
@@ -976,7 +976,7 @@ export default function SigningBanner({
                               value={digit}
                               onChange={e => handleOtpCodeChange(index, e.target.value)}
                               onKeyDown={e => handleOtpKeyDown(index, e)}
-                              className="w-10 h-12 text-center text-xl font-semibold rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-[#08CF65] outline-none transition-all"
+                              className="w-8 h-10 sm:w-10 sm:h-12 text-center text-lg sm:text-xl font-semibold rounded-lg sm:rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-[#08CF65] outline-none transition-all"
                             />
                           ))}
                         </div>
@@ -1031,7 +1031,7 @@ export default function SigningBanner({
             </div>
             
             {/* Progress bar */}
-            <div className="px-4 pb-2">
+            <div className="px-3 sm:px-4 pb-1.5 sm:pb-2">
               <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                 <motion.div 
                   className="h-full bg-[#08CF65]"
@@ -1043,17 +1043,18 @@ export default function SigningBanner({
             </div>
             
             {/* Navigation */}
-            <div className="px-4 pb-3 flex items-center justify-between">
+            <div className="px-3 sm:px-4 pb-2 sm:pb-3 flex items-center justify-between">
               <button
                 onClick={handleBack}
                 disabled={currentFieldIndex === 0}
-                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
               >
-                ← Précédent
+                <span className="hidden sm:inline">← Précédent</span>
+                <span className="sm:hidden">←</span>
               </button>
               
-              {/* Progress dots */}
-              <div className="flex gap-1">
+              {/* Progress dots - hidden on very small screens, show fewer */}
+              <div className="hidden xs:flex gap-1">
                 {fields.map((f, i) => {
                   const isFilled = f.type === 'checkbox' 
                     ? fieldValues[f.id] === 'true'
@@ -1063,7 +1064,7 @@ export default function SigningBanner({
                     <button
                       key={f.id}
                       onClick={() => onFieldChange(i)}
-                      className={`w-2 h-2 rounded-full transition-all ${
+                      className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all ${
                         i === currentFieldIndex
                           ? 'bg-[#08CF65] scale-125'
                           : isFilled
@@ -1083,9 +1084,9 @@ export default function SigningBanner({
                     confirmationFieldIndexRef.current = currentFieldIndex; // Track which field triggered confirmation
                   }}
                   disabled={!isValid() || isCompleting}
-                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#08CF65] text-white text-xs sm:text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  {isCompleting ? '...' : 'Finaliser →'}
+                  {isCompleting ? '...' : <><span className="hidden sm:inline">Finaliser</span><span className="sm:hidden">Fin</span> →</>}
                 </button>
               ) : (
                 <button
@@ -1096,22 +1097,22 @@ export default function SigningBanner({
                     otpVerifying ||
                     (currentField.type === 'phone' && otpStep === 'code' && otpCode.join('').length !== 6)
                   }
-                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#08CF65] text-white text-xs sm:text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
                   {otpSending ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Envoi...
+                    <span className="flex items-center gap-1 sm:gap-2">
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="hidden sm:inline">Envoi...</span>
                     </span>
                   ) : otpVerifying ? (
-                    <span className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Vérification...
+                    <span className="flex items-center gap-1 sm:gap-2">
+                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="hidden sm:inline">Vérification...</span>
                     </span>
                   ) : currentField.type === 'phone' && !phoneVerified ? (
                     otpStep === 'code' ? 'Valider →' : 'Vérifier →'
                   ) : (
-                    `${t('common.next')} →`
+                    <><span className="hidden sm:inline">{t('common.next')}</span><span className="sm:hidden">→</span><span className="hidden sm:inline"> →</span></>
                   )}
                 </button>
               )}
