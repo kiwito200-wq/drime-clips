@@ -203,10 +203,8 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleNext, handlePrev, handleSkip])
 
-  const getTooltipStyle = (): React.CSSProperties => {
-    if (isWelcome || !targetRect) {
-      return {}
-    }
+  const getTooltipPosition = () => {
+    if (!targetRect) return null
 
     const padding = 20
     const tooltipWidth = 360
@@ -233,149 +231,172 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
         left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))
         break
       default:
-        top = window.innerHeight / 2 - tooltipHeight / 2
-        left = window.innerWidth / 2 - tooltipWidth / 2
+        return null
     }
 
-    return {
-      position: 'fixed',
-      top: `${top}px`,
-      left: `${left}px`,
-    }
+    return { top, left }
   }
+
+  const tooltipPosition = getTooltipPosition()
+
+  // Card content (shared between welcome and other steps)
+  const CardContent = () => (
+    <>
+      {/* Header */}
+      <div className="px-6 pt-5 pb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-gray-900 font-semibold text-lg">{step.title}</h3>
+          <span className="text-gray-400 text-sm">
+            {currentStep + 1} / {steps.length}
+          </span>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="px-6 pb-4">
+        <p className="text-gray-600 leading-relaxed">{step.description}</p>
+      </div>
+
+      {/* Progress dots */}
+      <div className="px-6 pb-4 flex justify-center gap-1.5">
+        {steps.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToStep(index)}
+            className={`h-2 rounded-full ${
+              index === currentStep
+                ? 'bg-[#08CF65] w-6'
+                : index < currentStep
+                ? 'bg-[#08CF65]/50 w-2'
+                : 'bg-gray-200 w-2'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div className="px-6 pb-5 flex items-center justify-between">
+        {isWelcome ? (
+          <button
+            onClick={handleSkip}
+            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
+          </button>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-2">
+          {currentStep > 0 && (
+            <button
+              onClick={handlePrev}
+              disabled={isAnimating}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {locale === 'fr' ? 'Précédent' : 'Previous'}
+            </button>
+          )}
+          <button
+            onClick={handleNext}
+            disabled={isAnimating}
+            className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
+          >
+            {isLast ? (
+              locale === 'fr' ? "C'est parti !" : "Let's go!"
+            ) : (
+              <>
+                {locale === 'fr' ? 'Suivant' : 'Next'}
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </>
+  )
 
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* Dark overlay for welcome */}
+      {/* Welcome screen: dark overlay + centered card */}
       {isWelcome && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
-          className="absolute inset-0 bg-black/60"
-          onClick={handleNext}
-        />
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="absolute inset-0 bg-black/60"
+            onClick={handleNext}
+          />
+          {/* Centered card using flexbox */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+              >
+                <CardContent />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </>
       )}
       
-      {/* Spotlight */}
-      {!isWelcome && targetRect && (
-        <motion.div
-          key={`spotlight-${currentStep}`}
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-          className="absolute rounded-xl pointer-events-none"
-          style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            boxShadow: `
-              0 0 0 3px #08CF65,
-              0 0 15px rgba(8, 207, 101, 0.5),
-              0 0 0 9999px rgba(0, 0, 0, 0.6)
-            `,
-          }}
-        />
-      )}
-
-      {/* Click catcher */}
+      {/* Other steps: spotlight + positioned card */}
       {!isWelcome && (
-        <div 
-          className="absolute inset-0" 
-          onClick={handleNext}
-          style={{ pointerEvents: targetRect ? 'auto' : 'none' }}
-        />
+        <>
+          {/* Spotlight */}
+          {targetRect && (
+            <motion.div
+              key={`spotlight-${currentStep}`}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+              className="absolute rounded-xl pointer-events-none"
+              style={{
+                top: targetRect.top - 8,
+                left: targetRect.left - 8,
+                width: targetRect.width + 16,
+                height: targetRect.height + 16,
+                boxShadow: `
+                  0 0 0 3px #08CF65,
+                  0 0 15px rgba(8, 207, 101, 0.5),
+                  0 0 0 9999px rgba(0, 0, 0, 0.6)
+                `,
+              }}
+            />
+          )}
+
+          {/* Click catcher */}
+          <div className="absolute inset-0" onClick={handleNext} />
+
+          {/* Positioned card */}
+          {tooltipPosition && (
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={step.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="fixed w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+                style={{
+                  top: tooltipPosition.top,
+                  left: tooltipPosition.left,
+                }}
+              >
+                <CardContent />
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </>
       )}
-
-      {/* Tooltip - centered for welcome, positioned for others */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step.id}
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className={`w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto ${
-            isWelcome ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : ''
-          }`}
-          style={isWelcome ? {} : getTooltipStyle()}
-        >
-          {/* Header */}
-          <div className="px-6 pt-5 pb-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-gray-900 font-semibold text-lg">{step.title}</h3>
-              <span className="text-gray-400 text-sm">
-                {currentStep + 1} / {steps.length}
-              </span>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="px-6 pb-4">
-            <p className="text-gray-600 leading-relaxed">{step.description}</p>
-          </div>
-
-          {/* Progress dots - no animations */}
-          <div className="px-6 pb-4 flex justify-center gap-1.5">
-            {steps.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToStep(index)}
-                className={`h-2 rounded-full ${
-                  index === currentStep
-                    ? 'bg-[#08CF65] w-6'
-                    : index < currentStep
-                    ? 'bg-[#08CF65]/50 w-2'
-                    : 'bg-gray-200 w-2'
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Actions - no hover zoom */}
-          <div className="px-6 pb-5 flex items-center justify-between">
-            {isWelcome ? (
-              <button
-                onClick={handleSkip}
-                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-              >
-                {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
-              </button>
-            ) : (
-              <div />
-            )}
-
-            <div className="flex items-center gap-2">
-              {currentStep > 0 && (
-                <button
-                  onClick={handlePrev}
-                  disabled={isAnimating}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-                >
-                  {locale === 'fr' ? 'Précédent' : 'Previous'}
-                </button>
-              )}
-              <button
-                onClick={handleNext}
-                disabled={isAnimating}
-                className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
-              >
-                {isLast ? (
-                  locale === 'fr' ? "C'est parti !" : "Let's go!"
-                ) : (
-                  <>
-                    {locale === 'fr' ? 'Suivant' : 'Next'}
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
     </div>
   )
 }
