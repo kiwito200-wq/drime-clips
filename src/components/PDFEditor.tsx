@@ -186,17 +186,18 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
   // Handle element click
   const handleElementClick = useCallback((e: React.MouseEvent, elementId: string) => {
     e.stopPropagation()
+    e.preventDefault()
     setSelectedElementId(elementId)
     
     const element = elements.find(el => el.id === elementId)
-    if (element && 'content' in element) {
+    if (element && 'content' in element && activeTool === 'select') {
       setEditingTextId(elementId)
       setTimeout(() => {
         textInputRef.current?.focus()
         textInputRef.current?.select()
       }, 50)
     }
-  }, [elements])
+  }, [elements, activeTool])
 
   // Handle element drag start
   const handleElementMouseDown = useCallback((e: React.MouseEvent, elementId: string) => {
@@ -763,8 +764,22 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
               width: pages[currentPage]?.width * scale,
               height: pages[currentPage]?.height * scale,
             }}
-            onClick={activeTool === 'text' ? handleCanvasClick : undefined}
-            onMouseDown={['rectangle', 'highlight', 'whiteout'].includes(activeTool) ? handleShapeMouseDown : undefined}
+            onClick={(e) => {
+              // Only handle canvas click if not clicking on an element
+              if (!(e.target as HTMLElement).closest('[data-element-id]')) {
+                if (activeTool === 'text') {
+                  handleCanvasClick(e)
+                }
+              }
+            }}
+            onMouseDown={(e) => {
+              // Only handle shape drawing if not clicking on an element
+              if (!(e.target as HTMLElement).closest('[data-element-id]')) {
+                if (['rectangle', 'highlight', 'whiteout'].includes(activeTool)) {
+                  handleShapeMouseDown(e)
+                }
+              }
+            }}
           >
             {/* PDF Page */}
             <img
@@ -781,7 +796,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                 <div
                   key={element.id}
                   data-element-id={element.id}
-                  className={`absolute ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
+                  className={`absolute pointer-events-auto z-20 ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
                   style={{
                     left: element.x * scale,
                     top: element.y * scale,
@@ -789,8 +804,12 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                     height: element.height * scale,
                     cursor: selectedElementId === element.id ? 'move' : 'pointer',
                   }}
-                  onClick={(e) => handleElementClick(e, element.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleElementClick(e, element.id)
+                  }}
                   onMouseDown={(e) => {
+                    e.stopPropagation()
                     if (activeTool === 'select') {
                       handleElementMouseDown(e, element.id)
                     }
@@ -806,7 +825,14 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                         onChange={(e) => updateTextContent(element.id, e.target.value)}
                         onBlur={() => setEditingTextId(null)}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full h-full resize-none border-none outline-none bg-transparent p-1"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') {
+                            setEditingTextId(null)
+                          }
+                          e.stopPropagation()
+                        }}
+                        className="w-full h-full resize-none border-none outline-none bg-transparent p-1 pointer-events-auto z-30"
                         style={{
                           fontSize: element.fontSize * scale,
                           fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
@@ -817,13 +843,25 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                       />
                     ) : (
                       <div
-                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text"
+                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text pointer-events-auto"
                         style={{
                           fontSize: element.fontSize * scale,
                           fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
                                       element.fontFamily === 'courier' ? 'Courier New' : 'Helvetica, sans-serif',
                           fontWeight: element.bold ? 'bold' : 'normal',
                           color: element.color,
+                          userSelect: 'none',
+                        }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation()
+                          if (activeTool === 'select') {
+                            setEditingTextId(element.id)
+                            setSelectedElementId(element.id)
+                            setTimeout(() => {
+                              textInputRef.current?.focus()
+                              textInputRef.current?.select()
+                            }, 50)
+                          }
                         }}
                       >
                         {element.content || 'Cliquez pour éditer'}
