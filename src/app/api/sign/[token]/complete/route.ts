@@ -230,7 +230,8 @@ export async function POST(request: NextRequest, { params }: Params) {
         }
         
         for (let i = 0; i < allSigners.length; i++) {
-          if (i > 0) await new Promise(r => setTimeout(r, 600))
+          // Add delay BEFORE EACH email (including first) to avoid rate limiting
+          await new Promise(r => setTimeout(r, 600))
           try {
             await sendCompletedEmail({
               to: allSigners[i].email,
@@ -283,10 +284,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       for (let i = 0; i < allSigners.length; i++) {
         const s = allSigners[i]
         
-        // Add delay between emails (Resend limit: 2/sec)
-        if (i > 0) {
-          await new Promise(resolve => setTimeout(resolve, 600))
-        }
+        // Add delay BEFORE EACH email (including first after owner) to avoid rate limiting
+        // Resend limit: 2 requests/sec, so 600ms delay is safe
+        await new Promise(resolve => setTimeout(resolve, 600))
         
         try {
           console.log(`[Complete] [${i + 2}/${allSigners.length + 1}] Sending to signer:`, s.email)

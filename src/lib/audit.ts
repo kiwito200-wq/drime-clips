@@ -520,8 +520,8 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
       throw new Error('Fetched content is not a valid PDF')
     }
     
-    // Load PDF
-    const pdfDoc = await PDFDocument.load(originalPdfBytes)
+    // Load PDF (with ignoreEncryption for protected PDFs)
+    const pdfDoc = await PDFDocument.load(originalPdfBytes, { ignoreEncryption: true })
     const pages = pdfDoc.getPages()
     
     // Embed signatures into PDF
