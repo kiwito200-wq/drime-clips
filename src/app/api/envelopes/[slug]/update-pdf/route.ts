@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
 import { r2, calculateHash } from '@/lib/storage'
-import { logAudit } from '@/lib/audit'
+import { logAuditEvent } from '@/lib/audit'
 
 export async function POST(
   request: NextRequest,
@@ -76,18 +76,18 @@ export async function POST(
     })
 
     // Log audit event
-    await logAudit({
-      envelopeId: envelope.id,
-      userId: user.id,
-      action: 'edited',
-      ipAddress: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
-      userAgent: request.headers.get('user-agent') || 'unknown',
-      details: {
+    await logAuditEvent(
+      envelope.id,
+      'edited',
+      null, // No specific signer
+      {
+        ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
         event: 'pdf_modified',
         description: 'PDF modifié avec l\'éditeur intégré',
         fileSize: buffer.length,
       }
-    })
+    )
 
     // Return the signed URL for the new PDF
     const signedUrl = await r2.getSignedUrl(fileName)
