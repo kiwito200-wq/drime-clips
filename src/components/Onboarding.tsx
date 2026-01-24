@@ -144,7 +144,6 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
   const isWelcome = currentStep === 0
   const isLast = currentStep === steps.length - 1
 
-  // Find and highlight the target element
   useEffect(() => {
     if (!step.target) {
       setTargetRect(null)
@@ -194,7 +193,6 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     goToStep(currentStep - 1)
   }, [currentStep, isAnimating, goToStep])
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleSkip()
@@ -205,15 +203,9 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleNext, handlePrev, handleSkip])
 
-  // Calculate tooltip position
   const getTooltipStyle = (): React.CSSProperties => {
     if (isWelcome || !targetRect) {
-      return {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }
+      return {}
     }
 
     const padding = 20
@@ -254,7 +246,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* For welcome screen: simple dark overlay */}
+      {/* Dark overlay for welcome */}
       {isWelcome && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -265,7 +257,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
         />
       )}
       
-      {/* For other steps: spotlight effect using box-shadow only (no white background!) */}
+      {/* Spotlight */}
       {!isWelcome && targetRect && (
         <motion.div
           key={`spotlight-${currentStep}`}
@@ -278,8 +270,6 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
             left: targetRect.left - 8,
             width: targetRect.width + 16,
             height: targetRect.height + 16,
-            // NO background - element stays visible!
-            // box-shadow creates BOTH the green border AND the dark overlay
             boxShadow: `
               0 0 0 3px #08CF65,
               0 0 15px rgba(8, 207, 101, 0.5),
@@ -289,7 +279,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
         />
       )}
 
-      {/* Click catcher for non-welcome steps */}
+      {/* Click catcher */}
       {!isWelcome && (
         <div 
           className="absolute inset-0" 
@@ -298,19 +288,18 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
         />
       )}
 
-      {/* Tooltip */}
+      {/* Tooltip - centered for welcome, positioned for others */}
       <AnimatePresence mode="wait">
         <motion.div
           key={step.id}
-          initial={{ opacity: 0, y: 30, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ 
-            duration: 0.4,
-            ease: [0.16, 1, 0.3, 1], // Custom spring-like easing
-          }}
-          className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
-          style={getTooltipStyle()}
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className={`w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto ${
+            isWelcome ? 'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : ''
+          }`}
+          style={isWelcome ? {} : getTooltipStyle()}
         >
           {/* Header */}
           <div className="px-6 pt-5 pb-3">
@@ -327,28 +316,24 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
             <p className="text-gray-600 leading-relaxed">{step.description}</p>
           </div>
 
-          {/* Progress dots */}
+          {/* Progress dots - no animations */}
           <div className="px-6 pb-4 flex justify-center gap-1.5">
             {steps.map((_, index) => (
-              <motion.button
+              <button
                 key={index}
                 onClick={() => goToStep(index)}
-                className={`h-2 rounded-full transition-colors ${
+                className={`h-2 rounded-full ${
                   index === currentStep
-                    ? 'bg-[#08CF65]'
+                    ? 'bg-[#08CF65] w-6'
                     : index < currentStep
-                    ? 'bg-[#08CF65]/50'
-                    : 'bg-gray-200'
+                    ? 'bg-[#08CF65]/50 w-2'
+                    : 'bg-gray-200 w-2'
                 }`}
-                animate={{ 
-                  width: index === currentStep ? 24 : 8,
-                }}
-                transition={{ duration: 0.3, ease: 'easeOut' }}
               />
             ))}
           </div>
 
-          {/* Actions */}
+          {/* Actions - no hover zoom */}
           <div className="px-6 pb-5 flex items-center justify-between">
             {isWelcome ? (
               <button
@@ -363,21 +348,17 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
             <div className="flex items-center gap-2">
               {currentStep > 0 && (
-                <motion.button
+                <button
                   onClick={handlePrev}
                   disabled={isAnimating}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   {locale === 'fr' ? 'Précédent' : 'Previous'}
-                </motion.button>
+                </button>
               )}
-              <motion.button
+              <button
                 onClick={handleNext}
                 disabled={isAnimating}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
                 className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
               >
                 {isLast ? (
@@ -390,7 +371,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
                     </svg>
                   </>
                 )}
-              </motion.button>
+              </button>
             </div>
           </div>
         </motion.div>
