@@ -548,7 +548,7 @@ export default function SigningBanner({
   if (!currentField) return null
   
   return (
-    <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-[calc(100%-1rem)] sm:max-w-md px-2 sm:px-4">
+    <div className="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-[calc(100%-0.5rem)] sm:max-w-md px-1 sm:px-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -871,15 +871,15 @@ export default function SigningBanner({
                   {otpStep === 'input' && !phoneVerified ? (
                     <>
                       {/* Phone number input with country selector */}
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 w-full">
                         {/* Country dropdown */}
-                        <div className="relative" ref={countryDropdownRef}>
+                        <div className="relative flex-shrink-0" ref={countryDropdownRef}>
                           <button
                             type="button"
                             onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                            className="flex items-center gap-1 px-2 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 hover:border-gray-300 transition-colors min-w-[80px]"
+                            className="flex items-center gap-1 px-2 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 hover:border-gray-300 transition-colors"
                           >
-                            <span className="text-lg">{COUNTRIES.find(c => c.dial === phoneCountry)?.flag || '🌍'}</span>
+                            <span className="text-base">{COUNTRIES.find(c => c.dial === phoneCountry)?.flag || '🌍'}</span>
                             <span className="text-sm text-gray-600">{phoneCountry}</span>
                             <svg className={`w-3 h-3 text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -945,7 +945,7 @@ export default function SigningBanner({
                             setPhoneVerified(false)
                           }}
                           placeholder={getPhonePlaceholder(phoneCountry)}
-                          className="flex-1 px-3 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-[#08CF65] text-gray-900 focus:outline-none"
+                          className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-[#08CF65] text-gray-900 focus:outline-none text-sm"
                           autoFocus
                         />
                       </div>
@@ -1047,7 +1047,7 @@ export default function SigningBanner({
               <button
                 onClick={handleBack}
                 disabled={currentFieldIndex === 0}
-                className="px-2 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-gray-100 text-gray-600 text-xs sm:text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
+                className="px-3 sm:px-4 py-2 sm:py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
               >
                 <span className="hidden sm:inline">← Précédent</span>
                 <span className="sm:hidden">←</span>
@@ -1084,9 +1084,9 @@ export default function SigningBanner({
                     confirmationFieldIndexRef.current = currentFieldIndex; // Track which field triggered confirmation
                   }}
                   disabled={!isValid() || isCompleting}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#08CF65] text-white text-xs sm:text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  {isCompleting ? '...' : <><span className="hidden sm:inline">Finaliser</span><span className="sm:hidden">Fin</span> →</>}
+                  {isCompleting ? '...' : 'Finaliser →'}
                 </button>
               ) : (
                 <button
@@ -1097,22 +1097,22 @@ export default function SigningBanner({
                     otpVerifying ||
                     (currentField.type === 'phone' && otpStep === 'code' && otpCode.join('').length !== 6)
                   }
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-[#08CF65] text-white text-xs sm:text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
+                  className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
                   {otpSending ? (
-                    <span className="flex items-center gap-1 sm:gap-2">
-                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span className="hidden sm:inline">Envoi...</span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Envoi...
                     </span>
                   ) : otpVerifying ? (
-                    <span className="flex items-center gap-1 sm:gap-2">
-                      <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span className="hidden sm:inline">Vérification...</span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Vérif...
                     </span>
                   ) : currentField.type === 'phone' && !phoneVerified ? (
                     otpStep === 'code' ? 'Valider →' : 'Vérifier →'
                   ) : (
-                    <><span className="hidden sm:inline">{t('common.next')}</span><span className="sm:hidden">→</span><span className="hidden sm:inline"> →</span></>
+                    `${t('common.next')} →`
                   )}
                 </button>
               )}
