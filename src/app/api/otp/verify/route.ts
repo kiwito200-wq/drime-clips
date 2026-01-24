@@ -45,14 +45,31 @@ export async function POST(request: Request) {
     if (envelopeSlug) {
       const envelope = await prisma.envelope.findFirst({
         where: { slug: envelopeSlug },
+        include: { signers: true },
       })
       
       if (envelope) {
+        // Find the actual signer by email or ID
+        let actualSignerId: string | null = null
+        if (signerId) {
+          // Check if signerId is a valid CUID (signer ID) or an email
+          const isEmail = signerId.includes('@')
+          if (isEmail) {
+            // Find signer by email
+            const signer = envelope.signers.find(s => s.email.toLowerCase() === signerId.toLowerCase())
+            actualSignerId = signer?.id || null
+          } else {
+            // Check if it's a valid signer ID for this envelope
+            const signer = envelope.signers.find(s => s.id === signerId)
+            actualSignerId = signer?.id || null
+          }
+        }
+        
         // Create audit log entry for phone verification
         await prisma.auditLog.create({
           data: {
             envelopeId: envelope.id,
-            signerId: signerId || null,
+            signerId: actualSignerId,
             action: 'phone_verified',
             details: JSON.stringify({
               phone: maskedPhone,

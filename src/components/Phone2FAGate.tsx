@@ -182,16 +182,9 @@ export default function Phone2FAGate({
       >
         {/* Header */}
         <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-11 h-11 bg-[#E8FAF0] rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">Vérification requise</h1>
-              <p className="text-sm text-[#08CF65]">Authentification à deux facteurs</p>
-            </div>
+          <div className="mb-4">
+            <h1 className="text-lg font-semibold text-gray-900">Vérification requise</h1>
+            <p className="text-sm text-[#08CF65]">Authentification à deux facteurs</p>
           </div>
           
           {documentName && (
@@ -252,11 +245,6 @@ export default function Phone2FAGate({
           ) : (
             <div className="space-y-5">
               <div className="text-center">
-                <div className="w-14 h-14 mx-auto bg-[#E8FAF0] rounded-full flex items-center justify-center mb-4">
-                  <svg className="w-7 h-7 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                  </svg>
-                </div>
                 <p className="text-gray-600 mb-1">Code envoyé au <span className="font-semibold">{maskedPhone}</span></p>
                 <p className="text-gray-400 text-sm">Entrez le code à 6 chiffres reçu par SMS</p>
               </div>
@@ -315,15 +303,6 @@ export default function Phone2FAGate({
           )}
         </div>
         
-        {/* Footer */}
-        <div className="px-6 pb-6">
-          <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-            </svg>
-            Vos données sont protégées et sécurisées
-          </p>
-        </div>
       </motion.div>
     </div>
   )
