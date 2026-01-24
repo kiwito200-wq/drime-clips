@@ -14,7 +14,7 @@ interface OnboardingStep {
 const STEPS_FR: OnboardingStep[] = [
   {
     id: 'welcome',
-    title: 'Bienvenue sur Drime Sign ! 🎉',
+    title: 'Bienvenue sur Drime Sign',
     description: 'Découvrez comment envoyer et signer des documents en quelques clics. Cette visite rapide vous montrera les fonctionnalités principales.',
     target: '',
     position: 'bottom',
@@ -73,7 +73,7 @@ const STEPS_FR: OnboardingStep[] = [
 const STEPS_EN: OnboardingStep[] = [
   {
     id: 'welcome',
-    title: 'Welcome to Drime Sign! 🎉',
+    title: 'Welcome to Drime Sign',
     description: 'Discover how to send and sign documents in just a few clicks. This quick tour will show you the main features.',
     target: '',
     position: 'bottom',
@@ -218,10 +218,20 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleNext, handlePrev, handleSkip])
 
-  // Calculate tooltip position - centered for welcome, positioned near target otherwise
+  // Calculate tooltip position
   const getTooltipStyle = (): React.CSSProperties => {
-    if (isWelcome || !targetRect) {
-      // Centered in viewport
+    // Welcome screen - always centered
+    if (isWelcome) {
+      return {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+      }
+    }
+
+    // No target found - center it
+    if (!targetRect) {
       return {
         position: 'fixed',
         top: '50%',
@@ -234,7 +244,6 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     const tooltipWidth = 360
     const tooltipHeight = 220
 
-    // Calculate position based on step.position
     let top: number
     let left: number
 
@@ -267,66 +276,34 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     }
   }
 
-  // Generate clip-path for spotlight effect
-  const getClipPath = () => {
-    if (!targetRect || isWelcome) {
-      return 'none'
-    }
-    
-    const padding = 8
-    const x = targetRect.left - padding
-    const y = targetRect.top - padding
-    const w = targetRect.width + padding * 2
-    const h = targetRect.height + padding * 2
-    const r = 12 // border radius
-    
-    // Create a polygon that covers the whole screen except the target area (with rounded corners approximation)
-    return `polygon(
-      0% 0%, 
-      0% 100%, 
-      ${x}px 100%, 
-      ${x}px ${y + r}px,
-      ${x + r}px ${y}px,
-      ${x + w - r}px ${y}px,
-      ${x + w}px ${y + r}px,
-      ${x + w}px ${y + h - r}px,
-      ${x + w - r}px ${y + h}px,
-      ${x + r}px ${y + h}px,
-      ${x}px ${y + h - r}px,
-      ${x}px 100%,
-      100% 100%, 
-      100% 0%
-    )`
-  }
-
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* Overlay with spotlight cutout */}
+      {/* Dark overlay */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
         className="absolute inset-0 bg-black/60"
-        style={{
-          clipPath: getClipPath(),
-        }}
         onClick={handleNext}
       />
       
-      {/* Highlight ring around target */}
+      {/* Spotlight - simple rectangle with rounded corners */}
       {targetRect && !isWelcome && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
-          className="absolute pointer-events-none rounded-xl"
+          key={`spotlight-${currentStep}`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="absolute pointer-events-none"
           style={{
-            top: targetRect.top - 8,
-            left: targetRect.left - 8,
-            width: targetRect.width + 16,
-            height: targetRect.height + 16,
-            boxShadow: '0 0 0 3px #08CF65, 0 0 20px rgba(8, 207, 101, 0.4)',
+            top: targetRect.top - 6,
+            left: targetRect.left - 6,
+            width: targetRect.width + 12,
+            height: targetRect.height + 12,
+            borderRadius: '12px',
+            backgroundColor: 'white',
+            boxShadow: '0 0 0 4px #08CF65, 0 0 0 9999px rgba(0,0,0,0.6)',
           }}
         />
       )}
@@ -388,7 +365,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
                 {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
               </button>
             ) : (
-              <div /> // Empty div to maintain spacing
+              <div />
             )}
 
             <div className="flex items-center gap-2">
