@@ -12,7 +12,7 @@ function getTwilioClient() {
   }
   
   // Dynamic import to avoid build-time errors
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line
   const twilio = require('twilio')
   twilioClient = twilio(accountSid, authToken)
   return twilioClient
