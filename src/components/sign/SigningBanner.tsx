@@ -28,6 +28,43 @@ const SIGNATURE_FONTS = [
   { name: 'Allura', label: 'Allura' },
 ]
 
+// Country codes with flags
+const COUNTRIES = [
+  { code: 'FR', dial: '+33', name: 'France', flag: '🇫🇷', placeholder: '6 12 34 56 78' },
+  { code: 'BE', dial: '+32', name: 'Belgique', flag: '🇧🇪', placeholder: '470 12 34 56' },
+  { code: 'CH', dial: '+41', name: 'Suisse', flag: '🇨🇭', placeholder: '79 123 45 67' },
+  { code: 'CA', dial: '+1', name: 'Canada', flag: '🇨🇦', placeholder: '514 123 4567' },
+  { code: 'US', dial: '+1', name: 'États-Unis', flag: '🇺🇸', placeholder: '202 555 0123' },
+  { code: 'GB', dial: '+44', name: 'Royaume-Uni', flag: '🇬🇧', placeholder: '7911 123456' },
+  { code: 'DE', dial: '+49', name: 'Allemagne', flag: '🇩🇪', placeholder: '151 12345678' },
+  { code: 'ES', dial: '+34', name: 'Espagne', flag: '🇪🇸', placeholder: '612 34 56 78' },
+  { code: 'IT', dial: '+39', name: 'Italie', flag: '🇮🇹', placeholder: '312 345 6789' },
+  { code: 'PT', dial: '+351', name: 'Portugal', flag: '🇵🇹', placeholder: '912 345 678' },
+  { code: 'NL', dial: '+31', name: 'Pays-Bas', flag: '🇳🇱', placeholder: '6 12345678' },
+  { code: 'LU', dial: '+352', name: 'Luxembourg', flag: '🇱🇺', placeholder: '621 123 456' },
+  { code: 'MC', dial: '+377', name: 'Monaco', flag: '🇲🇨', placeholder: '6 12 34 56 78' },
+  { code: 'MA', dial: '+212', name: 'Maroc', flag: '🇲🇦', placeholder: '612 345678' },
+  { code: 'TN', dial: '+216', name: 'Tunisie', flag: '🇹🇳', placeholder: '20 123 456' },
+  { code: 'DZ', dial: '+213', name: 'Algérie', flag: '🇩🇿', placeholder: '551 23 45 67' },
+  { code: 'SN', dial: '+221', name: 'Sénégal', flag: '🇸🇳', placeholder: '70 123 45 67' },
+  { code: 'CI', dial: '+225', name: 'Côte d\'Ivoire', flag: '🇨🇮', placeholder: '01 23 45 67 89' },
+  { code: 'CM', dial: '+237', name: 'Cameroun', flag: '🇨🇲', placeholder: '6 71 23 45 67' },
+  { code: 'MG', dial: '+261', name: 'Madagascar', flag: '🇲🇬', placeholder: '32 12 345 67' },
+  { code: 'RE', dial: '+262', name: 'La Réunion', flag: '🇷🇪', placeholder: '692 12 34 56' },
+  { code: 'MQ', dial: '+596', name: 'Martinique', flag: '🇲🇶', placeholder: '696 12 34 56' },
+  { code: 'GP', dial: '+590', name: 'Guadeloupe', flag: '🇬🇵', placeholder: '690 12 34 56' },
+  { code: 'AT', dial: '+43', name: 'Autriche', flag: '🇦🇹', placeholder: '664 1234567' },
+  { code: 'PL', dial: '+48', name: 'Pologne', flag: '🇵🇱', placeholder: '512 345 678' },
+  { code: 'JP', dial: '+81', name: 'Japon', flag: '🇯🇵', placeholder: '90 1234 5678' },
+  { code: 'AU', dial: '+61', name: 'Australie', flag: '🇦🇺', placeholder: '412 345 678' },
+  { code: 'BR', dial: '+55', name: 'Brésil', flag: '🇧🇷', placeholder: '11 91234 5678' },
+]
+
+const getPhonePlaceholder = (dial: string): string => {
+  const country = COUNTRIES.find(c => c.dial === dial)
+  return country?.placeholder || '123 456 789'
+}
+
 export default function SigningBanner({
   fields,
   fieldValues,
@@ -72,6 +109,10 @@ export default function SigningBanner({
   const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [signatureLoaded, setSignatureLoaded] = useState(false)
   const [phoneVerified, setPhoneVerified] = useState(false)
+  const [phoneCountry, setPhoneCountry] = useState('+33')
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const countryDropdownRef = useRef<HTMLDivElement>(null)
+  const [countrySearch, setCountrySearch] = useState('')
   
   // Inline OTP states
   const [otpStep, setOtpStep] = useState<'input' | 'code'>('input')
@@ -190,6 +231,20 @@ export default function SigningBanner({
     }
   }, [showFontDropdown])
   
+  // Close country dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setShowCountryDropdown(false)
+        setCountrySearch('')
+      }
+    }
+    if (showCountryDropdown) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showCountryDropdown])
+  
   // Initialize signature pad
   useEffect(() => {
     if (canvasRef.current && signatureMode === 'draw' && (currentField?.type === 'signature' || currentField?.type === 'initials')) {
@@ -262,18 +317,25 @@ export default function SigningBanner({
   }, [])
   
   // Send OTP for phone verification (inline)
+  // Build full phone number with country code
+  const getFullPhoneNumber = useCallback(() => {
+    return phoneCountry + phoneValue
+  }, [phoneCountry, phoneValue])
+  
   const handleSendOTP = useCallback(async () => {
-    if (phoneValue.length < 10) return
+    if (phoneValue.length < 6) return
     
     setOtpSending(true)
     setOtpError('')
+    
+    const fullPhone = getFullPhoneNumber()
     
     try {
       const res = await fetch('/api/otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phoneValue,
+          phone: fullPhone,
           envelopeSlug,
           signerId,
           type: 'field',
@@ -295,7 +357,7 @@ export default function SigningBanner({
     } finally {
       setOtpSending(false)
     }
-  }, [phoneValue, envelopeSlug, signerId])
+  }, [phoneValue, phoneCountry, envelopeSlug, signerId, getFullPhoneNumber])
   
   // Handle OTP code input
   const handleOtpCodeChange = useCallback((index: number, value: string) => {
@@ -333,12 +395,14 @@ export default function SigningBanner({
     setOtpVerifying(true)
     setOtpError('')
     
+    const fullPhone = getFullPhoneNumber()
+    
     try {
       const res = await fetch('/api/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          phone: phoneValue,
+          phone: fullPhone,
           code: codeToVerify,
           envelopeSlug,
           signerId,
@@ -351,7 +415,8 @@ export default function SigningBanner({
       if (res.ok && data.success) {
         setPhoneVerified(true)
         if (currentField?.type === 'phone') {
-          onValueChange(currentField.id, phoneValue)
+          // Save full phone number with country code
+          onValueChange(currentField.id, fullPhone)
         }
       } else {
         setOtpError(data.error || 'Code incorrect')
@@ -363,7 +428,7 @@ export default function SigningBanner({
     } finally {
       setOtpVerifying(false)
     }
-  }, [otpCode, phoneValue, envelopeSlug, signerId, currentField, onValueChange])
+  }, [otpCode, phoneValue, phoneCountry, envelopeSlug, signerId, currentField, onValueChange, getFullPhoneNumber])
   
   const handleNext = useCallback(() => {
     if (!currentField) return
@@ -424,7 +489,7 @@ export default function SigningBanner({
       // Just proceed to next field
     } else if (currentField.type === 'phone') {
       // Phone field requires OTP verification
-      if (!phoneVerified && phoneValue.length >= 10) {
+      if (!phoneVerified && phoneValue.length >= 6) {
         if (otpStep === 'input') {
           // Send OTP
           handleSendOTP()
@@ -433,7 +498,7 @@ export default function SigningBanner({
         return // Still waiting for verification
       }
       if (phoneVerified) {
-        onValueChange(currentField.id, phoneValue)
+        onValueChange(currentField.id, getFullPhoneNumber())
       }
     } else if (currentField.type === 'date' && dateValue) {
       onValueChange(currentField.id, new Date(dateValue).toLocaleDateString('fr-FR'))
@@ -444,7 +509,7 @@ export default function SigningBanner({
     if (currentFieldIndex < totalFields - 1) {
       onFieldChange(currentFieldIndex + 1)
     }
-  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, phoneValue, phoneVerified, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange, isAuthenticated, saveSignatureToUser])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, selectedFont, dateValue, textValue, phoneValue, phoneVerified, fieldValues, currentFieldIndex, totalFields, onValueChange, onFieldChange, isAuthenticated, saveSignatureToUser, getFullPhoneNumber, handleSendOTP, otpStep])
   
   const handleBack = () => {
     if (currentFieldIndex > 0) onFieldChange(currentFieldIndex - 1)
@@ -465,7 +530,7 @@ export default function SigningBanner({
       if (!currentField.required && !phoneValue) return true
       // Allow clicking "Suivant" to trigger OTP verification when phone is filled
       // The actual verification check happens in handleNext()
-      return phoneValue.length >= 10
+      return phoneValue.length >= 6
     }
     if (['text', 'name', 'email'].includes(currentField.type)) return !currentField.required || textValue.trim() !== ''
     return true
@@ -805,26 +870,89 @@ export default function SigningBanner({
                 <div className="space-y-3">
                   {otpStep === 'input' && !phoneVerified ? (
                     <>
-                      {/* Phone number input */}
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
+                      {/* Phone number input with country selector */}
+                      <div className="flex gap-2">
+                        {/* Country dropdown */}
+                        <div className="relative" ref={countryDropdownRef}>
+                          <button
+                            type="button"
+                            onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                            className="flex items-center gap-1 px-2 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 hover:border-gray-300 transition-colors min-w-[80px]"
+                          >
+                            <span className="text-lg">{COUNTRIES.find(c => c.dial === phoneCountry)?.flag || '🌍'}</span>
+                            <span className="text-sm text-gray-600">{phoneCountry}</span>
+                            <svg className={`w-3 h-3 text-gray-400 transition-transform ${showCountryDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                          
+                          {showCountryDropdown && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden"
+                            >
+                              <div className="p-2 border-b border-gray-100">
+                                <div className="relative">
+                                  <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                  </svg>
+                                  <input
+                                    type="text"
+                                    value={countrySearch}
+                                    onChange={(e) => setCountrySearch(e.target.value)}
+                                    placeholder="Rechercher..."
+                                    className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
+                                    autoFocus
+                                  />
+                                </div>
+                              </div>
+                              <div className="max-h-40 overflow-y-auto">
+                                {COUNTRIES.filter(c => 
+                                  c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                                  c.dial.includes(countrySearch)
+                                ).map((country) => (
+                                  <button
+                                    key={country.code}
+                                    type="button"
+                                    onClick={() => {
+                                      setPhoneCountry(country.dial)
+                                      setShowCountryDropdown(false)
+                                      setCountrySearch('')
+                                      setPhoneValue('') // Reset phone when changing country
+                                    }}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                                      country.dial === phoneCountry ? 'bg-[#08CF65]/5 text-[#08CF65]' : 'text-gray-700'
+                                    }`}
+                                  >
+                                    <span className="text-lg">{country.flag}</span>
+                                    <span className="flex-1 text-left truncate">{country.name}</span>
+                                    <span className="text-gray-400 text-xs">{country.dial}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                        
+                        {/* Phone input */}
                         <input
                           type="tel"
-                          value={phoneValue.replace(/^0/, '')}
+                          value={phoneValue}
                           onChange={(e) => {
-                            const raw = e.target.value.replace(/\D/g, '').slice(0, 9)
-                            setPhoneValue('0' + raw)
+                            const raw = e.target.value.replace(/\D/g, '').slice(0, 15)
+                            setPhoneValue(raw)
                             setPhoneVerified(false)
                           }}
-                          placeholder="6 12 34 56 78"
-                          className="w-full pl-12 pr-4 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-[#08CF65] text-gray-900 focus:outline-none"
+                          placeholder={getPhonePlaceholder(phoneCountry)}
+                          className="flex-1 px-3 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-[#08CF65] text-gray-900 focus:outline-none"
                           autoFocus
                         />
                       </div>
                       {otpError && (
                         <p className="text-xs text-red-500">{otpError}</p>
                       )}
-                      {phoneValue.length >= 10 && (
+                      {phoneValue.length >= 6 && (
                         <p className="text-xs text-gray-500">
                           Cliquez sur Vérifier pour recevoir un code SMS
                         </p>
@@ -835,7 +963,7 @@ export default function SigningBanner({
                       {/* OTP code input inline */}
                       <div className="text-center">
                         <p className="text-sm text-gray-600 mb-3">
-                          Code envoyé au <span className="font-medium">+33***{phoneValue.slice(-4)}</span>
+                          Code envoyé au <span className="font-medium">{phoneCountry}***{phoneValue.slice(-4)}</span>
                         </p>
                         <div className="flex justify-center gap-2">
                           {otpCode.map((digit, index) => (
@@ -871,19 +999,24 @@ export default function SigningBanner({
                   ) : (
                     <>
                       {/* Phone verified */}
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
-                        <input
-                          type="tel"
-                          value={phoneValue.replace(/^0/, '')}
-                          className="w-full pl-12 pr-10 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 focus:outline-none"
-                          disabled
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                          <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </span>
+                      <div className="flex gap-2">
+                        <div className="flex items-center gap-1 px-2 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] min-w-[80px]">
+                          <span className="text-lg">{COUNTRIES.find(c => c.dial === phoneCountry)?.flag || '🌍'}</span>
+                          <span className="text-sm text-gray-600">{phoneCountry}</span>
+                        </div>
+                        <div className="relative flex-1">
+                          <input
+                            type="tel"
+                            value={phoneValue}
+                            className="w-full px-3 py-2 pr-10 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 focus:outline-none"
+                            disabled
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                            <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </span>
+                        </div>
                       </div>
                       <p className="text-xs text-[#08CF65] flex items-center gap-1">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
