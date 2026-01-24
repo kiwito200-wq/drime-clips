@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import SignatureEditorModal from '@/components/SignatureEditorModal'
 import Tooltip from '@/components/Tooltip'
+import Onboarding from '@/components/Onboarding'
 import { useI18n } from '@/lib/i18n/I18nContext'
 
 interface User {
@@ -112,6 +113,38 @@ export default function DashboardHome() {
     return []
   })
   const [notificationTab, setNotificationTab] = useState<'general' | 'invitations' | 'requests'>('general')
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  
+  // Check if onboarding should be shown (first visit)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !loading && user) {
+      const hasSeenOnboarding = localStorage.getItem('drime_sign_onboarding_complete')
+      if (!hasSeenOnboarding) {
+        // Small delay to let the UI render first
+        const timer = setTimeout(() => setShowOnboarding(true), 500)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [loading, user])
+
+  const completeOnboarding = useCallback(() => {
+    localStorage.setItem('drime_sign_onboarding_complete', 'true')
+    setShowOnboarding(false)
+  }, [])
+
+  // Handle keyboard for onboarding
+  useEffect(() => {
+    if (!showOnboarding) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        completeOnboarding()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [showOnboarding, completeOnboarding])
   
   // Persist read notifications to localStorage
   useEffect(() => {
@@ -396,7 +429,7 @@ export default function DashboardHome() {
           {/* Right side - Notifications & Profile */}
           <div className="flex items-center gap-2">
             {/* Notifications */}
-            <div className="relative" ref={notificationsRef}>
+            <div className="relative" ref={notificationsRef} data-onboarding="notifications">
               <Tooltip content={t('notifications.title')} position="bottom">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
@@ -590,7 +623,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Profile */}
-            <div className="relative" ref={profileMenuRef}>
+            <div className="relative" ref={profileMenuRef} data-onboarding="profile">
               <button
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all overflow-hidden"
@@ -735,6 +768,7 @@ export default function DashboardHome() {
               <div className="space-y-1">
                 <Link
                   href="/dashboard"
+                  data-onboarding="home"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-[#ECEEF0] text-gray-900 font-medium"
                 >
                   <HomeIcon />
@@ -749,6 +783,7 @@ export default function DashboardHome() {
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements"
+                  data-onboarding="agreements"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <DocumentIcon />
@@ -756,6 +791,7 @@ export default function DashboardHome() {
                 </Link>
                 <Link
                   href="/dashboard/agreements?view=sent"
+                  data-onboarding="received"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <MailIcon />
@@ -765,7 +801,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Filtered by status */}
-            <div>
+            <div data-onboarding="filters">
               <p className="text-xs font-medium text-gray-500 px-3 mb-2">{locale === 'fr' ? 'Filtrer par statut' : 'Filtered by status'}</p>
               <div className="space-y-1">
                 <Link
@@ -869,6 +905,7 @@ export default function DashboardHome() {
           {/* Upload zone */}
           <div className="px-8 pb-8 flex-1">
             <div
+              data-onboarding="upload"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -970,6 +1007,14 @@ export default function DashboardHome() {
           setShowSignatureEditor(false)
         }}
       />
+
+      {/* Onboarding */}
+      {showOnboarding && (
+        <Onboarding
+          locale={locale as 'fr' | 'en'}
+          onComplete={completeOnboarding}
+        />
+      )}
     </div>
   )
 }
