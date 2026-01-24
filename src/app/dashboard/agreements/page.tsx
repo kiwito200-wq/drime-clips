@@ -172,6 +172,13 @@ function AgreementsContent() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const notificationsRef = useRef<HTMLDivElement>(null)
+  
+  // Marquee selection refs and state
+  const documentListRef = useRef<HTMLDivElement>(null)
+  const documentRowRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null)
+  const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -515,6 +522,102 @@ function AgreementsContent() {
       setSelectedDocs(filteredEnvelopes.map(e => e.id))
     }
   }
+
+  // Marquee selection handlers
+  const handleMarqueeStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Only start selection on left click and on empty space (not on documents)
+    if (e.button !== 0) return
+    const target = e.target as HTMLElement
+    // Don't start marquee if clicking on a document row or interactive element
+    if (target.closest('[data-doc-row]') || target.closest('button') || target.closest('a')) return
+    
+    const container = documentListRef.current
+    if (!container) return
+    
+    const rect = container.getBoundingClientRect()
+    const x = e.clientX - rect.left + container.scrollLeft
+    const y = e.clientY - rect.top + container.scrollTop
+    
+    setSelectionStart({ x, y })
+    setSelectionEnd({ x, y })
+    setIsSelecting(true)
+    
+    // Prevent text selection
+    e.preventDefault()
+  }, [])
+
+  const handleMarqueeMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSelecting || !selectionStart) return
+    
+    const container = documentListRef.current
+    if (!container) return
+    
+    const rect = container.getBoundingClientRect()
+    const x = e.clientX - rect.left + container.scrollLeft
+    const y = e.clientY - rect.top + container.scrollTop
+    
+    setSelectionEnd({ x, y })
+    
+    // Calculate which documents are within the selection rectangle
+    const selRect = {
+      left: Math.min(selectionStart.x, x),
+      right: Math.max(selectionStart.x, x),
+      top: Math.min(selectionStart.y, y),
+      bottom: Math.max(selectionStart.y, y),
+    }
+    
+    const selectedIds: string[] = []
+    documentRowRefs.current.forEach((rowEl, docId) => {
+      const rowRect = rowEl.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      
+      // Convert row rect to container coordinates
+      const rowTop = rowRect.top - containerRect.top + container.scrollTop
+      const rowBottom = rowRect.bottom - containerRect.top + container.scrollTop
+      const rowLeft = rowRect.left - containerRect.left + container.scrollLeft
+      const rowRight = rowRect.right - containerRect.left + container.scrollLeft
+      
+      // Check if selection rectangle intersects with row
+      if (
+        selRect.left < rowRight &&
+        selRect.right > rowLeft &&
+        selRect.top < rowBottom &&
+        selRect.bottom > rowTop
+      ) {
+        selectedIds.push(docId)
+      }
+    })
+    
+    setSelectedDocs(selectedIds)
+  }, [isSelecting, selectionStart])
+
+  const handleMarqueeEnd = useCallback(() => {
+    setIsSelecting(false)
+    setSelectionStart(null)
+    setSelectionEnd(null)
+  }, [])
+
+  // Global mouse up handler for marquee
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isSelecting) {
+        handleMarqueeEnd()
+      }
+    }
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp)
+  }, [isSelecting, handleMarqueeEnd])
+
+  // Calculate selection rectangle for rendering
+  const selectionRect = useMemo(() => {
+    if (!isSelecting || !selectionStart || !selectionEnd) return null
+    return {
+      left: Math.min(selectionStart.x, selectionEnd.x),
+      top: Math.min(selectionStart.y, selectionEnd.y),
+      width: Math.abs(selectionEnd.x - selectionStart.x),
+      height: Math.abs(selectionEnd.y - selectionStart.y),
+    }
+  }, [isSelecting, selectionStart, selectionEnd])
 
   const handleBulkDownload = async () => {
     if (selectedDocs.length === 1) {
@@ -1275,7 +1378,28 @@ function AgreementsContent() {
           </div>
 
           {/* Scrollable documents list */}
-          <div className="flex-1 overflow-y-auto">
+          <div 
+            ref={documentListRef}
+            className="flex-1 overflow-y-auto relative select-none"
+            onMouseDown={handleMarqueeStart}
+            onMouseMove={handleMarqueeMove}
+            onMouseUp={handleMarqueeEnd}
+          >
+            {/* Marquee selection rectangle */}
+            {selectionRect && (
+              <div
+                className="absolute pointer-events-none z-10"
+                style={{
+                  left: selectionRect.left,
+                  top: selectionRect.top,
+                  width: selectionRect.width,
+                  height: selectionRect.height,
+                  backgroundColor: 'rgba(8, 207, 101, 0.1)',
+                  border: '1px solid rgba(8, 207, 101, 0.5)',
+                  borderRadius: '2px',
+                }}
+              />
+            )}
             {filteredEnvelopes.length === 0 ? (
               <div className="py-16 text-center px-8">
                 <img 
@@ -1334,6 +1458,14 @@ function AgreementsContent() {
                   return (
                     <div
                       key={envelope.id}
+                      data-doc-row
+                      ref={(el) => {
+                        if (el) {
+                          documentRowRefs.current.set(envelope.id, el)
+                        } else {
+                          documentRowRefs.current.delete(envelope.id)
+                        }
+                      }}
                       onClick={() => handleDocumentClick(envelope)}
                       className={`flex items-center py-2.5 px-8 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group ${
                         selectedDocs.includes(envelope.id) ? 'bg-[#08CF65]/5' : ''
