@@ -137,6 +137,7 @@ interface OnboardingProps {
 export default function Onboarding({ locale, onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
+  const [isAnimating, setIsAnimating] = useState(false)
   
   const steps = locale === 'fr' ? STEPS_FR : STEPS_EN
   const step = steps[currentStep]
@@ -174,115 +175,188 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
   }, [step.target])
 
   const handleNext = useCallback(() => {
-    if (isLast) {
-      onComplete()
-    } else {
-      setCurrentStep(prev => prev + 1)
-    }
-  }, [isLast, onComplete])
+    if (isAnimating) return
+    setIsAnimating(true)
+    
+    setTimeout(() => {
+      if (isLast) {
+        onComplete()
+      } else {
+        setCurrentStep(prev => prev + 1)
+      }
+      setIsAnimating(false)
+    }, 150)
+  }, [isLast, onComplete, isAnimating])
 
   const handleSkip = useCallback(() => {
     onComplete()
   }, [onComplete])
 
   const handlePrev = useCallback(() => {
-    if (currentStep > 0) {
+    if (isAnimating || currentStep === 0) return
+    setIsAnimating(true)
+    
+    setTimeout(() => {
       setCurrentStep(prev => prev - 1)
-    }
-  }, [currentStep])
+      setIsAnimating(false)
+    }, 150)
+  }, [currentStep, isAnimating])
 
-  // Calculate tooltip position
-  const getTooltipStyle = () => {
-    if (!targetRect || isWelcome) {
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkip()
+      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
+        handleNext()
+      } else if (e.key === 'ArrowLeft') {
+        handlePrev()
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleNext, handlePrev, handleSkip])
+
+  // Calculate tooltip position - centered for welcome, positioned near target otherwise
+  const getTooltipStyle = (): React.CSSProperties => {
+    if (isWelcome || !targetRect) {
+      // Centered in viewport
       return {
+        position: 'fixed',
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
       }
     }
 
-    const padding = 16
+    const padding = 20
     const tooltipWidth = 360
-    const tooltipHeight = 200
+    const tooltipHeight = 220
+
+    // Calculate position based on step.position
+    let top: number
+    let left: number
 
     switch (step.position) {
       case 'right':
-        return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          left: `${targetRect.right + padding}px`,
-          transform: 'translateY(-50%)',
-        }
+        top = Math.max(16, Math.min(window.innerHeight - tooltipHeight - 16, targetRect.top + targetRect.height / 2 - tooltipHeight / 2))
+        left = Math.min(window.innerWidth - tooltipWidth - 16, targetRect.right + padding)
+        break
       case 'left':
-        return {
-          top: `${targetRect.top + targetRect.height / 2}px`,
-          left: `${targetRect.left - tooltipWidth - padding}px`,
-          transform: 'translateY(-50%)',
-        }
+        top = Math.max(16, Math.min(window.innerHeight - tooltipHeight - 16, targetRect.top + targetRect.height / 2 - tooltipHeight / 2))
+        left = Math.max(16, targetRect.left - tooltipWidth - padding)
+        break
       case 'bottom':
-        return {
-          top: `${targetRect.bottom + padding}px`,
-          left: `${targetRect.left + targetRect.width / 2}px`,
-          transform: 'translateX(-50%)',
-        }
+        top = Math.min(window.innerHeight - tooltipHeight - 16, targetRect.bottom + padding)
+        left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))
+        break
       case 'top':
-        return {
-          top: `${targetRect.top - tooltipHeight - padding}px`,
-          left: `${targetRect.left + targetRect.width / 2}px`,
-          transform: 'translateX(-50%)',
-        }
+        top = Math.max(16, targetRect.top - tooltipHeight - padding)
+        left = Math.max(16, Math.min(window.innerWidth - tooltipWidth - 16, targetRect.left + targetRect.width / 2 - tooltipWidth / 2))
+        break
       default:
-        return {}
+        top = window.innerHeight / 2 - tooltipHeight / 2
+        left = window.innerWidth / 2 - tooltipWidth / 2
+    }
+
+    return {
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
     }
   }
 
+  // Generate clip-path for spotlight effect
+  const getClipPath = () => {
+    if (!targetRect || isWelcome) {
+      return 'none'
+    }
+    
+    const padding = 8
+    const x = targetRect.left - padding
+    const y = targetRect.top - padding
+    const w = targetRect.width + padding * 2
+    const h = targetRect.height + padding * 2
+    const r = 12 // border radius
+    
+    // Create a polygon that covers the whole screen except the target area (with rounded corners approximation)
+    return `polygon(
+      0% 0%, 
+      0% 100%, 
+      ${x}px 100%, 
+      ${x}px ${y + r}px,
+      ${x + r}px ${y}px,
+      ${x + w - r}px ${y}px,
+      ${x + w}px ${y + r}px,
+      ${x + w}px ${y + h - r}px,
+      ${x + w - r}px ${y + h}px,
+      ${x + r}px ${y + h}px,
+      ${x}px ${y + h - r}px,
+      ${x}px 100%,
+      100% 100%, 
+      100% 0%
+    )`
+  }
+
   return (
-    <AnimatePresence>
+    <div className="fixed inset-0 z-[9999]">
+      {/* Overlay with spotlight cutout */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[9999]"
-      >
-        {/* Overlay with spotlight effect */}
-        <div className="absolute inset-0 bg-black/60" />
-        
-        {/* Spotlight cutout */}
-        {targetRect && !isWelcome && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="absolute bg-white rounded-xl shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] pointer-events-none"
-            style={{
-              top: targetRect.top - 8,
-              left: targetRect.left - 8,
-              width: targetRect.width + 16,
-              height: targetRect.height + 16,
-            }}
-          />
-        )}
+        transition={{ duration: 0.3 }}
+        className="absolute inset-0 bg-black/60"
+        style={{
+          clipPath: getClipPath(),
+        }}
+        onClick={handleNext}
+      />
+      
+      {/* Highlight ring around target */}
+      {targetRect && !isWelcome && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="absolute pointer-events-none rounded-xl"
+          style={{
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
+            boxShadow: '0 0 0 3px #08CF65, 0 0 20px rgba(8, 207, 101, 0.4)',
+          }}
+        />
+      )}
 
-        {/* Tooltip */}
+      {/* Tooltip */}
+      <AnimatePresence mode="wait">
         <motion.div
           key={step.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-          className="absolute w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -10, scale: 0.98 }}
+          transition={{ 
+            duration: 0.35, 
+            ease: [0.4, 0, 0.2, 1],
+          }}
+          className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden"
           style={getTooltipStyle()}
         >
-          {/* Header with gradient */}
-          <div className="bg-gradient-to-r from-[#08CF65] to-[#06B557] px-6 py-4">
+          {/* Header */}
+          <div className="px-6 pt-5 pb-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-white font-semibold text-lg">{step.title}</h3>
-              <span className="text-white/80 text-sm">
+              <h3 className="text-gray-900 font-semibold text-lg">{step.title}</h3>
+              <span className="text-gray-400 text-sm">
                 {currentStep + 1} / {steps.length}
               </span>
             </div>
           </div>
 
           {/* Content */}
-          <div className="px-6 py-5">
+          <div className="px-6 pb-4">
             <p className="text-gray-600 leading-relaxed">{step.description}</p>
           </div>
 
@@ -291,39 +365,46 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
             {steps.map((_, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentStep(index)}
-                className={`w-2 h-2 rounded-full transition-all ${
+                onClick={() => !isAnimating && setCurrentStep(index)}
+                className={`h-2 rounded-full transition-all duration-300 ${
                   index === currentStep
                     ? 'bg-[#08CF65] w-6'
                     : index < currentStep
-                    ? 'bg-[#08CF65]/50'
-                    : 'bg-gray-300'
+                    ? 'bg-[#08CF65]/50 w-2'
+                    : 'bg-gray-200 w-2'
                 }`}
               />
             ))}
           </div>
 
           {/* Actions */}
-          <div className="px-6 pb-6 flex items-center justify-between">
-            <button
-              onClick={handleSkip}
-              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
-            </button>
+          <div className="px-6 pb-5 flex items-center justify-between">
+            {/* Show skip only on first step */}
+            {isWelcome ? (
+              <button
+                onClick={handleSkip}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
+              </button>
+            ) : (
+              <div /> // Empty div to maintain spacing
+            )}
 
             <div className="flex items-center gap-2">
               {currentStep > 0 && (
                 <button
                   onClick={handlePrev}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  disabled={isAnimating}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   {locale === 'fr' ? 'Précédent' : 'Previous'}
                 </button>
               )}
               <button
                 onClick={handleNext}
-                className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1"
+                disabled={isAnimating}
+                className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
               >
                 {isLast ? (
                   locale === 'fr' ? "C'est parti !" : "Let's go!"
@@ -339,20 +420,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
             </div>
           </div>
         </motion.div>
-
-        {/* Keyboard hint */}
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 text-white/60 text-sm flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <kbd className="px-2 py-1 bg-white/10 rounded text-xs">←</kbd>
-            <kbd className="px-2 py-1 bg-white/10 rounded text-xs">→</kbd>
-            {locale === 'fr' ? 'Naviguer' : 'Navigate'}
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-2 py-1 bg-white/10 rounded text-xs">Esc</kbd>
-            {locale === 'fr' ? 'Fermer' : 'Close'}
-          </span>
-        </div>
-      </motion.div>
-    </AnimatePresence>
+      </AnimatePresence>
+    </div>
   )
 }
