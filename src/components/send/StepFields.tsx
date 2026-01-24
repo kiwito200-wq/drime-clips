@@ -8,7 +8,6 @@ import FieldOverlay from '@/components/sign/FieldOverlay'
 import FieldPalette from '@/components/sign/FieldPalette'
 import PageThumbnails from '@/components/sign/PageThumbnails'
 import SignaturePad from '@/components/sign/SignaturePad'
-import PDFEditor from '@/components/PDFEditor'
 import { Field, FieldType, Recipient } from '@/components/sign/types'
 
 interface StepFieldsProps {
@@ -53,8 +52,6 @@ export default function StepFields({
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(documentData.name)
   const [isSavingName, setIsSavingName] = useState(false)
-  const [isPdfEditorOpen, setIsPdfEditorOpen] = useState(false)
-  const [isSavingPdf, setIsSavingPdf] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
   // Update selectedRecipientId when signers change (e.g., after saving to DB)
@@ -300,45 +297,6 @@ export default function StepFields({
     }
   }, [saveName])
 
-  // Handle PDF editor save
-  const handlePdfEditorSave = useCallback(async (modifiedPdfBlob: Blob) => {
-    if (!documentData.slug) return
-    
-    setIsSavingPdf(true)
-    try {
-      // Upload the modified PDF
-      const formData = new FormData()
-      formData.append('file', modifiedPdfBlob, `${documentData.name}_modified.pdf`)
-      
-      const res = await fetch(`/api/envelopes/${documentData.slug}/update-pdf`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      })
-      
-      if (res.ok) {
-        const data = await res.json()
-        // Update the PDF URL to show the modified version
-        setPdfUrl(data.url)
-        if (onUpdatePdfUrl) {
-          onUpdatePdfUrl(data.url)
-        }
-        // Reset pages to trigger reload
-        setPages([])
-        setLoadingPdf(true)
-        // Close editor
-        setIsPdfEditorOpen(false)
-      } else {
-        const error = await res.json()
-        alert(error.error || 'Échec de la sauvegarde du PDF')
-      }
-    } catch (error) {
-      console.error('Failed to save modified PDF:', error)
-      alert('Échec de la sauvegarde du PDF')
-    } finally {
-      setIsSavingPdf(false)
-    }
-  }, [documentData.slug, documentData.name, onUpdatePdfUrl])
 
   // Update recipient
   const updateRecipient = useCallback((id: string, updates: Partial<Recipient>) => {
@@ -436,17 +394,6 @@ export default function StepFields({
 
         {/* Right - Actions */}
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsPdfEditorOpen(true)}
-            className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5"
-            title="Modifier le PDF"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-            </svg>
-            Modifier PDF
-          </button>
-          <div className="w-px h-5 bg-gray-200" />
           <button
             onClick={onBack}
             className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -612,24 +559,6 @@ export default function StepFields({
         }
       />
 
-      {/* PDF Editor Modal */}
-      {isPdfEditorOpen && pdfUrl && (
-        <PDFEditor
-          pdfUrl={pdfUrl}
-          onSave={handlePdfEditorSave}
-          onCancel={() => setIsPdfEditorOpen(false)}
-        />
-      )}
-
-      {/* Saving PDF indicator */}
-      {isSavingPdf && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-xl p-6 flex flex-col items-center gap-4">
-            <div className="w-10 h-10 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-700 font-medium">Sauvegarde du PDF modifié...</p>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
