@@ -3,53 +3,59 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-// Country codes with flags
+// Country codes with flags and example phone formats
 const COUNTRIES = [
-  { code: 'FR', dial: '+33', name: 'France', flag: '🇫🇷' },
-  { code: 'BE', dial: '+32', name: 'Belgique', flag: '🇧🇪' },
-  { code: 'CH', dial: '+41', name: 'Suisse', flag: '🇨🇭' },
-  { code: 'CA', dial: '+1', name: 'Canada', flag: '🇨🇦' },
-  { code: 'US', dial: '+1', name: 'États-Unis', flag: '🇺🇸' },
-  { code: 'GB', dial: '+44', name: 'Royaume-Uni', flag: '🇬🇧' },
-  { code: 'DE', dial: '+49', name: 'Allemagne', flag: '🇩🇪' },
-  { code: 'ES', dial: '+34', name: 'Espagne', flag: '🇪🇸' },
-  { code: 'IT', dial: '+39', name: 'Italie', flag: '🇮🇹' },
-  { code: 'PT', dial: '+351', name: 'Portugal', flag: '🇵🇹' },
-  { code: 'NL', dial: '+31', name: 'Pays-Bas', flag: '🇳🇱' },
-  { code: 'LU', dial: '+352', name: 'Luxembourg', flag: '🇱🇺' },
-  { code: 'MC', dial: '+377', name: 'Monaco', flag: '🇲🇨' },
-  { code: 'MA', dial: '+212', name: 'Maroc', flag: '🇲🇦' },
-  { code: 'TN', dial: '+216', name: 'Tunisie', flag: '🇹🇳' },
-  { code: 'DZ', dial: '+213', name: 'Algérie', flag: '🇩🇿' },
-  { code: 'SN', dial: '+221', name: 'Sénégal', flag: '🇸🇳' },
-  { code: 'CI', dial: '+225', name: 'Côte d\'Ivoire', flag: '🇨🇮' },
-  { code: 'CM', dial: '+237', name: 'Cameroun', flag: '🇨🇲' },
-  { code: 'MG', dial: '+261', name: 'Madagascar', flag: '🇲🇬' },
-  { code: 'RE', dial: '+262', name: 'La Réunion', flag: '🇷🇪' },
-  { code: 'MQ', dial: '+596', name: 'Martinique', flag: '🇲🇶' },
-  { code: 'GP', dial: '+590', name: 'Guadeloupe', flag: '🇬🇵' },
-  { code: 'GF', dial: '+594', name: 'Guyane', flag: '🇬🇫' },
-  { code: 'PF', dial: '+689', name: 'Polynésie française', flag: '🇵🇫' },
-  { code: 'NC', dial: '+687', name: 'Nouvelle-Calédonie', flag: '🇳🇨' },
-  { code: 'AT', dial: '+43', name: 'Autriche', flag: '🇦🇹' },
-  { code: 'PL', dial: '+48', name: 'Pologne', flag: '🇵🇱' },
-  { code: 'RO', dial: '+40', name: 'Roumanie', flag: '🇷🇴' },
-  { code: 'GR', dial: '+30', name: 'Grèce', flag: '🇬🇷' },
-  { code: 'IE', dial: '+353', name: 'Irlande', flag: '🇮🇪' },
-  { code: 'SE', dial: '+46', name: 'Suède', flag: '🇸🇪' },
-  { code: 'NO', dial: '+47', name: 'Norvège', flag: '🇳🇴' },
-  { code: 'DK', dial: '+45', name: 'Danemark', flag: '🇩🇰' },
-  { code: 'FI', dial: '+358', name: 'Finlande', flag: '🇫🇮' },
-  { code: 'JP', dial: '+81', name: 'Japon', flag: '🇯🇵' },
-  { code: 'CN', dial: '+86', name: 'Chine', flag: '🇨🇳' },
-  { code: 'KR', dial: '+82', name: 'Corée du Sud', flag: '🇰🇷' },
-  { code: 'IN', dial: '+91', name: 'Inde', flag: '🇮🇳' },
-  { code: 'AU', dial: '+61', name: 'Australie', flag: '🇦🇺' },
-  { code: 'NZ', dial: '+64', name: 'Nouvelle-Zélande', flag: '🇳🇿' },
-  { code: 'BR', dial: '+55', name: 'Brésil', flag: '🇧🇷' },
-  { code: 'MX', dial: '+52', name: 'Mexique', flag: '🇲🇽' },
-  { code: 'AR', dial: '+54', name: 'Argentine', flag: '🇦🇷' },
+  { code: 'FR', dial: '+33', name: 'France', flag: '🇫🇷', placeholder: '6 12 34 56 78' },
+  { code: 'BE', dial: '+32', name: 'Belgique', flag: '🇧🇪', placeholder: '470 12 34 56' },
+  { code: 'CH', dial: '+41', name: 'Suisse', flag: '🇨🇭', placeholder: '79 123 45 67' },
+  { code: 'CA', dial: '+1', name: 'Canada', flag: '🇨🇦', placeholder: '514 123 4567' },
+  { code: 'US', dial: '+1', name: 'États-Unis', flag: '🇺🇸', placeholder: '202 555 0123' },
+  { code: 'GB', dial: '+44', name: 'Royaume-Uni', flag: '🇬🇧', placeholder: '7911 123456' },
+  { code: 'DE', dial: '+49', name: 'Allemagne', flag: '🇩🇪', placeholder: '151 12345678' },
+  { code: 'ES', dial: '+34', name: 'Espagne', flag: '🇪🇸', placeholder: '612 34 56 78' },
+  { code: 'IT', dial: '+39', name: 'Italie', flag: '🇮🇹', placeholder: '312 345 6789' },
+  { code: 'PT', dial: '+351', name: 'Portugal', flag: '🇵🇹', placeholder: '912 345 678' },
+  { code: 'NL', dial: '+31', name: 'Pays-Bas', flag: '🇳🇱', placeholder: '6 12345678' },
+  { code: 'LU', dial: '+352', name: 'Luxembourg', flag: '🇱🇺', placeholder: '621 123 456' },
+  { code: 'MC', dial: '+377', name: 'Monaco', flag: '🇲🇨', placeholder: '6 12 34 56 78' },
+  { code: 'MA', dial: '+212', name: 'Maroc', flag: '🇲🇦', placeholder: '612 345678' },
+  { code: 'TN', dial: '+216', name: 'Tunisie', flag: '🇹🇳', placeholder: '20 123 456' },
+  { code: 'DZ', dial: '+213', name: 'Algérie', flag: '🇩🇿', placeholder: '551 23 45 67' },
+  { code: 'SN', dial: '+221', name: 'Sénégal', flag: '🇸🇳', placeholder: '70 123 45 67' },
+  { code: 'CI', dial: '+225', name: 'Côte d\'Ivoire', flag: '🇨🇮', placeholder: '01 23 45 67 89' },
+  { code: 'CM', dial: '+237', name: 'Cameroun', flag: '🇨🇲', placeholder: '6 71 23 45 67' },
+  { code: 'MG', dial: '+261', name: 'Madagascar', flag: '🇲🇬', placeholder: '32 12 345 67' },
+  { code: 'RE', dial: '+262', name: 'La Réunion', flag: '🇷🇪', placeholder: '692 12 34 56' },
+  { code: 'MQ', dial: '+596', name: 'Martinique', flag: '🇲🇶', placeholder: '696 12 34 56' },
+  { code: 'GP', dial: '+590', name: 'Guadeloupe', flag: '🇬🇵', placeholder: '690 12 34 56' },
+  { code: 'GF', dial: '+594', name: 'Guyane', flag: '🇬🇫', placeholder: '694 12 34 56' },
+  { code: 'PF', dial: '+689', name: 'Polynésie française', flag: '🇵🇫', placeholder: '87 12 34 56' },
+  { code: 'NC', dial: '+687', name: 'Nouvelle-Calédonie', flag: '🇳🇨', placeholder: '75 12 34' },
+  { code: 'AT', dial: '+43', name: 'Autriche', flag: '🇦🇹', placeholder: '664 1234567' },
+  { code: 'PL', dial: '+48', name: 'Pologne', flag: '🇵🇱', placeholder: '512 345 678' },
+  { code: 'RO', dial: '+40', name: 'Roumanie', flag: '🇷🇴', placeholder: '712 345 678' },
+  { code: 'GR', dial: '+30', name: 'Grèce', flag: '🇬🇷', placeholder: '691 234 5678' },
+  { code: 'IE', dial: '+353', name: 'Irlande', flag: '🇮🇪', placeholder: '85 123 4567' },
+  { code: 'SE', dial: '+46', name: 'Suède', flag: '🇸🇪', placeholder: '70 123 45 67' },
+  { code: 'NO', dial: '+47', name: 'Norvège', flag: '🇳🇴', placeholder: '406 12 345' },
+  { code: 'DK', dial: '+45', name: 'Danemark', flag: '🇩🇰', placeholder: '20 12 34 56' },
+  { code: 'FI', dial: '+358', name: 'Finlande', flag: '🇫🇮', placeholder: '41 2345678' },
+  { code: 'JP', dial: '+81', name: 'Japon', flag: '🇯🇵', placeholder: '90 1234 5678' },
+  { code: 'CN', dial: '+86', name: 'Chine', flag: '🇨🇳', placeholder: '131 2345 6789' },
+  { code: 'KR', dial: '+82', name: 'Corée du Sud', flag: '🇰🇷', placeholder: '10 1234 5678' },
+  { code: 'IN', dial: '+91', name: 'Inde', flag: '🇮🇳', placeholder: '81234 56789' },
+  { code: 'AU', dial: '+61', name: 'Australie', flag: '🇦🇺', placeholder: '412 345 678' },
+  { code: 'NZ', dial: '+64', name: 'Nouvelle-Zélande', flag: '🇳🇿', placeholder: '21 123 4567' },
+  { code: 'BR', dial: '+55', name: 'Brésil', flag: '🇧🇷', placeholder: '11 91234 5678' },
+  { code: 'MX', dial: '+52', name: 'Mexique', flag: '🇲🇽', placeholder: '1 234 567 8901' },
+  { code: 'AR', dial: '+54', name: 'Argentine', flag: '🇦🇷', placeholder: '9 11 1234 5678' },
 ]
+
+// Get placeholder for a dial code
+const getPhonePlaceholder = (dial: string): string => {
+  const country = COUNTRIES.find(c => c.dial === dial)
+  return country?.placeholder || '123 456 789'
+}
 
 interface Signer {
   id: string
@@ -341,7 +347,7 @@ export default function StepSigners({
                           const raw = e.target.value.replace(/\D/g, '').slice(0, 15)
                           onUpdateSigner(signer.id, { phone2FANumber: raw })
                         }}
-                        placeholder="6 12 34 56 78"
+                        placeholder={getPhonePlaceholder(signer.phoneCountry || '+33')}
                         className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
                       />
                     </div>

@@ -12,19 +12,10 @@ interface Params {
 // POST /api/envelopes/[slug]/signers - Add a signer
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({
@@ -83,19 +74,10 @@ export async function POST(request: NextRequest, { params }: Params) {
 // PUT /api/envelopes/[slug]/signers - Update signers (batch)
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({
@@ -159,19 +141,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/envelopes/[slug]/signers - Delete a signer
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({

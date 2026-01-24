@@ -11,19 +11,12 @@ interface Params {
 // GET /api/envelopes/[slug] - Get envelope details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
+    // Must be authenticated
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      console.log('[GET /api/envelopes/[slug]] No authenticated user')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({
@@ -63,18 +56,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PATCH /api/envelopes/[slug] - Update envelope (rename, change due date)
 export async function PATCH(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const body = await request.json()
@@ -121,18 +106,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 // DELETE /api/envelopes/[slug] - Delete envelope
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     // Verify ownership

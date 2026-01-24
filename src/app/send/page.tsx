@@ -89,6 +89,10 @@ function SendPageContent() {
   const loadExistingEnvelope = async (slug: string) => {
     try {
       setIsLoading(true)
+      
+      // Always set the slug from URL params so we can save even if initial load fails
+      setDocument(prev => ({ ...prev, slug }))
+      
       const res = await fetch(`/api/envelopes/${slug}`, { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
