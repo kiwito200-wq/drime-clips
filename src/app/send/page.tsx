@@ -14,6 +14,9 @@ export interface Signer {
   name: string
   email: string
   color: string
+  phone2FA?: boolean
+  phone2FANumber?: string
+  phoneCountry?: string
 }
 
 export interface SignField {
@@ -103,6 +106,9 @@ function SendPageContent() {
             name: s.name || '',
             email: s.email,
             color: s.color,
+            phone2FA: s.phone2FA || false,
+            phone2FANumber: s.phone2FANumber || '',
+            phoneCountry: s.phoneCountryCode || '+33',
           })))
         }
         if (envelope.fields?.length > 0) {
