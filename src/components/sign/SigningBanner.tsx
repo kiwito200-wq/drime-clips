@@ -262,7 +262,8 @@ export default function SigningBanner({
         }
       }
     } else if (currentField.type === 'checkbox') {
-      onValueChange(currentField.id, fieldValues[currentField.id] === 'true' ? '' : 'true')
+      // Checkbox value is already set when user clicks on it, don't toggle here
+      // Just proceed to next field
     } else if (currentField.type === 'date' && dateValue) {
       onValueChange(currentField.id, new Date(dateValue).toLocaleDateString('fr-FR'))
     } else if (['text', 'name', 'email'].includes(currentField.type)) {
