@@ -90,8 +90,8 @@ const ReminderIcon = () => (
 // Email Icon
 const EmailIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M21 15.09c0 2.77-1.84 5.02-4.58 5.01H7.58C4.84 5.01 3 17.86 3 15.09V8.91C3 6.15 4.84 3.9 7.58 3.9h8.84C19.16 3.9 21 6.15 21 8.91v6.18z" />
-    <path d="M20.59 6.88l-6.47 5.26a2.84 2.84 0 0 1-4.16 0L3.43 6.88" />
+    <path d="M21 15.0944C21 17.8596 19.1552 20.1072 16.4183 20.1004H7.58173C4.84476 20.1072 3 17.8596 3 15.0944V8.91315C3 6.15088 4.84476 3.90039 7.58173 3.90039H16.4183C19.1552 3.90039 21 6.15088 21 8.91315V15.0944Z" />
+    <path d="M20.5874 6.87988L14.1182 12.1402C12.8999 13.1082 11.1732 13.1082 9.95494 12.1402L3.43066 6.87988" />
   </svg>
 )
 
@@ -318,7 +318,7 @@ export default function StepReview({
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -10 }}
                               transition={{ duration: 0.15 }}
-                              className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden"
+                              className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg z-[100] overflow-hidden"
                             >
                               {REMINDER_OPTIONS.map((option) => (
                                 <button

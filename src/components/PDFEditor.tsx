@@ -144,6 +144,11 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
 
   // Handle canvas click for placing elements
   const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>, pageIndex: number) => {
+    // Don't create element if clicking on an existing element
+    if ((e.target as HTMLElement).closest('[data-element]')) {
+      return
+    }
+    
     const rect = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX - rect.left) / scale
     const y = (e.clientY - rect.top) / scale
@@ -157,13 +162,18 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
         y,
         width: 200,
         height: 30,
-        content: '',
+        content: 'Nouveau texte',
         ...textOptions,
       }
       setElements(prev => [...prev, newElement])
       setSelectedElementId(newElement.id)
       setEditingTextId(newElement.id)
       setActiveTool('select')
+      // Focus the text input after a short delay
+      setTimeout(() => {
+        textInputRef.current?.focus()
+        textInputRef.current?.select()
+      }, 50)
     } else if (activeTool === 'select') {
       setSelectedElementId(null)
       setEditingTextId(null)
@@ -295,8 +305,11 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
     
     setIsSaving(true)
     try {
+      // Copy ArrayBuffer to avoid detached buffer error
+      const bufferCopy = pdfBytesRef.current.slice(0)
+      
       // Load original PDF with pdf-lib
-      const pdfDoc = await PDFDocument.load(pdfBytesRef.current, { ignoreEncryption: true })
+      const pdfDoc = await PDFDocument.load(bufferCopy, { ignoreEncryption: true })
       const pdfPages = pdfDoc.getPages()
       
       // Embed fonts
@@ -382,7 +395,9 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
       
       // Save modified PDF
       const modifiedPdfBytes = await pdfDoc.save()
-      const blob = new Blob([new Uint8Array(modifiedPdfBytes)], { type: 'application/pdf' })
+      // Create a new Uint8Array from the bytes to avoid detached buffer issues
+      const bytesArray = Array.from(modifiedPdfBytes)
+      const blob = new Blob([new Uint8Array(bytesArray)], { type: 'application/pdf' })
       onSave(blob)
     } catch (error) {
       console.error('Failed to save PDF:', error)
@@ -777,6 +792,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
               .map(element => (
                 <div
                   key={element.id}
+                  data-element={element.id}
                   className={`absolute cursor-move ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
                   style={{
                     left: element.x * scale,
@@ -788,11 +804,12 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                   onClick={(e) => {
                     e.stopPropagation()
                     setSelectedElementId(element.id)
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation()
                     if (element.type === 'text') {
                       setEditingTextId(element.id)
+                      setTimeout(() => {
+                        textInputRef.current?.focus()
+                        textInputRef.current?.select()
+                      }, 50)
                     }
                   }}
                 >
@@ -816,7 +833,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                       />
                     ) : (
                       <div
-                        className="w-full h-full p-1 whitespace-pre-wrap break-words"
+                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text"
                         style={{
                           fontSize: (element.fontSize || 14) * scale,
                           fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
@@ -825,7 +842,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
                           color: element.color || '#000000',
                         }}
                       >
-                        {element.content || 'Double-cliquez pour éditer'}
+                        {element.content || 'Cliquez pour éditer'}
                       </div>
                     )
                   )}
