@@ -333,7 +333,9 @@ export default function SigningBanner({
     if (currentField.type === 'date') return !currentField.required || dateValue !== ''
     if (currentField.type === 'phone') {
       if (!currentField.required && !phoneValue) return true
-      return phoneValue.length >= 10 && phoneVerified
+      // Allow clicking "Suivant" to trigger OTP verification when phone is filled
+      // The actual verification check happens in handleNext()
+      return phoneValue.length >= 10
     }
     if (['text', 'name', 'email'].includes(currentField.type)) return !currentField.required || textValue.trim() !== ''
     return true
@@ -771,7 +773,7 @@ export default function SigningBanner({
                 })}
               </div>
               
-              {isLastField ? (
+              {isLastField && (currentField.type !== 'phone' || phoneVerified) ? (
                 <button
                   onClick={() => { 
                     handleNext(); 
@@ -789,7 +791,7 @@ export default function SigningBanner({
                   disabled={currentField.required && !isValid()}
                   className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  {t('common.next')} →
+                  {currentField.type === 'phone' && !phoneVerified ? 'Vérifier →' : `${t('common.next')} →`}
                 </button>
               )}
             </div>
