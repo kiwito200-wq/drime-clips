@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import SignaturePad from 'signature_pad'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 type SignatureMode = 'draw' | 'type' | 'upload' | 'saved'
 
@@ -27,32 +28,41 @@ const SIGNATURE_FONTS = [
   { name: 'Allura', label: 'Allura' },
 ]
 
-const TABS: { mode: SignatureMode; label: string }[] = [
-  { mode: 'draw', label: 'Draw' },
-  { mode: 'type', label: 'Type' },
-  { mode: 'upload', label: 'Upload' },
-  { mode: 'saved', label: 'Saved' },
+const TABS: { mode: SignatureMode; labelFr: string; labelEn: string }[] = [
+  { mode: 'draw', labelFr: 'Dessiner', labelEn: 'Draw' },
+  { mode: 'type', labelFr: 'Taper', labelEn: 'Type' },
+  { mode: 'upload', labelFr: 'Importer', labelEn: 'Upload' },
+  { mode: 'saved', labelFr: 'Sauvegardée', labelEn: 'Saved' },
 ]
 
 const TAB_ICONS: Record<SignatureMode, React.ReactNode> = {
   draw: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 6.28906L17.2878 10.1748" />
+      <path d="M13.3119 4.41112C14.5105 2.78198 16.1727 3.6544 17.4305 4.57977C18.6882 5.50514 20.0157 6.83244 18.8171 8.46158L10.6665 19.1249C10.3023 19.62 9.75542 19.949 9.14744 20.039L6.08998 20.4916C5.67267 20.5534 5.2836 20.2671 5.21839 19.8504L4.74061 16.7967C4.6456 16.1895 4.79704 15.5695 5.16127 15.0744L13.3119 4.41112Z" />
     </svg>
   ),
   type: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8h18M3 12h18M3 16h18" />
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.4541 20.0781H12.6376" />
+      <path d="M9.45312 3.91406H12.6366" />
+      <path d="M11.0449 3.91406V20.0847" />
+      <path d="M7.6021 17.3743H6.13293C4.40203 17.3743 3 15.9722 3 14.2413V9.75696C3 8.02703 4.40203 6.625 6.13293 6.625H7.6021" />
+      <path d="M14.1992 6.625H17.8682C19.5982 6.625 21.0002 8.02703 21.0002 9.75793V14.2326C21.0002 15.9605 19.5865 17.3743 17.8575 17.3743H14.1992" />
     </svg>
   ),
   upload: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 15V15.0798C3 17.1521 3 18.1883 3.40328 18.9798C3.75801 19.676 4.32404 20.242 5.02024 20.5967C5.81171 21 6.84781 21 8.92 21H15.08C17.1522 21 18.1883 21 18.9798 20.5967C19.676 20.242 20.242 19.676 20.5967 18.9798C21 18.1883 21 17.1521 21 15.0798V15" />
+      <path d="M7.78125 7.34418L11.9997 2.9999M11.9997 2.9999L16.2182 7.34418M11.9997 2.9999L12.0002 15.5508" />
     </svg>
   ),
   saved: (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 14.8048L4.88126 11.9982L7.67224 13.869" />
+      <path d="M21.0004 9.19141L19.1191 11.9981L16.3281 10.1272" />
+      <path d="M4.91211 12.1523C4.9922 15.9984 8.13576 19.0924 12.001 19.0924C14.422 19.0924 16.5601 17.8788 17.8389 16.0272" />
+      <path d="M19.0889 11.8463C19.0088 8.00019 15.8653 4.90625 12 4.90625C9.57902 4.90625 7.44095 6.1198 6.16211 7.97146" />
     </svg>
   ),
 }
@@ -63,6 +73,7 @@ export default function SignatureEditorModal({
   savedSignature,
   onSave,
 }: SignatureEditorModalProps) {
+  const { locale } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const signaturePadRef = useRef<SignaturePad | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -312,7 +323,9 @@ export default function SignatureEditorModal({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Add your signature</h2>
+              <h2 className="text-lg font-semibold text-gray-900">
+                {locale === 'fr' ? 'Ajouter votre signature' : 'Add your signature'}
+              </h2>
               <button
                 onClick={onClose}
                 className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
@@ -336,7 +349,7 @@ export default function SignatureEditorModal({
                     }`}
                   >
                     {TAB_ICONS[tab.mode]}
-                    {tab.label}
+                    {locale === 'fr' ? tab.labelFr : tab.labelEn}
                   </button>
                 ))}
               </div>
@@ -370,16 +383,21 @@ export default function SignatureEditorModal({
                       onClick={handleClear}
                       className="absolute top-2 right-2 flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-200 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 14.8048L4.88126 11.9982L7.67224 13.869" />
+                        <path d="M21.0004 9.19141L19.1191 11.9981L16.3281 10.1272" />
+                        <path d="M4.91211 12.1523C4.9922 15.9984 8.13576 19.0924 12.001 19.0924C14.422 19.0924 16.5601 17.8788 17.8389 16.0272" />
+                        <path d="M19.0889 11.8463C19.0088 8.00019 15.8653 4.90625 12 4.90625C9.57902 4.90625 7.44095 6.1198 6.16211 7.97146" />
                       </svg>
-                      Clear
+                      {locale === 'fr' ? 'Effacer' : 'Clear'}
                     </button>
                   )}
 
                   {!hasDrawn && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="text-gray-400 text-sm">Draw your signature here</span>
+                      <span className="text-gray-400 text-sm">
+                        {locale === 'fr' ? 'Dessinez votre signature ici' : 'Draw your signature here'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -397,7 +415,7 @@ export default function SignatureEditorModal({
                       type="text"
                       value={typedName}
                       onChange={(e) => setTypedName(e.target.value)}
-                      placeholder="Type your signature here..."
+                      placeholder={locale === 'fr' ? 'Tapez votre signature ici...' : 'Type your signature here...'}
                       className="absolute inset-0 w-full h-full text-center text-4xl bg-transparent border-none outline-none italic text-gray-900 placeholder-gray-400"
                       style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}
                       autoFocus
@@ -405,7 +423,7 @@ export default function SignatureEditorModal({
                   </div>
                   
                   <div className="flex items-center gap-2 mt-3">
-                    <span className="text-gray-500 text-xs">Font:</span>
+                    <span className="text-gray-500 text-xs">{locale === 'fr' ? 'Police :' : 'Font:'}</span>
                     <div className="relative">
                       <button
                         onClick={(e) => { e.stopPropagation(); setShowFontDropdown(!showFontDropdown) }}
@@ -481,7 +499,7 @@ export default function SignatureEditorModal({
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
-                        Remove
+                        {locale === 'fr' ? 'Retirer' : 'Remove'}
                       </button>
                     </div>
                   ) : (
@@ -489,12 +507,17 @@ export default function SignatureEditorModal({
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full h-full border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center gap-3 hover:border-[#08CF65] hover:bg-[#08CF65]/5 transition-colors"
                     >
-                      <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                      <svg className="w-10 h-10 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 15V15.0798C3 17.1521 3 18.1883 3.40328 18.9798C3.75801 19.676 4.32404 20.242 5.02024 20.5967C5.81171 21 6.84781 21 8.92 21H15.08C17.1522 21 18.1883 21 18.9798 20.5967C19.676 20.242 20.242 19.676 20.5967 18.9798C21 18.1883 21 17.1521 21 15.0798V15" />
+                        <path d="M7.78125 7.34418L11.9997 2.9999M11.9997 2.9999L16.2182 7.34418M11.9997 2.9999L12.0002 15.5508" />
                       </svg>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-gray-700">Click to upload</p>
-                        <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                        <p className="text-sm font-medium text-gray-700">
+                          {locale === 'fr' ? 'Cliquez pour importer' : 'Click to upload'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {locale === 'fr' ? 'PNG, JPG jusqu\'à 5Mo' : 'PNG, JPG up to 5MB'}
+                        </p>
                       </div>
                     </button>
                   )}
@@ -508,17 +531,15 @@ export default function SignatureEditorModal({
                     <>
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm text-gray-500">
-                          {currentSavedIndex + 1}/{savedSignatures.length} saved signature{savedSignatures.length > 1 ? 's' : ''}
+                          {currentSavedIndex + 1}/{savedSignatures.length} {locale === 'fr' ? 'signature sauvegardée' : 'saved signature'}{savedSignatures.length > 1 && locale !== 'fr' ? 's' : ''}
                         </span>
                         <button
                           onClick={handleDelete}
                           disabled={deleting}
                           className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white rounded-lg border border-gray-200 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                         >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          {deleting ? 'Deleting...' : 'Clear'}
+                          <img src="/icons/delete.svg" alt="" className="w-4 h-4" style={{ filter: 'invert(22%) sepia(90%) saturate(6500%) hue-rotate(355deg) brightness(95%) contrast(95%)' }} />
+                          {deleting ? (locale === 'fr' ? 'Suppression...' : 'Deleting...') : (locale === 'fr' ? 'Effacer' : 'Clear')}
                         </button>
                       </div>
                       
@@ -557,8 +578,12 @@ export default function SignatureEditorModal({
                       <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                      <p className="text-sm text-gray-500">No saved signatures yet</p>
-                      <p className="text-xs text-gray-400 mt-1">Draw, type or upload a signature to save it</p>
+                      <p className="text-sm text-gray-500">
+                        {locale === 'fr' ? 'Aucune signature sauvegardée' : 'No saved signatures yet'}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {locale === 'fr' ? 'Dessinez, tapez ou importez une signature pour la sauvegarder' : 'Draw, type or upload a signature to save it'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -568,14 +593,16 @@ export default function SignatureEditorModal({
             {/* Footer with warning */}
             <div className="px-5 pb-5">
               <p className="text-xs text-gray-500 mb-4">
-                I understand this is a legal representation of my signature.
+                {locale === 'fr' 
+                  ? 'Je comprends que ceci est une représentation légale de ma signature.'
+                  : 'I understand this is a legal representation of my signature.'}
               </p>
               <div className="flex items-center justify-end gap-3">
                 <button
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  Cancel
+                  {locale === 'fr' ? 'Annuler' : 'Cancel'}
                 </button>
                 <button
                   onClick={handleSave}
@@ -589,10 +616,10 @@ export default function SignatureEditorModal({
                   {saving ? (
                     <span className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Saving...
+                      {locale === 'fr' ? 'Sauvegarde...' : 'Saving...'}
                     </span>
                   ) : (
-                    'Insert'
+                    locale === 'fr' ? 'Insérer' : 'Insert'
                   )}
                 </button>
               </div>
