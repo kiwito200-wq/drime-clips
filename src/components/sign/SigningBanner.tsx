@@ -170,6 +170,13 @@ export default function SigningBanner({
       canvas.height = canvas.offsetHeight * ratio
       canvas.getContext('2d')?.scale(ratio, ratio)
       
+      // Fill canvas with white background first
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.fillStyle = 'rgb(255, 255, 255)'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
+      
       signaturePadRef.current = new SignaturePad(canvas, {
         backgroundColor: 'rgb(255, 255, 255)',
         penColor: 'rgb(0, 0, 0)',
@@ -232,7 +239,25 @@ export default function SigningBanner({
       let signatureDataUrl: string | null = null
       
       if (signatureMode === 'draw' && signaturePadRef.current && hasDrawn) {
-        signatureDataUrl = signaturePadRef.current.toDataURL('image/png')
+        // Create a new canvas with white background to ensure no transparency
+        const originalCanvas = canvasRef.current
+        if (originalCanvas) {
+          const exportCanvas = document.createElement('canvas')
+          exportCanvas.width = originalCanvas.width
+          exportCanvas.height = originalCanvas.height
+          const exportCtx = exportCanvas.getContext('2d')
+          if (exportCtx) {
+            // Fill with white background
+            exportCtx.fillStyle = 'rgb(255, 255, 255)'
+            exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+            // Draw the signature on top
+            exportCtx.drawImage(originalCanvas, 0, 0)
+            signatureDataUrl = exportCanvas.toDataURL('image/png')
+          }
+        }
+        if (!signatureDataUrl) {
+          signatureDataUrl = signaturePadRef.current.toDataURL('image/png')
+        }
         onValueChange(currentField.id, signatureDataUrl)
         // Save signature for future use (only for signature type, not initials)
         if (currentField.type === 'signature' && isAuthenticated) {

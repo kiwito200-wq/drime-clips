@@ -218,7 +218,21 @@ export default function SignatureEditorModal({
   }
 
   const getSignatureData = useCallback((): string | null => {
-    if (mode === 'draw' && signaturePadRef.current && hasDrawn) {
+    if (mode === 'draw' && signaturePadRef.current && hasDrawn && canvasRef.current) {
+      // Create a new canvas with white background to ensure no transparency
+      const originalCanvas = canvasRef.current
+      const exportCanvas = document.createElement('canvas')
+      exportCanvas.width = originalCanvas.width
+      exportCanvas.height = originalCanvas.height
+      const exportCtx = exportCanvas.getContext('2d')
+      if (exportCtx) {
+        // Fill with white background
+        exportCtx.fillStyle = 'rgb(255, 255, 255)'
+        exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height)
+        // Draw the signature on top
+        exportCtx.drawImage(originalCanvas, 0, 0)
+        return exportCanvas.toDataURL('image/png')
+      }
       return signaturePadRef.current.toDataURL('image/png')
     } else if (mode === 'type' && typedName.trim()) {
       const canvas = document.createElement('canvas')
