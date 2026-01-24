@@ -65,7 +65,13 @@ export default function SignPage() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [pages, setPages] = useState<{ width: number; height: number }[]>([])
   const [currentPage, setCurrentPage] = useState(0)
-  const [scale, setScale] = useState(0.8)
+  // Set initial scale based on screen width - smaller on mobile to fit the document
+  const [scale, setScale] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 640 ? 0.45 : 0.8
+    }
+    return 0.8
+  })
   
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)

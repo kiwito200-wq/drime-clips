@@ -657,7 +657,7 @@ export default function SigningBanner({
                 <div>
                   {signatureMode === 'type' ? (
                     <div 
-                      className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-16 sm:h-20 flex items-center justify-center cursor-text mb-2 sm:mb-3"
+                      className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 sm:h-24 flex items-center justify-center cursor-text mb-2 sm:mb-3"
                       onClick={() => inputRef.current?.focus()}
                     >
                       <input
@@ -675,7 +675,7 @@ export default function SigningBanner({
                     <div className="relative mb-3">
                       <canvas
                         ref={canvasRef}
-                        className="w-full h-16 sm:h-20 bg-gray-50 rounded-xl border-2 border-[#08CF65] cursor-crosshair"
+                        className="w-full h-20 sm:h-24 bg-gray-50 rounded-xl border-2 border-[#08CF65] cursor-crosshair"
                         style={{ touchAction: 'none' }}
                       />
                       {hasDrawn && (
@@ -693,8 +693,8 @@ export default function SigningBanner({
                     /* Upload mode */
                     <div className="mb-2 sm:mb-3">
                       {uploadedImage ? (
-                        <div className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-16 sm:h-20 flex items-center justify-center">
-                          <img src={uploadedImage} alt="Signature" className="max-h-12 sm:max-h-16 max-w-full object-contain" />
+                        <div className="relative bg-gray-50 rounded-xl border-2 border-[#08CF65] h-20 sm:h-24 flex items-center justify-center">
+                          <img src={uploadedImage} alt="Signature" className="max-h-16 sm:max-h-20 max-w-full object-contain" />
                           <button
                             onClick={() => setUploadedImage(null)}
                             className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center text-gray-500 hover:text-gray-700"
@@ -705,7 +705,7 @@ export default function SigningBanner({
                           </button>
                         </div>
                       ) : (
-                        <label className="block bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 h-16 sm:h-20 flex items-center justify-center cursor-pointer hover:border-[#08CF65] transition-colors">
+                        <label className="block bg-gray-50 rounded-xl border-2 border-dashed border-gray-300 h-20 sm:h-24 flex items-center justify-center cursor-pointer hover:border-[#08CF65] transition-colors">
                           <div className="text-center">
                             <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400 mx-auto mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
