@@ -310,7 +310,9 @@ function FieldItem({
       >
         {/* Filled Content */}
         {isFilled ? (
-          <div className="w-full h-full flex items-center justify-center p-0.5">
+          <div className={`w-full h-full flex items-center justify-center p-0.5 ${
+            field.type === 'signature' || field.type === 'initials' ? 'bg-white' : ''
+          }`}>
             {field.type === 'signature' || field.type === 'initials' ? (
               <img 
                 src={field.value as string} 
