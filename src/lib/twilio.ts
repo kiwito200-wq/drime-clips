@@ -1,5 +1,5 @@
 // Lazy-load Twilio to avoid initialization errors when credentials are not set
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line
 let twilioClient: any = null
 
 function getTwilioClient() {
