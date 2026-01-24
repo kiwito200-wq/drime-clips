@@ -382,7 +382,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
       
       // Save modified PDF
       const modifiedPdfBytes = await pdfDoc.save()
-      const blob = new Blob([modifiedPdfBytes], { type: 'application/pdf' })
+      const blob = new Blob([new Uint8Array(modifiedPdfBytes)], { type: 'application/pdf' })
       onSave(blob)
     } catch (error) {
       console.error('Failed to save PDF:', error)
