@@ -1,5 +1,6 @@
 // Lazy-load Twilio to avoid initialization errors when credentials are not set
-let twilioClient: ReturnType<typeof import('twilio')> | null = null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let twilioClient: any = null
 
 function getTwilioClient() {
   if (twilioClient) return twilioClient
@@ -18,19 +19,85 @@ function getTwilioClient() {
   return twilioClient
 }
 
+// Use Twilio Verify API to send OTP
+export async function sendVerifyOTP(to: string): Promise<{ success: boolean; error?: string }> {
+  const client = getTwilioClient()
+  const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID
+  
+  if (!client || !serviceSid) {
+    console.log('[Twilio Verify] Missing credentials')
+    console.log(`[Twilio Verify DEV] Would send OTP to ${to}`)
+    return { success: true } // Return success in dev mode for testing
+  }
+
+  try {
+    const formattedNumber = formatPhoneNumber(to)
+    
+    await client.verify.v2
+      .services(serviceSid)
+      .verifications.create({
+        to: formattedNumber,
+        channel: 'sms',
+      })
+    
+    console.log(`[Twilio Verify] OTP sent to ${formattedNumber}`)
+    return { success: true }
+  } catch (error: unknown) {
+    console.error('[Twilio Verify] Failed to send OTP:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to send verification code'
+    return { success: false, error: errorMessage }
+  }
+}
+
+// Use Twilio Verify API to check OTP
+export async function checkVerifyOTP(to: string, code: string): Promise<{ success: boolean; error?: string }> {
+  const client = getTwilioClient()
+  const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID
+  
+  if (!client || !serviceSid) {
+    console.log('[Twilio Verify] Missing credentials - checking in dev mode')
+    // In dev mode, accept any 6-digit code for testing
+    if (code.length === 6) {
+      return { success: true }
+    }
+    return { success: false, error: 'Invalid code' }
+  }
+
+  try {
+    const formattedNumber = formatPhoneNumber(to)
+    
+    const verification = await client.verify.v2
+      .services(serviceSid)
+      .verificationChecks.create({
+        to: formattedNumber,
+        code: code,
+      })
+    
+    if (verification.status === 'approved') {
+      console.log(`[Twilio Verify] OTP verified for ${formattedNumber}`)
+      return { success: true }
+    } else {
+      console.log(`[Twilio Verify] OTP check failed: ${verification.status}`)
+      return { success: false, error: 'Code incorrect ou expiré' }
+    }
+  } catch (error: unknown) {
+    console.error('[Twilio Verify] Failed to verify OTP:', error)
+    return { success: false, error: 'Code incorrect ou expiré' }
+  }
+}
+
+// Legacy SMS function (kept for backwards compatibility)
 export async function sendSMS(to: string, message: string): Promise<boolean> {
   const client = getTwilioClient()
   const fromNumber = process.env.TWILIO_PHONE_NUMBER
   
   if (!client || !fromNumber) {
     console.log('[Twilio] Missing credentials - SMS not sent')
-    // In dev/preview mode without Twilio, just log and return success for testing
     console.log(`[Twilio DEV] Would send to ${to}: ${message}`)
     return true
   }
 
   try {
-    // Format phone number if needed
     const formattedNumber = formatPhoneNumber(to)
     
     await client.messages.create({

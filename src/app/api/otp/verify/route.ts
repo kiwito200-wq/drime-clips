@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { verifyOTP, formatPhoneNumber } from '@/lib/twilio'
+import { checkVerifyOTP, formatPhoneNumber } from '@/lib/twilio'
 import { cookies } from 'next/headers'
 import { SignJWT } from 'jose'
 
@@ -13,16 +13,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Phone and code required' }, { status: 400 })
     }
     
-    // Create the same key used when storing
-    const otpKey = `${type || 'field'}-${envelopeSlug || 'unknown'}-${signerId || 'unknown'}-${formatPhoneNumber(phone)}`
+    // Use Twilio Verify to check OTP
+    const result = await checkVerifyOTP(phone, code)
     
-    // Verify OTP
-    const result = verifyOTP(otpKey, code)
-    
-    if (!result.valid) {
+    if (!result.success) {
       return NextResponse.json({ 
         success: false, 
-        error: result.error 
+        error: result.error || 'Code incorrect'
       }, { status: 400 })
     }
     
