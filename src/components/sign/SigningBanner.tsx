@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import SignaturePad from 'signature_pad'
 import { Field, FieldType } from './types'
 import { useTranslation } from '@/lib/i18n/I18nContext'
-import OTPVerificationModal from '@/components/OTPVerificationModal'
 
 interface SigningBannerProps {
   fields: Field[]
@@ -72,8 +71,16 @@ export default function SigningBanner({
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [signatureLoaded, setSignatureLoaded] = useState(false)
-  const [showOTPModal, setShowOTPModal] = useState(false)
   const [phoneVerified, setPhoneVerified] = useState(false)
+  
+  // Inline OTP states
+  const [otpStep, setOtpStep] = useState<'input' | 'code'>('input')
+  const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
+  const [otpSending, setOtpSending] = useState(false)
+  const [otpVerifying, setOtpVerifying] = useState(false)
+  const [otpError, setOtpError] = useState('')
+  const [otpCountdown, setOtpCountdown] = useState(0)
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([])
   
   // Track the last field index that entered confirmation mode
   const confirmationFieldIndexRef = useRef<number | null>(null)
@@ -134,6 +141,14 @@ export default function SigningBanner({
     }
   }, [isAuthenticated])
   
+  // OTP countdown timer
+  useEffect(() => {
+    if (otpCountdown > 0) {
+      const timer = setTimeout(() => setOtpCountdown(otpCountdown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [otpCountdown])
+  
   // Reset when field changes
   useEffect(() => {
     if (!currentField) return
@@ -160,6 +175,9 @@ export default function SigningBanner({
     } else if (currentField.type === 'phone') {
       setPhoneValue(fieldValues[currentField.id] || '')
       setPhoneVerified(!!fieldValues[currentField.id])
+      setOtpStep('input')
+      setOtpCode(['', '', '', '', '', ''])
+      setOtpError('')
     }
   }, [currentField?.id, currentField?.type, signerName, signerEmail, fieldValues, savedSignature])
   
@@ -243,6 +261,110 @@ export default function SigningBanner({
     reader.readAsDataURL(file)
   }, [])
   
+  // Send OTP for phone verification (inline)
+  const handleSendOTP = useCallback(async () => {
+    if (phoneValue.length < 10) return
+    
+    setOtpSending(true)
+    setOtpError('')
+    
+    try {
+      const res = await fetch('/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneValue,
+          envelopeSlug,
+          signerId,
+          type: 'field',
+        }),
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.success) {
+        setOtpStep('code')
+        setOtpCountdown(60)
+        // Auto-focus first OTP input
+        setTimeout(() => otpInputRefs.current[0]?.focus(), 100)
+      } else {
+        setOtpError(data.error || 'Erreur lors de l\'envoi')
+      }
+    } catch {
+      setOtpError('Erreur de connexion')
+    } finally {
+      setOtpSending(false)
+    }
+  }, [phoneValue, envelopeSlug, signerId])
+  
+  // Handle OTP code input
+  const handleOtpCodeChange = useCallback((index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1)
+    const newCode = [...otpCode]
+    newCode[index] = digit
+    setOtpCode(newCode)
+    setOtpError('')
+    
+    if (digit && index < 5) {
+      otpInputRefs.current[index + 1]?.focus()
+    }
+    
+    // Auto-verify when all digits entered
+    if (digit && index === 5) {
+      const fullCode = newCode.join('')
+      if (fullCode.length === 6) {
+        handleVerifyOTP(fullCode)
+      }
+    }
+  }, [otpCode])
+  
+  // Handle OTP keydown for backspace
+  const handleOtpKeyDown = useCallback((index: number, e: React.KeyboardEvent) => {
+    if (e.key === 'Backspace' && !otpCode[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus()
+    }
+  }, [otpCode])
+  
+  // Verify OTP code
+  const handleVerifyOTP = useCallback(async (fullCode?: string) => {
+    const codeToVerify = fullCode || otpCode.join('')
+    if (codeToVerify.length !== 6) return
+    
+    setOtpVerifying(true)
+    setOtpError('')
+    
+    try {
+      const res = await fetch('/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phoneValue,
+          code: codeToVerify,
+          envelopeSlug,
+          signerId,
+          type: 'field',
+        }),
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.success) {
+        setPhoneVerified(true)
+        if (currentField?.type === 'phone') {
+          onValueChange(currentField.id, phoneValue)
+        }
+      } else {
+        setOtpError(data.error || 'Code incorrect')
+        setOtpCode(['', '', '', '', '', ''])
+        otpInputRefs.current[0]?.focus()
+      }
+    } catch {
+      setOtpError('Erreur de connexion')
+    } finally {
+      setOtpVerifying(false)
+    }
+  }, [otpCode, phoneValue, envelopeSlug, signerId, currentField, onValueChange])
+  
   const handleNext = useCallback(() => {
     if (!currentField) return
     
@@ -303,8 +425,12 @@ export default function SigningBanner({
     } else if (currentField.type === 'phone') {
       // Phone field requires OTP verification
       if (!phoneVerified && phoneValue.length >= 10) {
-        setShowOTPModal(true)
-        return // Don't proceed until verified
+        if (otpStep === 'input') {
+          // Send OTP
+          handleSendOTP()
+          return // Don't proceed, wait for code entry
+        }
+        return // Still waiting for verification
       }
       if (phoneVerified) {
         onValueChange(currentField.id, phoneValue)
@@ -353,20 +479,6 @@ export default function SigningBanner({
     }
     return labels[type] || type
   }
-  
-  // Handle OTP verification success
-  const handleOTPVerified = useCallback((verifiedPhone: string) => {
-    setPhoneValue(verifiedPhone)
-    setPhoneVerified(true)
-    setShowOTPModal(false)
-    // Automatically proceed after verification
-    if (currentField?.type === 'phone') {
-      onValueChange(currentField.id, verifiedPhone)
-      if (currentFieldIndex < totalFields - 1) {
-        onFieldChange(currentFieldIndex + 1)
-      }
-    }
-  }, [currentField, currentFieldIndex, totalFields, onValueChange, onFieldChange])
   
   if (!currentField) return null
   
@@ -688,45 +800,98 @@ export default function SigningBanner({
                 />
               )}
               
-              {/* Phone field with OTP verification */}
+              {/* Phone field with inline OTP verification */}
               {currentField.type === 'phone' && (
-                <div className="space-y-2">
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
-                    <input
-                      type="tel"
-                      value={phoneValue.replace(/^0/, '')}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, '').slice(0, 9)
-                        setPhoneValue('0' + raw)
-                        setPhoneVerified(false)
-                      }}
-                      placeholder="6 12 34 56 78"
-                      className={`w-full pl-12 pr-10 py-2 rounded-xl bg-gray-50 border-2 text-gray-900 focus:outline-none ${
-                        phoneVerified ? 'border-[#08CF65]' : 'border-gray-200 focus:border-[#08CF65]'
-                      }`}
-                      autoFocus
-                      disabled={phoneVerified}
-                    />
-                    {phoneVerified && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="space-y-3">
+                  {otpStep === 'input' && !phoneVerified ? (
+                    <>
+                      {/* Phone number input */}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
+                        <input
+                          type="tel"
+                          value={phoneValue.replace(/^0/, '')}
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, '').slice(0, 9)
+                            setPhoneValue('0' + raw)
+                            setPhoneVerified(false)
+                          }}
+                          placeholder="6 12 34 56 78"
+                          className="w-full pl-12 pr-4 py-2 rounded-xl bg-gray-50 border-2 border-gray-200 focus:border-[#08CF65] text-gray-900 focus:outline-none"
+                          autoFocus
+                        />
+                      </div>
+                      {otpError && (
+                        <p className="text-xs text-red-500">{otpError}</p>
+                      )}
+                      {phoneValue.length >= 10 && (
+                        <p className="text-xs text-gray-500">
+                          Cliquez sur Vérifier pour recevoir un code SMS
+                        </p>
+                      )}
+                    </>
+                  ) : otpStep === 'code' && !phoneVerified ? (
+                    <>
+                      {/* OTP code input inline */}
+                      <div className="text-center">
+                        <p className="text-sm text-gray-600 mb-3">
+                          Code envoyé au <span className="font-medium">+33***{phoneValue.slice(-4)}</span>
+                        </p>
+                        <div className="flex justify-center gap-2">
+                          {otpCode.map((digit, index) => (
+                            <input
+                              key={index}
+                              ref={el => { otpInputRefs.current[index] = el }}
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={1}
+                              value={digit}
+                              onChange={e => handleOtpCodeChange(index, e.target.value)}
+                              onKeyDown={e => handleOtpKeyDown(index, e)}
+                              className="w-10 h-12 text-center text-xl font-semibold rounded-xl border-2 border-gray-200 bg-gray-50 focus:bg-white focus:border-[#08CF65] outline-none transition-all"
+                            />
+                          ))}
+                        </div>
+                        {otpError && (
+                          <p className="text-xs text-red-500 mt-2">{otpError}</p>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (otpCountdown > 0) return
+                            setOtpCode(['', '', '', '', '', ''])
+                            handleSendOTP()
+                          }}
+                          disabled={otpCountdown > 0}
+                          className="text-xs text-gray-500 hover:text-[#08CF65] mt-3 disabled:text-gray-300"
+                        >
+                          {otpCountdown > 0 ? `Renvoyer dans ${otpCountdown}s` : 'Renvoyer le code'}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Phone verified */}
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
+                        <input
+                          type="tel"
+                          value={phoneValue.replace(/^0/, '')}
+                          className="w-full pl-12 pr-10 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 focus:outline-none"
+                          disabled
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#08CF65] flex items-center gap-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
-                      </span>
-                    )}
-                  </div>
-                  {phoneVerified ? (
-                    <p className="text-xs text-[#08CF65] flex items-center gap-1">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      Numéro vérifié par SMS
-                    </p>
-                  ) : phoneValue.length >= 10 && (
-                    <p className="text-xs text-gray-500">
-                      Cliquez sur Vérifier pour recevoir un code de vérification
-                    </p>
+                        Numéro vérifié par SMS
+                      </p>
+                    </>
                   )}
                 </div>
               )}
@@ -791,11 +956,30 @@ export default function SigningBanner({
                 </button>
               ) : (
                 <button
-                  onClick={handleNext}
-                  disabled={currentField.required && !isValid()}
+                  onClick={currentField.type === 'phone' && otpStep === 'code' && !phoneVerified ? () => handleVerifyOTP() : handleNext}
+                  disabled={
+                    (currentField.required && !isValid()) || 
+                    otpSending || 
+                    otpVerifying ||
+                    (currentField.type === 'phone' && otpStep === 'code' && otpCode.join('').length !== 6)
+                  }
                   className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  {currentField.type === 'phone' && !phoneVerified ? 'Vérifier →' : `${t('common.next')} →`}
+                  {otpSending ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Envoi...
+                    </span>
+                  ) : otpVerifying ? (
+                    <span className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Vérification...
+                    </span>
+                  ) : currentField.type === 'phone' && !phoneVerified ? (
+                    otpStep === 'code' ? 'Valider →' : 'Vérifier →'
+                  ) : (
+                    `${t('common.next')} →`
+                  )}
                 </button>
               )}
             </div>
@@ -803,19 +987,6 @@ export default function SigningBanner({
         )}
         
       </motion.div>
-      
-      {/* OTP Verification Modal for phone fields */}
-      <OTPVerificationModal
-        isOpen={showOTPModal}
-        onClose={() => setShowOTPModal(false)}
-        onVerified={handleOTPVerified}
-        phone={phoneValue}
-        envelopeSlug={envelopeSlug}
-        signerId={signerId}
-        type="field"
-        title="Vérification du téléphone"
-        subtitle="Un code de vérification va être envoyé par SMS"
-      />
     </div>
   )
 }

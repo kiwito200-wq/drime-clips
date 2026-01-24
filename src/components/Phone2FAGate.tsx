@@ -180,6 +180,11 @@ export default function Phone2FAGate({
         animate={{ opacity: 1, y: 0 }}
         className="bg-white rounded-[20px] border border-black/[0.08] shadow-[0_4px_20px_rgba(0,0,0,0.08)] w-full max-w-md overflow-hidden"
       >
+        {/* Logo */}
+        <div className="pt-6 pb-2 flex justify-center">
+          <img src="/drime-logo.png" alt="Drime" className="h-8" />
+        </div>
+        
         {/* Header */}
         <div className="p-6 border-b border-gray-100">
           <div className="mb-4">
