@@ -7,15 +7,18 @@
  */
 
 // @ts-ignore - node-signpdf doesn't have proper TS types
-import signer from 'node-signpdf'
-// @ts-ignore
-import { plainAddPlaceholder } from 'node-signpdf/dist/helpers'
+import { SignPdf } from 'node-signpdf'
+// @ts-ignore - plainAddPlaceholder helper
+import { plainAddPlaceholder } from '@signpdf/placeholder-plain'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import crypto from 'crypto'
 import * as forge from 'node-forge'
 import { getDrimeCertificates } from './certificate'
 
 const pki = forge.pki
+
+// Initialize signer instance (node-signpdf v3.x API)
+const pdfSigner = new SignPdf()
 
 // ==============================================
 // TYPES
@@ -122,9 +125,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
     // Step 2: Sign the PDF with our P12 certificate
     console.log('[PDF Signer] Signing PDF with Drime certificate...')
     const p12Buffer = getP12Buffer()
-    const signedPdf = signer.sign(pdfWithPlaceholder, p12Buffer, {
-      passphrase: ''
-    })
+    const signedPdf = pdfSigner.sign(pdfWithPlaceholder, p12Buffer)
     
     // IMPORTANT: Do NOT modify the PDF after signing!
     // Any modification would invalidate the digital signature.
@@ -161,9 +162,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
       })
       
       const p12Buffer = getP12Buffer()
-      const signedPdf = signer.sign(pdfWithPlaceholder, p12Buffer, {
-        passphrase: ''
-      })
+      const signedPdf = pdfSigner.sign(pdfWithPlaceholder, p12Buffer)
       
       const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
       
