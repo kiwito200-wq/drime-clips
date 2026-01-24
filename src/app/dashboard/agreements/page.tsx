@@ -1418,7 +1418,7 @@ function AgreementsContent() {
 
                       {/* Date */}
                       <div className="flex-1">
-                        <span className="text-sm text-gray-500">
+                        <span className="text-sm text-gray-900">
                           {formatDate(envelope.updatedAt || envelope.createdAt)}
                         </span>
                       </div>
