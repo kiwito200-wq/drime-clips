@@ -7,7 +7,7 @@ interface OnboardingStep {
   id: string
   title: string
   description: string
-  target: string // CSS selector for the element to highlight
+  target: string
   position: 'top' | 'bottom' | 'left' | 'right'
 }
 
@@ -156,16 +156,11 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
       if (element) {
         const rect = element.getBoundingClientRect()
         setTargetRect(rect)
-        
-        // Scroll element into view if needed
         element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
       }
     }
 
-    // Small delay to ensure DOM is ready
-    const timeout = setTimeout(findElement, 100)
-    
-    // Update position on resize
+    const timeout = setTimeout(findElement, 150)
     window.addEventListener('resize', findElement)
     
     return () => {
@@ -174,19 +169,21 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     }
   }, [step.target])
 
-  const handleNext = useCallback(() => {
+  const goToStep = useCallback((newStep: number) => {
     if (isAnimating) return
     setIsAnimating(true)
-    
-    setTimeout(() => {
-      if (isLast) {
-        onComplete()
-      } else {
-        setCurrentStep(prev => prev + 1)
-      }
-      setIsAnimating(false)
-    }, 150)
-  }, [isLast, onComplete, isAnimating])
+    setCurrentStep(newStep)
+    setTimeout(() => setIsAnimating(false), 400)
+  }, [isAnimating])
+
+  const handleNext = useCallback(() => {
+    if (isAnimating) return
+    if (isLast) {
+      onComplete()
+    } else {
+      goToStep(currentStep + 1)
+    }
+  }, [isLast, onComplete, isAnimating, currentStep, goToStep])
 
   const handleSkip = useCallback(() => {
     onComplete()
@@ -194,44 +191,23 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
   const handlePrev = useCallback(() => {
     if (isAnimating || currentStep === 0) return
-    setIsAnimating(true)
-    
-    setTimeout(() => {
-      setCurrentStep(prev => prev - 1)
-      setIsAnimating(false)
-    }, 150)
-  }, [currentStep, isAnimating])
+    goToStep(currentStep - 1)
+  }, [currentStep, isAnimating, goToStep])
 
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        handleSkip()
-      } else if (e.key === 'ArrowRight' || e.key === 'Enter') {
-        handleNext()
-      } else if (e.key === 'ArrowLeft') {
-        handlePrev()
-      }
+      if (e.key === 'Escape') handleSkip()
+      else if (e.key === 'ArrowRight' || e.key === 'Enter') handleNext()
+      else if (e.key === 'ArrowLeft') handlePrev()
     }
-    
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleNext, handlePrev, handleSkip])
 
   // Calculate tooltip position
   const getTooltipStyle = (): React.CSSProperties => {
-    // Welcome screen - always centered
-    if (isWelcome) {
-      return {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }
-    }
-
-    // No target found - center it
-    if (!targetRect) {
+    if (isWelcome || !targetRect) {
       return {
         position: 'fixed',
         top: '50%',
@@ -278,33 +254,47 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* Dark overlay */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
-        className="absolute inset-0 bg-black/60"
-        onClick={handleNext}
-      />
-      
-      {/* Spotlight - simple rectangle with rounded corners */}
-      {targetRect && !isWelcome && (
+      {/* For welcome screen: simple dark overlay */}
+      {isWelcome && (
         <motion.div
-          key={`spotlight-${currentStep}`}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="absolute pointer-events-none"
+          transition={{ duration: 0.4 }}
+          className="absolute inset-0 bg-black/60"
+          onClick={handleNext}
+        />
+      )}
+      
+      {/* For other steps: spotlight effect using box-shadow only (no white background!) */}
+      {!isWelcome && targetRect && (
+        <motion.div
+          key={`spotlight-${currentStep}`}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          className="absolute rounded-xl pointer-events-none"
           style={{
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
-            borderRadius: '12px',
-            backgroundColor: 'white',
-            boxShadow: '0 0 0 4px #08CF65, 0 0 0 9999px rgba(0,0,0,0.6)',
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
+            // NO background - element stays visible!
+            // box-shadow creates BOTH the green border AND the dark overlay
+            boxShadow: `
+              0 0 0 3px #08CF65,
+              0 0 15px rgba(8, 207, 101, 0.5),
+              0 0 0 9999px rgba(0, 0, 0, 0.6)
+            `,
           }}
+        />
+      )}
+
+      {/* Click catcher for non-welcome steps */}
+      {!isWelcome && (
+        <div 
+          className="absolute inset-0" 
+          onClick={handleNext}
+          style={{ pointerEvents: targetRect ? 'auto' : 'none' }}
         />
       )}
 
@@ -312,14 +302,14 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
       <AnimatePresence mode="wait">
         <motion.div
           key={step.id}
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          initial={{ opacity: 0, y: 30, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -10, scale: 0.98 }}
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
           transition={{ 
-            duration: 0.35, 
-            ease: [0.4, 0, 0.2, 1],
+            duration: 0.4,
+            ease: [0.16, 1, 0.3, 1], // Custom spring-like easing
           }}
-          className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+          className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
           style={getTooltipStyle()}
         >
           {/* Header */}
@@ -340,23 +330,26 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
           {/* Progress dots */}
           <div className="px-6 pb-4 flex justify-center gap-1.5">
             {steps.map((_, index) => (
-              <button
+              <motion.button
                 key={index}
-                onClick={() => !isAnimating && setCurrentStep(index)}
-                className={`h-2 rounded-full transition-all duration-300 ${
+                onClick={() => goToStep(index)}
+                className={`h-2 rounded-full transition-colors ${
                   index === currentStep
-                    ? 'bg-[#08CF65] w-6'
+                    ? 'bg-[#08CF65]'
                     : index < currentStep
-                    ? 'bg-[#08CF65]/50 w-2'
-                    : 'bg-gray-200 w-2'
+                    ? 'bg-[#08CF65]/50'
+                    : 'bg-gray-200'
                 }`}
+                animate={{ 
+                  width: index === currentStep ? 24 : 8,
+                }}
+                transition={{ duration: 0.3, ease: 'easeOut' }}
               />
             ))}
           </div>
 
           {/* Actions */}
           <div className="px-6 pb-5 flex items-center justify-between">
-            {/* Show skip only on first step */}
             {isWelcome ? (
               <button
                 onClick={handleSkip}
@@ -370,17 +363,21 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
             <div className="flex items-center gap-2">
               {currentStep > 0 && (
-                <button
+                <motion.button
                   onClick={handlePrev}
                   disabled={isAnimating}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
                   {locale === 'fr' ? 'Précédent' : 'Previous'}
-                </button>
+                </motion.button>
               )}
-              <button
+              <motion.button
                 onClick={handleNext}
                 disabled={isAnimating}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
               >
                 {isLast ? (
@@ -393,7 +390,7 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
                     </svg>
                   </>
                 )}
-              </button>
+              </motion.button>
             </div>
           </div>
         </motion.div>
