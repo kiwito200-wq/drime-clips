@@ -888,9 +888,9 @@ export default function SigningBanner({
                           
                           {showCountryDropdown && (
                             <motion.div
-                              initial={{ opacity: 0, y: -10 }}
+                              initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              className="absolute top-full left-0 mt-1 w-56 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden"
+                              className="absolute bottom-full left-0 mb-1 w-56 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden"
                             >
                               <div className="p-2 border-b border-gray-100">
                                 <div className="relative">
