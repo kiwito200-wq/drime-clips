@@ -529,7 +529,7 @@ function SendPageContent() {
                     // ONLY auto-sign if user explicitly chose "Je suis le seul signataire"
                     if (isSelfSignMode) {
                       // Auto-sign: send directly and redirect to signing page
-                      await sendDocument(undefined, true)
+                      await sendDocument(undefined, undefined, true)
                     } else {
                       // External signers: go to review step
                       setCurrentStep(4)
