@@ -47,9 +47,9 @@ export const metadata: Metadata = {
   title: 'Drime Sign - Electronic Signatures',
   description: 'Secure and modern electronic signature service',
   icons: {
-    icon: '/drime-icon.png',
-    shortcut: '/drime-icon.png',
-    apple: '/drime-icon.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
 }
 

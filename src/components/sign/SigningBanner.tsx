@@ -67,6 +67,9 @@ export default function SigningBanner({
   const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [signatureLoaded, setSignatureLoaded] = useState(false)
   
+  // Track the last field index that entered confirmation mode
+  const confirmationFieldIndexRef = useRef<number | null>(null)
+  
   // Load saved signature on mount - always try to load even if not authenticated
   useEffect(() => {
     if (!signatureLoaded) {
@@ -94,17 +97,18 @@ export default function SigningBanner({
     }
   }, [signatureLoaded])
   
-  // Track previous field index to detect user navigation
-  const prevFieldIndexRef = useRef(currentFieldIndex)
-  
   // Reset confirmation screen when user clicks on a different field (e.g., clicking directly on PDF)
+  // This effect watches for currentFieldIndex changes - when user clicks on a field in PDF,
+  // the parent updates currentFieldIndex, and we should exit confirmation mode to show that field
   useEffect(() => {
-    // If user navigates to any field while in confirmation mode, reset to show that field
-    if (showConfirmation && prevFieldIndexRef.current !== currentFieldIndex) {
+    // If we're in confirmation mode and the field index changed from when we entered confirmation,
+    // that means the user clicked on a different field - exit confirmation to show that field
+    if (showConfirmation && confirmationFieldIndexRef.current !== null && confirmationFieldIndexRef.current !== currentFieldIndex) {
+      console.log('[SigningBanner] Field changed from', confirmationFieldIndexRef.current, 'to', currentFieldIndex, '- exiting confirmation')
       setShowConfirmation(false)
       setAgreedToTerms(false)
+      confirmationFieldIndexRef.current = null
     }
-    prevFieldIndexRef.current = currentFieldIndex
   }, [currentFieldIndex, showConfirmation])
   
   // Save signature after completing (only if authenticated and in draw mode with a new signature)
@@ -665,7 +669,11 @@ export default function SigningBanner({
               
               {isLastField ? (
                 <button
-                  onClick={() => { handleNext(); setShowConfirmation(true) }}
+                  onClick={() => { 
+                    handleNext(); 
+                    setShowConfirmation(true);
+                    confirmationFieldIndexRef.current = currentFieldIndex; // Track which field triggered confirmation
+                  }}
                   disabled={!isValid() || isCompleting}
                   className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
