@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "buildCommand": "prisma generate && prisma db push --skip-generate && next build",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "crons": [
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }

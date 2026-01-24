@@ -110,6 +110,11 @@ model Envelope {
   signingOrder    String    @default("parallel") // parallel, sequential
   expiresAt       DateTime?
   
+  // Reminders
+  reminderEnabled   Boolean   @default(true)
+  reminderInterval  String    @default("3_days") // 1_day, 2_days, 3_days, 7_days
+  lastReminderAt    DateTime?
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   completedAt     DateTime?

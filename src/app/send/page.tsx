@@ -375,7 +375,7 @@ function SendPageContent() {
   }, [fields, currentStep, document.slug, saveFieldsInBackground])
 
   // Envoyer
-  const sendDocument = useCallback(async (message?: string, forceAutoSign?: boolean) => {
+  const sendDocument = useCallback(async (message?: string, settings?: { dueDate: string | null; reminderEnabled: boolean; reminderInterval: string }, forceAutoSign?: boolean) => {
     if (!document.slug) return
     
     setIsLoading(true)
@@ -388,7 +388,13 @@ function SendPageContent() {
       const res = await fetch(`/api/envelopes/${document.slug}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, isSelfSign: isAutoSign }),
+        body: JSON.stringify({ 
+          message, 
+          isSelfSign: isAutoSign,
+          dueDate: settings?.dueDate || null,
+          reminderEnabled: settings?.reminderEnabled ?? true,
+          reminderInterval: settings?.reminderInterval || '3_days',
+        }),
         credentials: 'include',
       })
       
@@ -414,7 +420,7 @@ function SendPageContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [document.slug, saveFields, router, signers.length])
+  }, [document.slug, saveFields, router, isSelfSignMode])
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

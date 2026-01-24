@@ -61,21 +61,33 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'At least one field is required' }, { status: 400 })
     }
 
-    // Parse request body for optional message and isSelfSign flag
+    // Parse request body for optional message, isSelfSign flag, and settings
     let message: string | undefined
     let clientSelfSign = false
+    let dueDate: string | null = null
+    let reminderEnabled = true
+    let reminderInterval = '3_days'
+    
     try {
       const body = await request.json()
       message = body.message
       clientSelfSign = body.isSelfSign === true
+      dueDate = body.dueDate || null
+      reminderEnabled = body.reminderEnabled !== false
+      reminderInterval = body.reminderInterval || '3_days'
     } catch {
       // No body provided, that's fine
     }
 
-    // Update envelope status to pending
+    // Update envelope status to pending and save settings
     await prisma.envelope.update({
       where: { id: envelope.id },
-      data: { status: 'pending' },
+      data: { 
+        status: 'pending',
+        expiresAt: dueDate ? new Date(dueDate) : null,
+        reminderEnabled,
+        reminderInterval,
+      },
     })
 
     // Update all signers to 'sent' status
