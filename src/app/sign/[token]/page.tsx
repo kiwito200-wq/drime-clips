@@ -308,7 +308,7 @@ export default function SignPage() {
       <Phone2FAGate
         envelopeSlug={data.envelope.slug}
         signerEmail={data.email}
-        signerName={data.name || undefined}
+        signerName={data.name || ''}
         phone={data.phone2FANumber}
         documentName={data.envelope.name}
         onVerified={() => {
