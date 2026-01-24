@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/auth'
-import { uploadToR2, generateFileHash } from '@/lib/r2'
+import { r2, calculateHash } from '@/lib/storage'
 import { logAudit } from '@/lib/audit'
 
 export async function POST(
@@ -56,12 +56,15 @@ export async function POST(
     const buffer = Buffer.from(arrayBuffer)
 
     // Generate new hash
-    const pdfHash = await generateFileHash(buffer)
+    const pdfHash = calculateHash(buffer)
 
     // Upload to R2 with a new path indicating it's modified
     const timestamp = Date.now()
     const fileName = `envelopes/${envelope.id}/modified_${timestamp}.pdf`
-    const pdfUrl = await uploadToR2(buffer, fileName, 'application/pdf')
+    await r2.uploadFile(fileName, buffer, 'application/pdf')
+    
+    // Build the public URL
+    const pdfUrl = `${process.env.R2_PUBLIC_URL}/${fileName}`
 
     // Update envelope with new PDF URL and hash
     await prisma.envelope.update({
@@ -87,8 +90,7 @@ export async function POST(
     })
 
     // Return the signed URL for the new PDF
-    const { getSignedUrl } = await import('@/lib/r2')
-    const signedUrl = await getSignedUrl(fileName)
+    const signedUrl = await r2.getSignedUrl(fileName)
 
     return NextResponse.json({
       success: true,
