@@ -721,7 +721,7 @@ export default function SigningBanner({
                     </p>
                   ) : phoneValue.length >= 10 && (
                     <p className="text-xs text-gray-500">
-                      Cliquez sur Suivant pour recevoir un code de vérification
+                      Cliquez sur Vérifier pour recevoir un code de vérification
                     </p>
                   )}
                 </div>
