@@ -122,8 +122,8 @@ export default function StepReview({
         setIsReminderDropdownOpen(false)
       }
     }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    window.document.addEventListener('mousedown', handleClickOutside)
+    return () => window.document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   // Format file size
