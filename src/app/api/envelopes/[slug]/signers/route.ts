@@ -126,7 +126,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     })
 
     const createdSigners = await Promise.all(
-      signers.map((s: { email: string; name?: string; color?: string }, index: number) =>
+      signers.map((s: { email: string; name?: string; color?: string; phone2FA?: boolean; phone2FANumber?: string }, index: number) =>
         prisma.signer.create({
           data: {
             envelopeId: envelope.id,
@@ -135,6 +135,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
             color: s.color || getNextSignerColor(signers.slice(0, index).map((sig: { color?: string }) => sig.color || '')),
             order: index,
             token: generateToken(),
+            phone2FA: s.phone2FA || false,
+            phone2FANumber: s.phone2FANumber || null,
           },
         })
       )

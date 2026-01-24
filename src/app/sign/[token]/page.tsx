@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic'
 import PDFViewer from '@/components/sign/PDFViewer'
 import FieldOverlay from '@/components/sign/FieldOverlay'
 import SigningBanner from '@/components/sign/SigningBanner'
+import Phone2FAGate from '@/components/Phone2FAGate'
 import { Field, FieldType } from '@/components/sign/types'
 import { useTranslation } from '@/lib/i18n/I18nContext'
 
@@ -34,6 +35,9 @@ interface SignerData {
   name: string | null
   email: string
   color: string
+  phone2FA: boolean
+  phone2FANumber: string | null
+  phone2FAVerified: boolean
   envelope: {
     id: string
     slug: string
@@ -56,6 +60,7 @@ export default function SignPage() {
   const [submitting, setSubmitting] = useState(false)
   const [completed, setCompleted] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [phone2FAVerified, setPhone2FAVerified] = useState(false)
   
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [pages, setPages] = useState<{ width: number; height: number }[]>([])
@@ -115,6 +120,11 @@ export default function SignPage() {
       
       const signerData = await res.json()
       setData(signerData)
+      
+      // Check if 2FA is already verified on the server
+      if (signerData.phone2FAVerified) {
+        setPhone2FAVerified(true)
+      }
       
       // Initialize field values (only pre-fill name and email, NOT date)
       const initialValues: Record<string, string> = {}
@@ -289,6 +299,27 @@ export default function SignPage() {
           <p className="text-gray-500">{error}</p>
         </div>
       </div>
+    )
+  }
+
+  // Phone 2FA verification required
+  if (data?.phone2FA && !phone2FAVerified && data?.phone2FANumber) {
+    return (
+      <Phone2FAGate
+        envelopeSlug={data.envelope.slug}
+        signerEmail={data.email}
+        signerName={data.name || undefined}
+        phone={data.phone2FANumber}
+        documentName={data.envelope.name}
+        onVerified={() => {
+          setPhone2FAVerified(true)
+          // Update server to mark as verified
+          fetch(`/api/sign/${token}/verify-2fa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }).catch(console.error)
+        }}
+      />
     )
   }
 

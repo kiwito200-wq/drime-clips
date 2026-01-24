@@ -16,6 +16,7 @@ export async function GET(request: NextRequest, { params }: Params) {
         envelope: {
           select: {
             id: true,
+            slug: true,
             name: true,
             pdfUrl: true,
             status: true,
@@ -67,6 +68,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       id: signer.id,
       name: signer.name,
       email: signer.email,
+      color: signer.color,
+      phone2FA: signer.phone2FA,
+      phone2FANumber: signer.phone2FANumber,
+      phone2FAVerified: signer.phone2FAVerified,
       envelope: signer.envelope,
       fields: signer.fields,
     })

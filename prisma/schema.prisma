@@ -136,6 +136,11 @@ model Signer {
   status          String    @default("pending") // pending, sent, viewed, signed, declined
   token           String    @unique // Unique signing URL token
   
+  // Phone 2FA
+  phone2FA        Boolean   @default(false)
+  phone2FANumber  String?   // Phone number for 2FA verification
+  phone2FAVerified Boolean  @default(false) // Has the signer verified their phone?
+  
   signedAt        DateTime?
   viewedAt        DateTime?
   declinedAt      DateTime?
