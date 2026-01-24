@@ -252,6 +252,14 @@ function FieldItem({
             <path d="M14.1992 6.625H17.8682C19.5982 6.625 21.0002 8.02703 21.0002 9.75793V14.2326C21.0002 15.9605 19.5865 17.3743 17.8575 17.3743H14.1992" />
           </svg>
         )
+      case 'phone':
+        return (
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.3527 3H9.64729C7.98076 3 6.62305 4.35779 6.62305 6.02431V17.9758C6.62305 19.6423 7.98084 21.0001 9.64736 21.0001H14.3528C16.0193 21.0001 17.377 19.6424 17.377 17.9758V6.02431C17.3769 4.35771 16.0192 3 14.3527 3Z" />
+            <path d="M10.8008 5.14062H13.199" />
+            <path d="M12 18.6689V18.6777" />
+          </svg>
+        )
       default:
         return null
     }

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import SignaturePad from 'signature_pad'
 import { Field, FieldType } from './types'
 import { useTranslation } from '@/lib/i18n/I18nContext'
+import OTPVerificationModal from '@/components/OTPVerificationModal'
 
 interface SigningBannerProps {
   fields: Field[]
@@ -61,11 +62,14 @@ export default function SigningBanner({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [textValue, setTextValue] = useState('')
   const [dateValue, setDateValue] = useState('')
+  const [phoneValue, setPhoneValue] = useState('')
   const [showFontDropdown, setShowFontDropdown] = useState(false)
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [agreedToTerms, setAgreedToTerms] = useState(false)
   const [savedSignature, setSavedSignature] = useState<string | null>(null)
   const [signatureLoaded, setSignatureLoaded] = useState(false)
+  const [showOTPModal, setShowOTPModal] = useState(false)
+  const [phoneVerified, setPhoneVerified] = useState(false)
   
   // Track the last field index that entered confirmation mode
   const confirmationFieldIndexRef = useRef<number | null>(null)
@@ -149,6 +153,9 @@ export default function SigningBanner({
       else setTextValue(existing)
     } else if (currentField.type === 'date') {
       setDateValue(fieldValues[currentField.id] || '')
+    } else if (currentField.type === 'phone') {
+      setPhoneValue(fieldValues[currentField.id] || '')
+      setPhoneVerified(!!fieldValues[currentField.id])
     }
   }, [currentField?.id, currentField?.type, signerName, signerEmail, fieldValues, savedSignature])
   
@@ -289,6 +296,15 @@ export default function SigningBanner({
     } else if (currentField.type === 'checkbox') {
       // Checkbox value is already set when user clicks on it, don't toggle here
       // Just proceed to next field
+    } else if (currentField.type === 'phone') {
+      // Phone field requires OTP verification
+      if (!phoneVerified && phoneValue.length >= 10) {
+        setShowOTPModal(true)
+        return // Don't proceed until verified
+      }
+      if (phoneVerified) {
+        onValueChange(currentField.id, phoneValue)
+      }
     } else if (currentField.type === 'date' && dateValue) {
       onValueChange(currentField.id, new Date(dateValue).toLocaleDateString('fr-FR'))
     } else if (['text', 'name', 'email'].includes(currentField.type)) {
@@ -315,17 +331,36 @@ export default function SigningBanner({
     }
     if (currentField.type === 'checkbox') return !currentField.required || fieldValues[currentField.id] === 'true'
     if (currentField.type === 'date') return !currentField.required || dateValue !== ''
+    if (currentField.type === 'phone') {
+      if (!currentField.required && !phoneValue) return true
+      return phoneValue.length >= 10 && phoneVerified
+    }
     if (['text', 'name', 'email'].includes(currentField.type)) return !currentField.required || textValue.trim() !== ''
     return true
-  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, dateValue, textValue, fieldValues])
+  }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, dateValue, textValue, phoneValue, phoneVerified, fieldValues])
   
   const getFieldLabel = (type: FieldType) => {
     const labels: Record<string, string> = {
       signature: 'Signature', initials: 'Initiales', date: 'Date',
       text: 'Texte', checkbox: 'Case à cocher', name: 'Nom', email: 'Email',
+      phone: 'Téléphone',
     }
     return labels[type] || type
   }
+  
+  // Handle OTP verification success
+  const handleOTPVerified = useCallback((verifiedPhone: string) => {
+    setPhoneValue(verifiedPhone)
+    setPhoneVerified(true)
+    setShowOTPModal(false)
+    // Automatically proceed after verification
+    if (currentField?.type === 'phone') {
+      onValueChange(currentField.id, verifiedPhone)
+      if (currentFieldIndex < totalFields - 1) {
+        onFieldChange(currentFieldIndex + 1)
+      }
+    }
+  }, [currentField, currentFieldIndex, totalFields, onValueChange, onFieldChange])
   
   if (!currentField) return null
   
@@ -646,6 +681,49 @@ export default function SigningBanner({
                   autoFocus
                 />
               )}
+              
+              {/* Phone field with OTP verification */}
+              {currentField.type === 'phone' && (
+                <div className="space-y-2">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+33</span>
+                    <input
+                      type="tel"
+                      value={phoneValue.replace(/^0/, '')}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, '').slice(0, 9)
+                        setPhoneValue('0' + raw)
+                        setPhoneVerified(false)
+                      }}
+                      placeholder="6 12 34 56 78"
+                      className={`w-full pl-12 pr-10 py-2 rounded-xl bg-gray-50 border-2 text-gray-900 focus:outline-none ${
+                        phoneVerified ? 'border-[#08CF65]' : 'border-gray-200 focus:border-[#08CF65]'
+                      }`}
+                      autoFocus
+                      disabled={phoneVerified}
+                    />
+                    {phoneVerified && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                        <svg className="w-5 h-5 text-[#08CF65]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
+                  {phoneVerified ? (
+                    <p className="text-xs text-[#08CF65] flex items-center gap-1">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Numéro vérifié par SMS
+                    </p>
+                  ) : phoneValue.length >= 10 && (
+                    <p className="text-xs text-gray-500">
+                      Cliquez sur Suivant pour recevoir un code de vérification
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Progress bar */}
@@ -719,6 +797,17 @@ export default function SigningBanner({
         )}
         
       </motion.div>
+      
+      {/* OTP Verification Modal for phone fields */}
+      <OTPVerificationModal
+        isOpen={showOTPModal}
+        onClose={() => setShowOTPModal(false)}
+        onVerified={handleOTPVerified}
+        phone={phoneValue}
+        type="field"
+        title="Vérification du téléphone"
+        subtitle="Un code de vérification va être envoyé par SMS"
+      />
     </div>
   )
 }
