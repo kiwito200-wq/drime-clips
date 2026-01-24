@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PDFDocument, rgb, StandardFonts, PDFFont } from 'pdf-lib'
-import { fabric } from 'fabric'
 
 interface PDFEditorProps {
   pdfUrl: string
@@ -11,7 +10,45 @@ interface PDFEditorProps {
   onCancel: () => void
 }
 
-type Tool = 'select' | 'text' | 'image' | 'rectangle' | 'highlight' | 'whiteout'
+interface TextElement {
+  id: string
+  page: number
+  x: number
+  y: number
+  width: number
+  height: number
+  content: string
+  fontSize: number
+  fontFamily: string
+  color: string
+  bold: boolean
+}
+
+interface ImageElement {
+  id: string
+  page: number
+  x: number
+  y: number
+  width: number
+  height: number
+  imageData: string
+}
+
+interface ShapeElement {
+  id: string
+  page: number
+  x: number
+  y: number
+  width: number
+  height: number
+  type: 'highlight' | 'whiteout' | 'rectangle'
+  fillColor: string
+  strokeColor?: string
+  strokeWidth?: number
+  opacity: number
+}
+
+type Element = TextElement | ImageElement | ShapeElement
 
 const FONTS = [
   { id: 'helvetica', name: 'Helvetica', pdfFont: StandardFonts.Helvetica },
@@ -33,7 +70,10 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
   const [isSaving, setIsSaving] = useState(false)
   
   // Tools
-  const [activeTool, setActiveTool] = useState<Tool>('select')
+  const [activeTool, setActiveTool] = useState<'select' | 'text' | 'image' | 'rectangle' | 'highlight' | 'whiteout'>('select')
+  const [elements, setElements] = useState<Element[]>([])
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null)
+  const [editingTextId, setEditingTextId] = useState<string | null>(null)
   
   // Text tool options
   const [textOptions, setTextOptions] = useState({
@@ -52,11 +92,14 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
   })
   
   // Refs
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fabricCanvasRef = useRef<fabric.Canvas | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const pdfBytesRef = useRef<ArrayBuffer | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const pdfImageRef = useRef<fabric.Image | null>(null)
+  const textInputRef = useRef<HTMLTextAreaElement>(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [isResizing, setIsResizing] = useState(false)
+  const resizeStartRef = useRef({ x: 0, y: 0, width: 0, height: 0, left: 0, top: 0 })
 
   // Load PDF
   useEffect(() => {
@@ -64,12 +107,10 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
       try {
         setIsLoading(true)
         
-        // Fetch PDF
         const response = await fetch(pdfUrl)
         const arrayBuffer = await response.arrayBuffer()
         pdfBytesRef.current = arrayBuffer
         
-        // Load with PDF.js for display
         const pdfjsLib = await import('pdfjs-dist')
         pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
         
@@ -105,225 +146,283 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
     loadPDF()
   }, [pdfUrl])
 
-  // Initialize Fabric.js canvas
-  useEffect(() => {
-    if (!canvasRef.current || !pages[currentPage] || isLoading) return
-
-    const canvas = new fabric.Canvas(canvasRef.current, {
-      width: pages[currentPage].width * scale,
-      height: pages[currentPage].height * scale,
-      selection: activeTool === 'select',
-    })
-
-    fabricCanvasRef.current = canvas
-
-    // Load PDF page as background image
-    fabric.Image.fromURL(pages[currentPage].imageUrl, (img) => {
-      img.set({
-        left: 0,
-        top: 0,
-        scaleX: scale,
-        scaleY: scale,
-        selectable: false,
-        evented: false,
-      })
-      canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas))
-      pdfImageRef.current = img
-    })
-
-    // Handle canvas click for adding elements
-    canvas.on('mouse:down', (e) => {
-      if (activeTool === 'text' && e.target === null) {
-        const pointer = canvas.getPointer(e.e)
-        const text = new fabric.IText('Nouveau texte', {
-          left: pointer.x,
-          top: pointer.y,
-          fontSize: textOptions.fontSize,
-          fontFamily: textOptions.fontFamily === 'times' ? 'Times New Roman' : 
-                     textOptions.fontFamily === 'courier' ? 'Courier New' : 'Arial',
-          fill: textOptions.color,
-          fontWeight: textOptions.bold ? 'bold' : 'normal',
-        })
-        canvas.add(text)
-        canvas.setActiveObject(text)
-        text.enterEditing()
-        setActiveTool('select')
-      } else if (activeTool === 'rectangle' && e.target === null) {
-        const pointer = canvas.getPointer(e.e)
-        const rect = new fabric.Rect({
-          left: pointer.x,
-          top: pointer.y,
-          width: 100,
-          height: 50,
-          fill: shapeOptions.fillColor,
-          stroke: shapeOptions.strokeColor,
-          strokeWidth: shapeOptions.strokeWidth,
-          opacity: shapeOptions.opacity,
-        })
-        canvas.add(rect)
-        canvas.setActiveObject(rect)
-        setActiveTool('select')
-      } else if (activeTool === 'highlight' && e.target === null) {
-        const pointer = canvas.getPointer(e.e)
-        const rect = new fabric.Rect({
-          left: pointer.x,
-          top: pointer.y,
-          width: 100,
-          height: 30,
-          fill: '#FFFF00',
-          opacity: 0.4,
-          selectable: true,
-        })
-        canvas.add(rect)
-        canvas.setActiveObject(rect)
-        setActiveTool('select')
-      } else if (activeTool === 'whiteout' && e.target === null) {
-        const pointer = canvas.getPointer(e.e)
-        const rect = new fabric.Rect({
-          left: pointer.x,
-          top: pointer.y,
-          width: 100,
-          height: 30,
-          fill: '#FFFFFF',
-          opacity: 1,
-          selectable: true,
-        })
-        canvas.add(rect)
-        canvas.setActiveObject(rect)
-        setActiveTool('select')
-      }
-    })
-
-    // Update selection
-    canvas.on('selection:created', () => {
-      const activeObj = canvas.getActiveObject()
-      if (activeObj && activeObj.type === 'i-text') {
-        const textObj = activeObj as fabric.IText
-        setTextOptions({
-          fontSize: textObj.fontSize || 14,
-          fontFamily: textObj.fontFamily === 'Times New Roman' ? 'times' : 
-                     textObj.fontFamily === 'Courier New' ? 'courier' : 'helvetica',
-          color: textObj.fill as string || '#000000',
-          bold: textObj.fontWeight === 'bold',
-        })
-      }
-    })
-
-    return () => {
-      canvas.dispose()
+  // Handle canvas click
+  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Don't create if clicking on an element
+    if ((e.target as HTMLElement).closest('[data-element-id]')) {
+      return
     }
-  }, [pages, currentPage, scale, isLoading, activeTool, textOptions, shapeOptions])
-
-  // Update canvas when scale changes
-  useEffect(() => {
-    if (!fabricCanvasRef.current || !pages[currentPage]) return
     
-    const canvas = fabricCanvasRef.current
-    canvas.setDimensions({
-      width: pages[currentPage].width * scale,
-      height: pages[currentPage].height * scale,
-    })
-    
-    if (pdfImageRef.current) {
-      pdfImageRef.current.set({
-        scaleX: scale,
-        scaleY: scale,
-      })
-      canvas.renderAll()
+    if (activeTool === 'text') {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / scale
+      const y = (e.clientY - rect.top) / scale
+      
+      const newElement: TextElement = {
+        id: `text-${Date.now()}`,
+        page: currentPage,
+        x,
+        y,
+        width: 200,
+        height: 30,
+        content: 'Nouveau texte',
+        ...textOptions,
+      }
+      setElements(prev => [...prev, newElement])
+      setSelectedElementId(newElement.id)
+      setEditingTextId(newElement.id)
+      setActiveTool('select')
+      
+      setTimeout(() => {
+        textInputRef.current?.focus()
+        textInputRef.current?.select()
+      }, 50)
+    } else if (activeTool === 'select') {
+      setSelectedElementId(null)
+      setEditingTextId(null)
     }
-  }, [scale, currentPage, pages])
+  }, [activeTool, scale, currentPage, textOptions])
 
-  // Update canvas selection mode
-  useEffect(() => {
-    if (!fabricCanvasRef.current) return
-    fabricCanvasRef.current.selection = activeTool === 'select'
-  }, [activeTool])
+  // Handle element click
+  const handleElementClick = useCallback((e: React.MouseEvent, elementId: string) => {
+    e.stopPropagation()
+    setSelectedElementId(elementId)
+    
+    const element = elements.find(el => el.id === elementId)
+    if (element && 'content' in element) {
+      setEditingTextId(elementId)
+      setTimeout(() => {
+        textInputRef.current?.focus()
+        textInputRef.current?.select()
+      }, 50)
+    }
+  }, [elements])
+
+  // Handle element drag start
+  const handleElementMouseDown = useCallback((e: React.MouseEvent, elementId: string) => {
+    e.stopPropagation()
+    const element = elements.find(el => el.id === elementId)
+    if (!element) return
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const startX = e.clientX
+    const startY = e.clientY
+    const startLeft = element.x
+    const startTop = element.y
+    
+    setIsDragging(true)
+    setDragStart({ x: startX, y: startY })
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = (moveEvent.clientX - startX) / scale
+      const deltaY = (moveEvent.clientY - startY) / scale
+      
+      setElements(prev => prev.map(el => 
+        el.id === elementId 
+          ? { ...el, x: startLeft + deltaX, y: startTop + deltaY }
+          : el
+      ))
+    }
+    
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [elements, scale])
+
+  // Handle resize
+  const handleResizeStart = useCallback((e: React.MouseEvent, elementId: string, corner: string) => {
+    e.stopPropagation()
+    const element = elements.find(el => el.id === elementId)
+    if (!element) return
+    
+    const startX = e.clientX
+    const startY = e.clientY
+    
+    resizeStartRef.current = {
+      x: startX,
+      y: startY,
+      width: element.width,
+      height: element.height,
+      left: element.x,
+      top: element.y,
+    }
+    
+    setIsResizing(true)
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = (moveEvent.clientX - startX) / scale
+      const deltaY = (moveEvent.clientY - startY) / scale
+      
+      let newWidth = resizeStartRef.current.width
+      let newHeight = resizeStartRef.current.height
+      let newX = resizeStartRef.current.left
+      let newY = resizeStartRef.current.top
+      
+      if (corner.includes('e')) newWidth = Math.max(20, resizeStartRef.current.width + deltaX)
+      if (corner.includes('w')) {
+        newWidth = Math.max(20, resizeStartRef.current.width - deltaX)
+        newX = resizeStartRef.current.left + deltaX
+      }
+      if (corner.includes('s')) newHeight = Math.max(20, resizeStartRef.current.height + deltaY)
+      if (corner.includes('n')) {
+        newHeight = Math.max(20, resizeStartRef.current.height - deltaY)
+        newY = resizeStartRef.current.top + deltaY
+      }
+      
+      setElements(prev => prev.map(el => 
+        el.id === elementId 
+          ? { ...el, width: newWidth, height: newHeight, x: newX, y: newY }
+          : el
+      ))
+    }
+    
+    const handleMouseUp = () => {
+      setIsResizing(false)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [elements, scale])
 
   // Handle image upload
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !fabricCanvasRef.current) return
+    if (!file) return
     
     const reader = new FileReader()
     reader.onload = (event) => {
-      fabric.Image.fromURL(event.target?.result as string, (img) => {
-        img.set({
-          left: 50,
-          top: 50,
-          scaleX: 0.5,
-          scaleY: 0.5,
-        })
-        fabricCanvasRef.current?.add(img)
-        fabricCanvasRef.current?.setActiveObject(img)
+      const img = new Image()
+      img.onload = () => {
+        const newElement: ImageElement = {
+          id: `img-${Date.now()}`,
+          page: currentPage,
+          x: 50,
+          y: 50,
+          width: Math.min(img.width, 300),
+          height: Math.min(img.height, 300),
+          imageData: event.target?.result as string,
+        }
+        setElements(prev => [...prev, newElement])
+        setSelectedElementId(newElement.id)
         setActiveTool('select')
-      })
+      }
+      img.src = event.target?.result as string
     }
     reader.readAsDataURL(file)
     
     if (fileInputRef.current) fileInputRef.current.value = ''
-  }, [])
+  }, [currentPage])
 
-  // Delete selected object
-  const deleteSelected = useCallback(() => {
-    if (!fabricCanvasRef.current) return
-    const activeObj = fabricCanvasRef.current.getActiveObject()
-    if (activeObj) {
-      fabricCanvasRef.current.remove(activeObj)
-      fabricCanvasRef.current.discardActiveObject()
-      fabricCanvasRef.current.renderAll()
+  // Handle shape drawing
+  const handleShapeMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!['rectangle', 'highlight', 'whiteout'].includes(activeTool)) return
+    
+    const rect = e.currentTarget.getBoundingClientRect()
+    const startX = (e.clientX - rect.left) / scale
+    const startY = (e.clientY - rect.top) / scale
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const currentX = (moveEvent.clientX - rect.left) / scale
+      const currentY = (moveEvent.clientY - rect.top) / scale
+      
+      const width = Math.abs(currentX - startX)
+      const height = Math.abs(currentY - startY)
+      
+      if (width > 5 && height > 5) {
+        const newElement: ShapeElement = {
+          id: `shape-${Date.now()}`,
+          page: currentPage,
+          x: Math.min(startX, currentX),
+          y: Math.min(startY, currentY),
+          width,
+          height,
+          type: activeTool as 'rectangle' | 'highlight' | 'whiteout',
+          fillColor: activeTool === 'whiteout' ? '#FFFFFF' : 
+                    activeTool === 'highlight' ? '#FFFF00' : shapeOptions.fillColor,
+          strokeColor: activeTool === 'whiteout' ? undefined : shapeOptions.strokeColor,
+          strokeWidth: activeTool === 'whiteout' ? 0 : shapeOptions.strokeWidth,
+          opacity: activeTool === 'highlight' ? 0.4 : activeTool === 'whiteout' ? 1 : shapeOptions.opacity,
+        }
+        
+        // Update or create temp element
+        setElements(prev => {
+          const existing = prev.find(el => el.id.startsWith('temp-'))
+          if (existing) {
+            return prev.map(el => el.id.startsWith('temp-') ? newElement : el)
+          }
+          return [...prev, { ...newElement, id: `temp-${Date.now()}` }]
+        })
+      }
     }
-  }, [])
+    
+    const handleMouseUp = () => {
+      setElements(prev => prev.map(el => 
+        el.id.startsWith('temp-') 
+          ? { ...el, id: el.id.replace('temp-', 'shape-') }
+          : el
+      ))
+      setActiveTool('select')
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+  }, [activeTool, scale, currentPage, shapeOptions])
+
+  // Delete selected
+  const deleteSelected = useCallback(() => {
+    if (selectedElementId) {
+      setElements(prev => prev.filter(el => el.id !== selectedElementId))
+      setSelectedElementId(null)
+      setEditingTextId(null)
+    }
+  }, [selectedElementId])
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (editingTextId) return
         deleteSelected()
       }
       if (e.key === 'Escape') {
         setActiveTool('select')
-        if (fabricCanvasRef.current) {
-          fabricCanvasRef.current.discardActiveObject()
-          fabricCanvasRef.current.renderAll()
-        }
+        setSelectedElementId(null)
+        setEditingTextId(null)
       }
     }
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [deleteSelected])
+  }, [deleteSelected, editingTextId])
 
-  // Update text properties when options change
-  useEffect(() => {
-    if (!fabricCanvasRef.current) return
-    const activeObj = fabricCanvasRef.current.getActiveObject()
-    if (activeObj && activeObj.type === 'i-text') {
-      const textObj = activeObj as fabric.IText
-      textObj.set({
-        fontSize: textOptions.fontSize,
-        fontFamily: textOptions.fontFamily === 'times' ? 'Times New Roman' : 
-                   textOptions.fontFamily === 'courier' ? 'Courier New' : 'Arial',
-        fill: textOptions.color,
-        fontWeight: textOptions.bold ? 'bold' : 'normal',
-      })
-      fabricCanvasRef.current.renderAll()
-    }
-  }, [textOptions])
+  // Update text content
+  const updateTextContent = useCallback((id: string, content: string) => {
+    setElements(prev => prev.map(el => 
+      el.id === id && 'content' in el 
+        ? { ...el, content }
+        : el
+    ))
+  }, [])
 
   // Export modified PDF
   const handleSave = async () => {
-    if (!pdfBytesRef.current || !fabricCanvasRef.current) return
+    if (!pdfBytesRef.current) return
     
     setIsSaving(true)
     try {
-      // Copy ArrayBuffer to avoid detached buffer error
       const bufferCopy = pdfBytesRef.current.slice(0)
-      
-      // Load original PDF with pdf-lib
       const pdfDoc = await PDFDocument.load(bufferCopy, { ignoreEncryption: true })
       const pdfPages = pdfDoc.getPages()
       
-      // Embed fonts
       const fonts: Record<string, PDFFont> = {
         helvetica: await pdfDoc.embedFont(StandardFonts.Helvetica),
         'helvetica-bold': await pdfDoc.embedFont(StandardFonts.HelveticaBold),
@@ -333,79 +432,70 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
         'courier-bold': await pdfDoc.embedFont(StandardFonts.CourierBold),
       }
       
-      // Get all objects from Fabric canvas
-      const objects = fabricCanvasRef.current.getObjects().filter(obj => obj !== pdfImageRef.current)
-      
-      // Process each object
-      for (const obj of objects) {
-        const page = pdfPages[currentPage]
+      for (const element of elements) {
+        const page = pdfPages[element.page]
         if (!page) continue
         
         const pageHeight = page.getHeight()
-        // Convert from canvas coordinates to PDF coordinates (flip Y axis)
-        const pdfX = obj.left! / scale
-        const pdfY = pageHeight - (obj.top! / scale) - (obj.height! * (obj.scaleY || 1) / scale)
+        const pdfX = element.x
+        const pdfY = pageHeight - element.y - element.height
         
-        if (obj.type === 'i-text') {
-          const textObj = obj as fabric.IText
-          const fontKey = textObj.fontWeight === 'bold' 
-            ? `${textOptions.fontFamily}-bold` 
-            : textOptions.fontFamily || 'helvetica'
+        if ('content' in element) {
+          const textEl = element as TextElement
+          const fontKey = textEl.bold ? `${textEl.fontFamily}-bold` : textEl.fontFamily || 'helvetica'
           const font = fonts[fontKey] || fonts.helvetica
-          const color = hexToRgb(textObj.fill as string || '#000000')
+          const color = hexToRgb(textEl.color || '#000000')
           
-          page.drawText(textObj.text || '', {
+          page.drawText(textEl.content, {
             x: pdfX,
-            y: pdfY + (textObj.fontSize || 14),
-            size: textObj.fontSize || 14,
+            y: pdfY + textEl.height - textEl.fontSize,
+            size: textEl.fontSize,
             font,
             color: rgb(color.r / 255, color.g / 255, color.b / 255),
           })
         }
         
-        if (obj.type === 'rect') {
-          const rectObj = obj as fabric.Rect
-          const fillColor = hexToRgb(rectObj.fill as string || '#FFFF00')
-          const opacity = rectObj.opacity ?? 1
+        if ('type' in element) {
+          const shapeEl = element as ShapeElement
+          const fillColor = hexToRgb(shapeEl.fillColor || '#FFFF00')
           
           page.drawRectangle({
             x: pdfX,
             y: pdfY,
-            width: (rectObj.width! * (rectObj.scaleX || 1)) / scale,
-            height: (rectObj.height! * (rectObj.scaleY || 1)) / scale,
+            width: shapeEl.width,
+            height: shapeEl.height,
             color: rgb(fillColor.r / 255, fillColor.g / 255, fillColor.b / 255),
-            opacity,
+            opacity: shapeEl.opacity,
           })
           
-          if (rectObj.strokeWidth && rectObj.strokeWidth > 0) {
-            const strokeColor = hexToRgb(rectObj.stroke as string || '#000000')
+          if (shapeEl.strokeWidth && shapeEl.strokeWidth > 0 && shapeEl.strokeColor) {
+            const strokeColor = hexToRgb(shapeEl.strokeColor)
             page.drawRectangle({
               x: pdfX,
               y: pdfY,
-              width: (rectObj.width! * (rectObj.scaleX || 1)) / scale,
-              height: (rectObj.height! * (rectObj.scaleY || 1)) / scale,
+              width: shapeEl.width,
+              height: shapeEl.height,
               borderColor: rgb(strokeColor.r / 255, strokeColor.g / 255, strokeColor.b / 255),
-              borderWidth: rectObj.strokeWidth / scale,
+              borderWidth: shapeEl.strokeWidth,
             })
           }
         }
         
-        if (obj.type === 'image') {
-          const imgObj = obj as fabric.Image
+        if ('imageData' in element) {
+          const imgEl = element as ImageElement
           try {
-            const imgData = imgObj.toDataURL()
             let image
-            if (imgData.includes('image/png')) {
-              image = await pdfDoc.embedPng(imgData)
+            if (imgEl.imageData.includes('image/png')) {
+              image = await pdfDoc.embedPng(imgEl.imageData)
             } else {
-              image = await pdfDoc.embedJpg(imgData)
+              image = await pdfDoc.embedJpg(imgEl.imageData)
             }
             
             page.drawImage(image, {
               x: pdfX,
               y: pdfY,
-              width: (imgObj.width! * (imgObj.scaleX || 1)) / scale,
-              height: (imgObj.height! * (imgObj.scaleY || 1)) / scale,
+              width: imgEl.width,
+              height: imgEl.height,
             })
           } catch (err) {
             console.error('Failed to embed image:', err)
@@ -413,9 +503,7 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
         }
       }
       
-      // Save modified PDF
       const modifiedPdfBytes = await pdfDoc.save()
-      // Create a new Uint8Array from the bytes to avoid detached buffer issues
       const bytesArray = Array.from(modifiedPdfBytes)
       const blob = new Blob([new Uint8Array(bytesArray)], { type: 'application/pdf' })
       onSave(blob)
@@ -427,7 +515,6 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
     }
   }
 
-  // Helper to convert hex to RGB
   const hexToRgb = (hex: string) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
     return result ? {
@@ -448,8 +535,8 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
     )
   }
 
-  const selectedObj = fabricCanvasRef.current?.getActiveObject()
-  const isTextSelected = selectedObj?.type === 'i-text'
+  const selectedElement = elements.find(el => el.id === selectedElementId)
+  const isTextSelected = selectedElement && 'content' in selectedElement
 
   return (
     <div className="fixed inset-0 bg-gray-900 flex flex-col z-50">
@@ -613,32 +700,8 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
           )}
         </AnimatePresence>
         
-        {/* Shape options */}
-        <AnimatePresence>
-          {activeTool === 'rectangle' && (
-            <motion.div
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="flex items-center gap-2 ml-4"
-            >
-              <span className="text-gray-400 text-sm">Remplissage:</span>
-              <div className="flex items-center gap-1">
-                {COLORS.slice(0, 6).map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setShapeOptions(prev => ({ ...prev, fillColor: color }))}
-                    className={`w-6 h-6 rounded-full border-2 transition-transform ${shapeOptions.fillColor === color ? 'border-white scale-110' : 'border-transparent'}`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
         {/* Delete button */}
-        {selectedObj && (
+        {selectedElementId && (
           <button
             onClick={deleteSelected}
             className="ml-auto px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center gap-2 text-sm"
@@ -691,12 +754,122 @@ export default function PDFEditor({ pdfUrl, onSave, onCancel }: PDFEditorProps) 
 
         {/* PDF Canvas */}
         <div 
+          ref={containerRef}
           className="flex-1 overflow-auto bg-gray-700 p-8 flex justify-center"
         >
-          <canvas
-            ref={canvasRef}
-            className="bg-white shadow-2xl"
-          />
+          <div
+            className="relative bg-white shadow-2xl"
+            style={{
+              width: pages[currentPage]?.width * scale,
+              height: pages[currentPage]?.height * scale,
+            }}
+            onClick={activeTool === 'text' ? handleCanvasClick : undefined}
+            onMouseDown={['rectangle', 'highlight', 'whiteout'].includes(activeTool) ? handleShapeMouseDown : undefined}
+          >
+            {/* PDF Page */}
+            <img
+              src={pages[currentPage]?.imageUrl}
+              alt={`Page ${currentPage + 1}`}
+              className="w-full h-full pointer-events-none select-none"
+              draggable={false}
+            />
+
+            {/* Elements overlay */}
+            {elements
+              .filter(el => el.page === currentPage)
+              .map(element => (
+                <div
+                  key={element.id}
+                  data-element-id={element.id}
+                  className={`absolute ${selectedElementId === element.id ? 'ring-2 ring-[#08CF65]' : ''}`}
+                  style={{
+                    left: element.x * scale,
+                    top: element.y * scale,
+                    width: element.width * scale,
+                    height: element.height * scale,
+                    cursor: selectedElementId === element.id ? 'move' : 'pointer',
+                  }}
+                  onClick={(e) => handleElementClick(e, element.id)}
+                  onMouseDown={(e) => {
+                    if (activeTool === 'select') {
+                      handleElementMouseDown(e, element.id)
+                    }
+                  }}
+                >
+                  {/* Render element based on type */}
+                  {'content' in element && (
+                    editingTextId === element.id ? (
+                      <textarea
+                        ref={textInputRef}
+                        autoFocus
+                        value={element.content}
+                        onChange={(e) => updateTextContent(element.id, e.target.value)}
+                        onBlur={() => setEditingTextId(null)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-full h-full resize-none border-none outline-none bg-transparent p-1"
+                        style={{
+                          fontSize: element.fontSize * scale,
+                          fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
+                                      element.fontFamily === 'courier' ? 'Courier New' : 'Helvetica, sans-serif',
+                          fontWeight: element.bold ? 'bold' : 'normal',
+                          color: element.color,
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full p-1 whitespace-pre-wrap break-words cursor-text"
+                        style={{
+                          fontSize: element.fontSize * scale,
+                          fontFamily: element.fontFamily === 'times' ? 'Times New Roman' : 
+                                      element.fontFamily === 'courier' ? 'Courier New' : 'Helvetica, sans-serif',
+                          fontWeight: element.bold ? 'bold' : 'normal',
+                          color: element.color,
+                        }}
+                      >
+                        {element.content || 'Cliquez pour éditer'}
+                      </div>
+                    )
+                  )}
+                  
+                  {'imageData' in element && (
+                    <img src={element.imageData} alt="" className="w-full h-full object-contain" draggable={false} />
+                  )}
+                  
+                  {'type' in element && (
+                    <div
+                      className="w-full h-full"
+                      style={{
+                        backgroundColor: element.fillColor,
+                        opacity: element.opacity,
+                        border: element.strokeWidth ? `${element.strokeWidth}px solid ${element.strokeColor || '#000000'}` : 'none',
+                      }}
+                    />
+                  )}
+                  
+                  {/* Resize handles */}
+                  {selectedElementId === element.id && (
+                    <>
+                      {['nw', 'ne', 'sw', 'se'].map(corner => (
+                        <div
+                          key={corner}
+                          className="absolute w-3 h-3 bg-[#08CF65] rounded-full cursor-nwse-resize border-2 border-white z-10"
+                          style={{
+                            top: corner.includes('n') ? -6 : 'auto',
+                            bottom: corner.includes('s') ? -6 : 'auto',
+                            left: corner.includes('w') ? -6 : 'auto',
+                            right: corner.includes('e') ? -6 : 'auto',
+                          }}
+                          onMouseDown={(e) => {
+                            e.stopPropagation()
+                            handleResizeStart(e, element.id, corner)
+                          }}
+                        />
+                      ))}
+                    </>
+                  )}
+                </div>
+              ))}
+          </div>
         </div>
       </div>
 
