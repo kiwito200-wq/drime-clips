@@ -19,6 +19,7 @@ export type AuditAction =
   | 'phone_2fa_verified'
   | 'renamed'
   | 'due_date_changed'
+  | 'pdf_modified'
 
 export interface AuditDetails {
   ip?: string

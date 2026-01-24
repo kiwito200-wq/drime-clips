@@ -78,12 +78,11 @@ export async function POST(
     // Log audit event
     await logAuditEvent(
       envelope.id,
-      'edited',
+      'pdf_modified',
       null, // No specific signer
       {
         ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown',
         userAgent: request.headers.get('user-agent') || 'unknown',
-        event: 'pdf_modified',
         description: 'PDF modifié avec l\'éditeur intégré',
         fileSize: buffer.length,
       }
