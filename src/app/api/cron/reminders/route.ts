@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
           
           await sendReminderEmail({
             to: signer.email,
-            signerName: signer.name || undefined,
+            signerName: signer.name || null,
             documentName: envelope.name,
             senderName: envelope.user.name || envelope.user.email,
             signingLink,
