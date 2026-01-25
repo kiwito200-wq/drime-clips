@@ -653,7 +653,7 @@ function SendPageContent() {
                           // Map fields from roleId to signerId
                           const roleToSignerMap: Record<string, string> = {}
                           templateSigners.forEach(ts => {
-                            const signer = savedSigners.find(s => s.email === ts.email && s.name === ts.name)
+                            const signer = savedSigners.find((s: Signer) => s.email === ts.email && s.name === ts.name)
                             if (signer) {
                               roleToSignerMap[ts.roleId] = signer.id
                             }
