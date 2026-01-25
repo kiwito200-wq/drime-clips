@@ -4,6 +4,8 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ALLOWED_ORIGINS = "https://sign.drime.cloud,http://localhost:3000"
+# SECURITY: THUMBNAIL_API_KEY must be set as a secret in Cloudflare dashboard
+# Run: wrangler secret put THUMBNAIL_API_KEY
 
 # Browser Rendering binding (optionnel, pour une meilleure qualité)
 # [browser]

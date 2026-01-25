@@ -49,7 +49,10 @@ export async function POST(request: NextRequest) {
     // Call worker to generate thumbnail
     const workerResponse = await fetch(`${WORKER_URL}/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.THUMBNAIL_WORKER_API_KEY || '',
+      },
       body: JSON.stringify({ pdfUrl: envelope.pdfUrl, width: 150 }),
     })
 

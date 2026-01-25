@@ -30,6 +30,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Invalid or expired signing link' }, { status: 404 })
     }
     
+    // SECURITY: Check if signing token has expired
+    if (signer.tokenExpiresAt && new Date() > signer.tokenExpiresAt) {
+      return NextResponse.json({ error: 'This signing link has expired. Please request a new one.' }, { status: 410 })
+    }
+    
     if (signer.status === 'signed') {
       return NextResponse.json({ error: 'You have already signed this document' }, { status: 400 })
     }

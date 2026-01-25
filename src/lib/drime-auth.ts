@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { prisma } from './prisma'
 import { createSession, setSessionCookie } from './auth'
+import { encrypt } from './encryption'
 
 const DRIME_API_URL = process.env.DRIME_API_URL || 'https://front.preprod.drime.cloud'
 const DRIME_EXTERNAL_TOKEN = process.env.DRIME_EXTERNAL_TOKEN || ''
@@ -101,18 +102,21 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
       drimeAvatarUrl = `${DRIME_API_URL}/${drimeAvatarUrl.replace(/^\//, '')}`
     }
 
+    // SECURITY: Encrypt the access token before storing in database
+    const encryptedToken = accessToken ? encrypt(accessToken) : null
+    
     // Create or update user in local DB
     const user = await prisma.user.upsert({
       where: { email },
       update: {
-        drimeToken: accessToken,
+        drimeToken: encryptedToken,
         drimeUserId: userId ? String(userId) : null,
         name: drimeName || undefined,
         avatarUrl: drimeAvatarUrl || undefined,
       },
       create: {
         email,
-        drimeToken: accessToken,
+        drimeToken: encryptedToken,
         drimeUserId: userId ? String(userId) : null,
         name: drimeName,
         avatarUrl: drimeAvatarUrl,

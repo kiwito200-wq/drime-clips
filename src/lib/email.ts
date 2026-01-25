@@ -7,6 +7,31 @@ const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@sign.drime.cloud'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sign.drime.cloud'
 const COMPANY_NAME = 'Drime Sign'
 
+// SECURITY: HTML escape function to prevent XSS in emails
+function escapeHtml(str: string | null | undefined): string {
+  if (!str) return ''
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+// SECURITY: Validate and sanitize URLs
+function sanitizeUrl(url: string): string {
+  try {
+    const parsed = new URL(url)
+    // Only allow https URLs
+    if (parsed.protocol !== 'https:') {
+      return '#'
+    }
+    return url
+  } catch {
+    return '#'
+  }
+}
+
 export interface SignatureRequestEmailData {
   to: string
   signerName: string | null
@@ -46,12 +71,21 @@ export interface ReminderEmailData {
 export async function sendSignatureRequestEmail(data: SignatureRequestEmailData) {
   const { to, signerName, documentName, senderName, senderEmail, signingLink, message, expiresAt } = data
   
-  const greeting = signerName ? `Bonjour ${signerName},` : 'Bonjour,'
+  // SECURITY: Escape all user-provided content to prevent XSS
+  const safeSignerName = escapeHtml(signerName)
+  const safeDocumentName = escapeHtml(documentName)
+  const safeSenderName = escapeHtml(senderName)
+  const safeSenderEmail = escapeHtml(senderEmail)
+  const safeMessage = escapeHtml(message)
+  const safeSigningLink = sanitizeUrl(signingLink)
+  const safeTo = escapeHtml(to)
+  
+  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
   const expiresText = expiresAt 
     ? `<p style="color: #6B7280; font-size: 14px; margin-top: 16px;">Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')}.</p>`
     : ''
-  const customMessage = message 
-    ? `<div style="background-color: #F3F4F6; padding: 16px; border-radius: 8px; margin: 16px 0;"><p style="margin: 0; color: #374151;">"${message}"</p></div>`
+  const customMessage = safeMessage 
+    ? `<div style="background-color: #F3F4F6; padding: 16px; border-radius: 8px; margin: 16px 0;"><p style="margin: 0; color: #374151;">"${safeMessage}"</p></div>`
     : ''
 
   try {
@@ -59,7 +93,7 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       reply_to: senderEmail,
-      subject: `${senderName} vous invite à signer "${documentName}"`,
+      subject: `${safeSenderName} vous invite à signer "${safeDocumentName}"`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -84,13 +118,13 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
       <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
       
       <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">
-        <strong>${senderName}</strong> vous a envoyé le document <strong>"${documentName}"</strong> à signer.
+        <strong>${safeSenderName}</strong> vous a envoyé le document <strong>"${safeDocumentName}"</strong> à signer.
       </p>
       
       ${customMessage}
       
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${signingLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
+        <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
           Signer le document
         </a>
       </div>
@@ -101,7 +135,7 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
       
       <p style="font-size: 14px; color: #6B7280; margin: 0;">
         Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
-        <a href="${signingLink}" style="color: #08CF65; word-break: break-all;">${signingLink}</a>
+        <a href="${safeSigningLink}" style="color: #08CF65; word-break: break-all;">${safeSigningLink}</a>
       </p>
     </div>
     
@@ -111,7 +145,7 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
         Envoyé par ${COMPANY_NAME} · Une solution <a href="https://drime.cloud" style="color: #08CF65; text-decoration: none;">Drime</a>
       </p>
       <p style="font-size: 12px; color: #9CA3AF; margin: 8px 0 0 0;">
-        Cet email a été envoyé à ${to} car ${senderEmail} vous a invité à signer un document.
+        Cet email a été envoyé à ${safeTo} car ${safeSenderEmail} vous a invité à signer un document.
       </p>
     </div>
   </div>
@@ -141,7 +175,13 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
 export async function sendCompletedEmail(data: CompletedEmailData) {
   const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments } = data
   
-  const greeting = signerName ? `Bonjour ${signerName},` : 'Bonjour,'
+  // SECURITY: Escape all user-provided content
+  const safeDocumentName = escapeHtml(documentName)
+  const safeSignerName = escapeHtml(signerName)
+  const safeDownloadLink = downloadLink ? sanitizeUrl(downloadLink) : undefined
+  const safeAuditTrailLink = auditTrailLink ? sanitizeUrl(auditTrailLink) : undefined
+  
+  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
 
   // Build attachments array for Resend
   const emailAttachments: { filename: string; content: Buffer }[] = []
@@ -164,7 +204,7 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      subject: `✅ "${documentName}" a été signé`,
+      subject: `✅ "${safeDocumentName}" a été signé`,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       html: `
 <!DOCTYPE html>
@@ -190,7 +230,7 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
       <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
       
       <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
-        Le document <strong>"${documentName}"</strong> a été entièrement signé le ${completedAt.toLocaleDateString('fr-FR')} à ${completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
+        Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé le ${completedAt.toLocaleDateString('fr-FR')} à ${completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
       </p>
       
       <div style="background-color: #F0FDF4; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
@@ -200,17 +240,17 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
         </p>
       </div>
       
-      ${downloadLink ? `
+      ${safeDownloadLink ? `
       <div style="text-align: center; margin: 24px 0;">
-        <a href="${downloadLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
+        <a href="${safeDownloadLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
           Télécharger le document
         </a>
       </div>
       ` : ''}
       
-      ${auditTrailLink ? `
+      ${safeAuditTrailLink ? `
       <p style="text-align: center;">
-        <a href="${auditTrailLink}" style="color: #6B7280; font-size: 14px; text-decoration: underline;">
+        <a href="${safeAuditTrailLink}" style="color: #6B7280; font-size: 14px; text-decoration: underline;">
           Voir le certificat d'audit
         </a>
       </p>
@@ -243,7 +283,13 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
 export async function sendReminderEmail(data: ReminderEmailData) {
   const { to, signerName, documentName, senderName, signingLink, daysRemaining } = data
   
-  const greeting = signerName ? `Bonjour ${signerName},` : 'Bonjour,'
+  // SECURITY: Escape all user-provided content
+  const safeSignerName = escapeHtml(signerName)
+  const safeDocumentName = escapeHtml(documentName)
+  const safeSenderName = escapeHtml(senderName)
+  const safeSigningLink = sanitizeUrl(signingLink)
+  
+  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
   const urgencyText = daysRemaining <= 1 
     ? '⚠️ Ce document expire demain !' 
     : `📅 Il vous reste ${daysRemaining} jours pour signer.`
@@ -252,7 +298,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      subject: `Rappel: "${documentName}" attend votre signature`,
+      subject: `Rappel: "${safeDocumentName}" attend votre signature`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -267,7 +313,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
       <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
       
       <p style="font-size: 16px; color: #374151; margin: 0 0 8px 0;">
-        Vous n'avez pas encore signé le document <strong>"${documentName}"</strong> envoyé par ${senderName}.
+        Vous n'avez pas encore signé le document <strong>"${safeDocumentName}"</strong> envoyé par ${safeSenderName}.
       </p>
       
       <p style="font-size: 14px; color: #F59E0B; font-weight: 600; margin: 0 0 24px 0;">
@@ -275,7 +321,7 @@ export async function sendReminderEmail(data: ReminderEmailData) {
       </p>
       
       <div style="text-align: center; margin: 24px 0;">
-        <a href="${signingLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
+        <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
           Signer maintenant
         </a>
       </div>

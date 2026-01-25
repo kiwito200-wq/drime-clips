@@ -141,6 +141,9 @@ model Signer {
   order  Int     @default(0)
   status String  @default("pending") // pending, sent, viewed, signed, declined
   token  String  @unique // Unique signing URL token
+  
+  // SECURITY: Token expiration for additional protection
+  tokenExpiresAt DateTime? // When the signing token expires (default: 30 days from creation)
 
   // Phone 2FA
   phone2FA         Boolean @default(false)

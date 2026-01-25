@@ -16,19 +16,11 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sign.drime.cloud'
 // POST /api/envelopes/[slug]/send - Send envelope for signature
 export async function POST(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Get or create dev user
+    // SECURITY: Require authentication - no exceptions
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({

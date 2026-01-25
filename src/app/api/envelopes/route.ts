@@ -9,19 +9,11 @@ const WORKER_URL = process.env.THUMBNAIL_WORKER_URL
 // GET /api/envelopes - List user's envelopes
 export async function GET() {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
+    // SECURITY: Require authentication - no exceptions
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const envelopes = await prisma.envelope.findMany({
@@ -44,19 +36,11 @@ export async function GET() {
 // POST /api/envelopes - Create new envelope
 export async function POST(request: NextRequest) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
+    // SECURITY: Require authentication - no exceptions
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const contentType = request.headers.get('content-type') || ''
@@ -108,8 +92,42 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only PDF files are allowed' }, { status: 400 })
     }
     
-    // Upload PDF to R2
+    // SECURITY: Read file into buffer for validation
     const buffer = Buffer.from(await file.arrayBuffer())
+    
+    // SECURITY: Validate file size (max 50MB)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB
+    if (buffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'File too large. Maximum size is 50MB.' }, { status: 400 })
+    }
+    
+    // SECURITY: Validate PDF magic number (must start with %PDF-)
+    const header = buffer.slice(0, 5).toString('ascii')
+    if (!header.startsWith('%PDF-')) {
+      return NextResponse.json({ error: 'Invalid PDF file format' }, { status: 400 })
+    }
+    
+    // SECURITY: Check for potentially malicious content
+    const content = buffer.toString('latin1').toLowerCase()
+    const dangerousPatterns = [
+      '/javascript',
+      '/js',
+      '/launch',
+      '/submitform',
+      '/importdata',
+      '/openaction',
+      '/aa',  // Automatic actions
+    ]
+    
+    for (const pattern of dangerousPatterns) {
+      if (content.includes(pattern)) {
+        console.warn(`[Security] Potentially dangerous PDF pattern detected: ${pattern}`)
+        // Note: We log but don't reject - some legitimate PDFs may have these
+        // In production, you might want to quarantine these for review
+      }
+    }
+    
+    // Upload PDF to R2
     const { url, hash } = await uploadPdf(buffer, file.name)
     
     // Handle thumbnail
@@ -132,7 +150,10 @@ export async function POST(request: NextRequest) {
         console.log('[Envelope] Generating thumbnail via worker...')
         const workerResponse = await fetch(`${WORKER_URL}/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-API-Key': process.env.THUMBNAIL_WORKER_API_KEY || '',
+          },
           body: JSON.stringify({ pdfUrl: url, width: 150 }),
         })
         

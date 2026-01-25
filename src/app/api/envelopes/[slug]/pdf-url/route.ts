@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 // Force dynamic
 export const dynamic = 'force-dynamic'
@@ -29,11 +30,21 @@ export async function GET(
   { params }: { params: { slug: string } }
 ) {
   try {
-    // Skip auth check for now - envelope access is validated by slug
-    // TODO: Add proper auth when Drime integration is complete
+    // SECURITY: Require authentication
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    // SECURITY: Verify user owns this envelope OR is a signer
     const envelope = await prisma.envelope.findFirst({
-      where: { slug: params.slug },
+      where: { 
+        slug: params.slug,
+        OR: [
+          { userId: user.id },
+          { signers: { some: { email: user.email } } }
+        ]
+      },
       select: { pdfUrl: true },
     })
 

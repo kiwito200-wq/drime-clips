@@ -24,10 +24,16 @@ export async function sendVerifyOTP(to: string): Promise<{ success: boolean; err
   const client = getTwilioClient()
   const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID
   
+  // SECURITY: In production, Twilio MUST be configured
   if (!client || !serviceSid) {
-    console.log('[Twilio Verify] Missing credentials')
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Twilio Verify] CRITICAL: Twilio not configured in production!')
+      return { success: false, error: 'SMS service unavailable' }
+    }
+    // Development mode only - with clear warning
+    console.warn('[Twilio Verify] ⚠️ DEV MODE - Twilio not configured, simulating OTP send')
     console.log(`[Twilio Verify DEV] Would send OTP to ${to}`)
-    return { success: true } // Return success in dev mode for testing
+    return { success: true }
   }
 
   try {
@@ -54,13 +60,20 @@ export async function checkVerifyOTP(to: string, code: string): Promise<{ succes
   const client = getTwilioClient()
   const serviceSid = process.env.TWILIO_VERIFY_SERVICE_SID
   
+  // SECURITY: In production, Twilio MUST be configured
   if (!client || !serviceSid) {
-    console.log('[Twilio Verify] Missing credentials - checking in dev mode')
-    // In dev mode, accept any 6-digit code for testing
-    if (code.length === 6) {
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[Twilio Verify] CRITICAL: Twilio not configured in production!')
+      return { success: false, error: 'SMS service unavailable' }
+    }
+    // Development mode only - accept ONLY specific test code
+    console.warn('[Twilio Verify] ⚠️ DEV MODE - Twilio not configured, using test code validation')
+    // SECURITY: Only accept specific test code in dev, not any 6-digit code
+    if (code === '123456') {
+      console.log('[Twilio Verify DEV] Test code accepted')
       return { success: true }
     }
-    return { success: false, error: 'Invalid code' }
+    return { success: false, error: 'Invalid code (dev mode: use 123456)' }
   }
 
   try {

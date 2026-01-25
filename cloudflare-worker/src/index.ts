@@ -15,6 +15,7 @@ declare const OffscreenCanvas: any
 
 interface Env {
   ALLOWED_ORIGINS: string
+  THUMBNAIL_API_KEY: string // SECURITY: Required API key for authentication
 }
 
 // Simple canvas-like interface for pdf.js
@@ -107,6 +108,15 @@ export default {
     // Generate thumbnail
     if (url.pathname === '/generate' && request.method === 'POST') {
       try {
+        // SECURITY: Validate API key
+        const apiKey = request.headers.get('X-API-Key')
+        if (!env.THUMBNAIL_API_KEY || apiKey !== env.THUMBNAIL_API_KEY) {
+          return new Response(JSON.stringify({ error: 'Unauthorized - Invalid API key' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+
         const body = await request.json() as { pdfUrl?: string; pdfBase64?: string; width?: number }
         const { pdfUrl, pdfBase64, width = 150 } = body
 
@@ -115,6 +125,23 @@ export default {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           })
+        }
+
+        // SECURITY: Validate that pdfUrl is from our trusted sources only
+        if (pdfUrl) {
+          const allowedDomains = [
+            '.r2.cloudflarestorage.com',
+            '.r2.dev',
+            'pub-',  // R2 public buckets
+          ]
+          const urlLower = pdfUrl.toLowerCase()
+          const isTrustedSource = allowedDomains.some(domain => urlLower.includes(domain))
+          if (!isTrustedSource) {
+            return new Response(JSON.stringify({ error: 'Invalid PDF source - only R2 URLs allowed' }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+          }
         }
 
         // Get PDF data

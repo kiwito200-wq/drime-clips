@@ -12,19 +12,11 @@ interface Params {
 // GET /api/envelopes/[slug]/download - Download the PDF
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    let user = await getCurrentUser()
+    const user = await getCurrentUser()
     
-    // DEV MODE: Create temporary user if not logged in
+    // SECURITY: Require authentication - no exceptions
     if (!user) {
-      const devEmail = 'dev@drime.cloud'
-      user = await prisma.user.upsert({
-        where: { email: devEmail },
-        update: {},
-        create: {
-          email: devEmail,
-          name: 'Dev User',
-        },
-      })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const envelope = await prisma.envelope.findFirst({

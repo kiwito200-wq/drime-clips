@@ -3,8 +3,16 @@ import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 import bcrypt from 'bcryptjs'
 
+// SECURITY: JWT_SECRET must be set in production - no fallback allowed
+const JWT_SECRET_RAW = process.env.JWT_SECRET
+if (!JWT_SECRET_RAW) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('CRITICAL: JWT_SECRET environment variable is required in production')
+  }
+  console.warn('⚠️ WARNING: JWT_SECRET not set - using insecure development secret')
+}
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'fallback-secret-change-in-production'
+  JWT_SECRET_RAW || 'dev-only-secret-do-not-use-in-production-32chars!'
 )
 
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
