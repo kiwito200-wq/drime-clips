@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Tooltip from '@/components/Tooltip'
+import DrimeFilePicker from '@/components/DrimeFilePicker'
 import { useI18n } from '@/lib/i18n/I18nContext'
 
 interface User {
@@ -54,6 +55,14 @@ const XIcon = () => (
   <img src="/icons/close.svg" alt="" className="w-4 h-4" />
 )
 
+const DeviceIcon = () => (
+  <img src="/icons/device.svg" alt="" className="w-5 h-5" />
+)
+
+const DrimeIcon = () => (
+  <img src="/drime-icon.png" alt="Drime" className="w-5 h-5" />
+)
+
 export default function TemplatesPage() {
   const router = useRouter()
   const { t, locale } = useI18n()
@@ -63,8 +72,13 @@ export default function TemplatesPage() {
   const [archived, setArchived] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showImportDropdown, setShowImportDropdown] = useState(false)
+  const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const notificationsRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
+  const importDropdownRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load user
   useEffect(() => {
@@ -131,6 +145,61 @@ export default function TemplatesPage() {
     }).format(new Date(dateStr))
   }
 
+  // File upload handling
+  const handleFileUpload = async (file: File) => {
+    if (!file || !file.type.includes('pdf')) {
+      alert(locale === 'fr' ? 'Veuillez uploader un fichier PDF' : 'Please upload a PDF file')
+      return
+    }
+
+    setIsUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('name', file.name.replace('.pdf', ''))
+
+      // Generate thumbnail client-side
+      try {
+        const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
+        const thumbnail = await generatePdfThumbnail(file, 128)
+        if (thumbnail) {
+          formData.append('thumbnail', thumbnail)
+        }
+      } catch (e) {
+        console.error('Thumbnail generation failed:', e)
+      }
+
+      const response = await fetch('/api/envelopes', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        router.push(`/send?slug=${data.envelope.slug}`)
+      } else {
+        const error = await response.json()
+        alert(error.error || (locale === 'fr' ? 'Échec de l\'upload' : 'Failed to upload'))
+      }
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert(locale === 'fr' ? 'Échec de l\'upload' : 'Failed to upload')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+  }
+
+  const handleDrimeFileSelect = async (drimeFile: any, blob: Blob) => {
+    const file = new File([blob], drimeFile.name || drimeFile.file_name || 'document.pdf', { type: 'application/pdf' })
+    await handleFileUpload(file)
+  }
+
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -139,6 +208,9 @@ export default function TemplatesPage() {
       }
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false)
+      }
+      if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
+        setShowImportDropdown(false)
       }
     }
     window.document.addEventListener('mousedown', handleClickOutside)
@@ -335,13 +407,61 @@ export default function TemplatesPage() {
         {/* Main content - white container */}
         <main className="flex-1 bg-white rounded-xl flex flex-col min-h-0 border border-gray-200 overflow-auto">
           {/* Header */}
-          <div className="px-8 py-6 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">
-              {locale === 'fr' ? 'Mes templates' : 'My Templates'}
-            </h1>
-            <p className="text-gray-500 mt-1">
-              {locale === 'fr' ? 'Réutilisez vos documents et champs de signature' : 'Reuse your documents and signature fields'}
-            </p>
+          <div className="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {locale === 'fr' ? 'Mes templates' : 'My Templates'}
+              </h1>
+              <p className="text-gray-500 mt-1">
+                {locale === 'fr' ? 'Réutilisez vos documents et champs de signature' : 'Reuse your documents and signature fields'}
+              </p>
+            </div>
+            {/* Import button with dropdown */}
+            <div className="relative" ref={importDropdownRef}>
+              <button 
+                onClick={() => setShowImportDropdown(!showImportDropdown)}
+                disabled={isUploading}
+                className="px-6 py-2.5 bg-[#08CF65] hover:bg-[#07B859] text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <img src="/icons/upload.svg" alt="" className="w-5 h-5 invert" />
+                {locale === 'fr' ? 'Créer un document' : 'Create document'}
+                <svg className={`w-4 h-4 transition-transform ${showImportDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {showImportDropdown && (
+                <div className="absolute top-full right-0 mt-2 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] py-2 min-w-[200px] z-10">
+                  <button
+                    onClick={() => {
+                      setShowImportDropdown(false)
+                      fileInputRef.current?.click()
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                  >
+                    <DeviceIcon />
+                    {locale === 'fr' ? 'Depuis mon appareil' : 'From my device'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowImportDropdown(false)
+                      setShowDrimeFilePicker(true)
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+                  >
+                    <DrimeIcon />
+                    {locale === 'fr' ? 'Depuis Drime' : 'From Drime'}
+                  </button>
+                </div>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
           </div>
 
           {/* Content */}
@@ -402,14 +522,6 @@ export default function TemplatesPage() {
                     : (locale === 'fr' ? 'Créez votre premier template en sauvegardant un document depuis l\'étape de révision' : 'Create your first template by saving a document from the review step')
                   }
                 </p>
-                {!archived && (
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-[#08CF65] text-white font-medium rounded-lg hover:bg-[#07b858] transition-colors"
-                  >
-                    {locale === 'fr' ? 'Créer un document' : 'Create a document'}
-                  </Link>
-                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -518,6 +630,13 @@ export default function TemplatesPage() {
           </div>
         </main>
       </div>
+
+      {/* Drime File Picker Modal */}
+      <DrimeFilePicker
+        isOpen={showDrimeFilePicker}
+        onClose={() => setShowDrimeFilePicker(false)}
+        onSelect={handleDrimeFileSelect}
+      />
     </div>
   )
 }
