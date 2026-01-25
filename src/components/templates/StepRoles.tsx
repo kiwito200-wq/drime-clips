@@ -113,21 +113,6 @@ export default function StepRoles({
         className="bg-white rounded-xl border border-gray-200 p-6 mb-6"
       >
 
-        {/* Signing order (optional for templates, but good UX) */}
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Ordre de signature
-          </label>
-          <div className="flex gap-2">
-            <button className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              Signature simultanée
-            </button>
-            <button className="flex-1 px-4 py-2.5 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-              Signature en ordre
-            </button>
-          </div>
-        </div>
-
         {/* Roles list */}
         <div className="space-y-3 mb-4">
           {roles.map((role, index) => (

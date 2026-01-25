@@ -68,6 +68,7 @@ export default function TemplatesPage() {
   const { t, locale } = useI18n()
   const [user, setUser] = useState<User | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
+  const [envelopes, setEnvelopes] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [archived, setArchived] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -75,6 +76,14 @@ export default function TemplatesPage() {
   const [showImportDropdown, setShowImportDropdown] = useState(false)
   const [showDrimeFilePicker, setShowDrimeFilePicker] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [notificationTab, setNotificationTab] = useState<'general' | 'invitations' | 'requests'>('general')
+  const [readNotifications, setReadNotifications] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('readNotifications')
+      return stored ? JSON.parse(stored) : []
+    }
+    return []
+  })
   const notificationsRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const importDropdownRef = useRef<HTMLDivElement>(null)
@@ -96,6 +105,27 @@ export default function TemplatesPage() {
   useEffect(() => {
     loadTemplates()
   }, [archived])
+
+  // Load envelopes for notifications
+  useEffect(() => {
+    if (user) {
+      fetch('/api/envelopes', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.envelopes) {
+            setEnvelopes(data.envelopes)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [user])
+
+  // Persist read notifications
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('readNotifications', JSON.stringify(readNotifications))
+    }
+  }, [readNotifications])
 
   const loadTemplates = async () => {
     try {
@@ -144,6 +174,96 @@ export default function TemplatesPage() {
       year: 'numeric',
     }).format(new Date(dateStr))
   }
+
+  const formatDateTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getAvatarColor = (email: string) => {
+    const colors = [
+      'bg-[#E0F5EA] text-[#08CF65]',
+      'bg-[#F3E8FF] text-[#7E33F7]',
+      'bg-[#FFF4E6] text-[#FFAD12]',
+      'bg-[#FFE5E5] text-[#ED3757]',
+      'bg-[#E0F2FE] text-[#00B7FF]',
+      'bg-[#E0E7FF] text-[#4F46E5]',
+    ]
+    let hash = 0
+    for (let i = 0; i < email.length; i++) {
+      hash = email.charCodeAt(i) + ((hash << 5) - hash)
+    }
+    return colors[Math.abs(hash) % colors.length]
+  }
+
+  // Generate notifications from real envelope data
+  const notifications = useMemo(() => {
+    const notifs: Array<{
+      id: string
+      type: 'general' | 'invitation'
+      action: 'completed' | 'signed' | 'invited' | 'pending'
+      title: string
+      slug: string
+      time: string
+      read: boolean
+      senderEmail?: string
+      senderName?: string
+    }> = []
+
+    envelopes.forEach((envelope: any) => {
+      // Completed documents
+      if (envelope.status === 'completed') {
+        notifs.push({
+          id: `completed-${envelope.id}`,
+          type: 'general',
+          action: 'completed',
+          title: envelope.name,
+          slug: envelope.slug,
+          time: envelope.updatedAt,
+          read: readNotifications.includes(`completed-${envelope.id}`)
+        })
+      }
+
+      // Documents where someone signed
+      envelope.signers?.forEach((signer: any) => {
+        if (signer.status === 'signed') {
+          notifs.push({
+            id: `signed-${envelope.id}-${signer.email}`,
+            type: 'general',
+            action: 'signed',
+            title: envelope.name,
+            slug: envelope.slug,
+            time: envelope.updatedAt,
+            read: readNotifications.includes(`signed-${envelope.id}-${signer.email}`)
+          })
+        }
+      })
+
+      // Documents sent to me (invitations)
+      if (envelope.signers?.some((s: any) => s.email === user?.email && s.status === 'pending') && envelope.createdBy !== user?.email) {
+        notifs.push({
+          id: `invited-${envelope.id}`,
+          type: 'invitation',
+          action: 'invited',
+          title: envelope.name,
+          slug: envelope.slug,
+          time: envelope.createdAt,
+          read: readNotifications.includes(`invited-${envelope.id}`),
+          senderEmail: envelope.createdBy || '',
+          senderName: envelope.createdBy?.split('@')[0] || ''
+        })
+      }
+    })
+
+    // Sort by time, most recent first
+    return notifs.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+  }, [envelopes, readNotifications, user?.email])
 
   // File upload handling
   const handleFileUpload = async (file: File) => {
@@ -247,18 +367,204 @@ export default function TemplatesPage() {
             <div className="relative" ref={notificationsRef}>
               <Tooltip content={t('notifications.title')} position="bottom">
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowNotifications(!showNotifications)
+                  }}
                   className="relative p-2.5 hover:bg-[#ECEEF0] rounded-lg transition-all duration-200"
                 >
                   <img src="/icons/notification.svg" alt="" className="w-6 h-6" />
+                  {notifications.filter(n => !n.read).length > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+                  )}
                 </button>
               </Tooltip>
+
+              {showNotifications && (
+                <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-[10px] border border-black/[0.12] shadow-[0_0_50px_rgba(0,0,0,0.25)] overflow-hidden z-50">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                    <h3 className="font-semibold text-gray-900">{t('notifications.title')}</h3>
+                    <Tooltip content={t('notifications.markAllRead')} position="left">
+                      <button 
+                        onClick={() => {
+                          const allIds = notifications.map(n => n.id)
+                          localStorage.setItem('readNotifications', JSON.stringify(allIds))
+                          setReadNotifications(allIds)
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                      </button>
+                    </Tooltip>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="relative">
+                    <div className="flex">
+                      <button
+                        onClick={() => setNotificationTab('general')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'general' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {t('notifications.general')}
+                        {notifications.filter(n => n.type === 'general' && !n.read).length > 0 && (
+                          <span className="px-1.5 py-0.5 bg-[#08CF65] text-white text-xs rounded-full leading-none">
+                            {notifications.filter(n => n.type === 'general' && !n.read).length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setNotificationTab('invitations')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'invitations' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {t('notifications.invitations')}
+                        {notifications.filter(n => n.type === 'invitation' && !n.read).length > 0 && (
+                          <span className="px-1.5 py-0.5 bg-[#7E33F7] text-white text-xs rounded-full leading-none">
+                            {notifications.filter(n => n.type === 'invitation' && !n.read).length}
+                          </span>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setNotificationTab('requests')}
+                        className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
+                          notificationTab === 'requests' 
+                            ? 'text-gray-900' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {t('notifications.requests')}
+                        <span className="text-gray-400">0</span>
+                      </button>
+                    </div>
+                    {/* Sliding underline */}
+                    <div className="absolute bottom-0 h-0.5 bg-[#08CF65] transition-all duration-300 ease-in-out" style={{
+                      width: '33.333%',
+                      left: notificationTab === 'general' ? '0%' : notificationTab === 'invitations' ? '33.333%' : '66.666%'
+                    }} />
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gray-100" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationTab === 'general' && (
+                      <>
+                        {notifications.filter(n => n.type === 'general').length > 0 && (
+                          <p className="px-4 py-2 text-xs text-gray-500">{locale === 'fr' ? 'Plus tôt' : 'Earlier'}</p>
+                        )}
+                        {notifications.filter(n => n.type === 'general').map(notification => (
+                          <div 
+                            key={notification.id} 
+                            onClick={() => {
+                              const newReadNotifs = [...readNotifications, notification.id]
+                              localStorage.setItem('readNotifications', JSON.stringify(newReadNotifs))
+                              setReadNotifications(newReadNotifs)
+                              setShowNotifications(false)
+                              router.push(`/view/${notification.slug}`)
+                            }}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                          >
+                            <div className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-xs font-semibold text-[#08CF65] flex-shrink-0">
+                              {(user?.name || user?.email || 'U').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">
+                                <span className="font-medium">{notification.title}</span> {notification.action === 'completed' ? (locale === 'fr' ? 'a été approuvé' : 'was approved') : (locale === 'fr' ? 'a été signé' : 'was signed')}
+                              </p>
+                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                                Drime Sign | {formatDateTime(notification.time)}
+                              </p>
+                            </div>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-[#08CF65] rounded-full flex-shrink-0 mt-2" />
+                            )}
+                          </div>
+                        ))}
+                        {notifications.filter(n => n.type === 'general').length === 0 && (
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">{t('notifications.noNotifications')}</p>
+                          </div>
+                        )}
+                        <p className="px-4 py-3 text-sm text-gray-400 text-center border-t border-gray-100">
+                          {locale === 'fr' ? 'Vous avez atteint la fin.' : "You've reached the end."}
+                        </p>
+                      </>
+                    )}
+                    {notificationTab === 'invitations' && (
+                      <>
+                        {notifications.filter(n => n.type === 'invitation').length > 0 && (
+                          <p className="px-4 py-2 text-xs text-gray-500">{locale === 'fr' ? 'Invitations en attente' : 'Pending invitations'}</p>
+                        )}
+                        {notifications.filter(n => n.type === 'invitation').map(notification => (
+                          <div 
+                            key={notification.id} 
+                            onClick={() => {
+                              const newReadNotifs = [...readNotifications, notification.id]
+                              localStorage.setItem('readNotifications', JSON.stringify(newReadNotifs))
+                              setReadNotifications(newReadNotifs)
+                              setShowNotifications(false)
+                              router.push(`/view/${notification.slug}`)
+                            }}
+                            className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer"
+                          >
+                            <div className={`w-9 h-9 rounded-full ${getAvatarColor(notification.senderEmail || '')} flex items-center justify-center text-xs font-semibold text-gray-800 flex-shrink-0`}>
+                              {(notification.senderName || notification.senderEmail || 'U').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900">
+                                <span className="font-medium">{notification.title}</span> - {locale === 'fr' ? 'signature requise' : 'signature required'}
+                              </p>
+                              <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                                Drime Sign | {formatDateTime(notification.time)}
+                              </p>
+                            </div>
+                            {!notification.read && (
+                              <div className="w-2 h-2 bg-[#08CF65] rounded-full flex-shrink-0 mt-2" />
+                            )}
+                          </div>
+                        ))}
+                        {notifications.filter(n => n.type === 'invitation').length === 0 && (
+                          <div className="py-6 text-center">
+                            <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                            <p className="text-sm text-gray-500">{locale === 'fr' ? 'Aucune invitation' : 'No invitations'}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {notificationTab === 'requests' && (
+                      <div className="py-6 text-center">
+                        <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
+                        <p className="text-sm text-gray-500">{locale === 'fr' ? 'Aucune demande' : 'No requests'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Profile */}
             <div className="relative" ref={profileMenuRef}>
               <button
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setShowProfileMenu(!showProfileMenu)
+                }}
                 className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all overflow-hidden"
               >
                 {user?.avatarUrl ? (
