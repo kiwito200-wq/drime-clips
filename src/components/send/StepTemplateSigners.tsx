@@ -75,7 +75,7 @@ export default function StepTemplateSigners({
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Qui doit signer ce document ?</h1>
-        <p className="text-gray-500 mt-2">Pour chaque rôle, indiquez le nom et l'email de la personne qui signera</p>
+        <p className="text-gray-500 mt-2">Pour chaque rôle, indiquez le nom et l&apos;email de la personne qui signera</p>
       </div>
 
       <motion.div

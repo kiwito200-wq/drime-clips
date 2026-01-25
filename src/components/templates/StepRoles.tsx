@@ -104,7 +104,7 @@ export default function StepRoles({
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-2xl font-semibold text-gray-900">Ajouter des rôles de signataires</h1>
-        <p className="text-gray-500 mt-2">Définissez les rôles qui devront signer ce template (ex: "Client", "Vendeur")</p>
+        <p className="text-gray-500 mt-2">Définissez les rôles qui devront signer ce template (ex: &quot;Client&quot;, &quot;Vendeur&quot;)</p>
       </div>
 
       <motion.div
@@ -241,7 +241,7 @@ export default function StepRoles({
                       handleAddRole()
                     }
                   }}
-                  placeholder='Nom du rôle (ex: "Client" ou "Vendeur")'
+                  placeholder='Nom du rôle (ex: &quot;Client&quot; ou &quot;Vendeur&quot;)'
                   className={`w-full pl-10 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none ${
                     errors.newRole ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
