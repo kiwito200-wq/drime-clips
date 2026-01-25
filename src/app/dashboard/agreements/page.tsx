@@ -1203,7 +1203,7 @@ function AgreementsContent() {
                       : 'text-gray-900 hover:bg-[#ECEEF0]'
                   }`}
                 >
-                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
+                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" style={{ filter: 'brightness(0)' }} />
                   {locale === 'fr' ? 'Templates' : 'Templates'}
                 </Link>
               </div>

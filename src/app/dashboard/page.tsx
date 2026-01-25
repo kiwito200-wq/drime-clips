@@ -801,7 +801,7 @@ export default function DashboardHome() {
                   href="/templates"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
-                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
+                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" style={{ filter: 'brightness(0)' }} />
                   {locale === 'fr' ? 'Templates' : 'Templates'}
                 </Link>
               </div>

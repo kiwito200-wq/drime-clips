@@ -678,7 +678,7 @@ export default function TemplatesPage() {
                   href="/templates"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-[#ECEEF0] text-gray-900 font-medium"
                 >
-                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
+                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" style={{ filter: 'brightness(0)' }} />
                   {locale === 'fr' ? 'Templates' : 'Templates'}
                 </Link>
               </div>
@@ -817,7 +817,8 @@ export default function TemplatesPage() {
                 <img
                   src="/icons/bookmark.svg"
                   alt=""
-                  className="w-16 h-16 text-gray-400 mx-auto mb-4 opacity-40"
+                  className="w-16 h-16 mx-auto mb-4"
+                  style={{ filter: 'brightness(0)', opacity: 0.4 }}
                 />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {archived 
@@ -842,15 +843,15 @@ export default function TemplatesPage() {
                     className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                   >
                     {/* Thumbnail */}
-                    <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
+                    <div className="aspect-[3/4] bg-white border-b border-gray-100 relative overflow-hidden flex items-center justify-center">
                       {template.thumbnailUrl ? (
                         <img
                           src={getProxyUrl(template.thumbnailUrl)}
                           alt={template.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
                           <svg
                             className="w-12 h-12 text-gray-400"
                             fill="none"
@@ -890,44 +891,30 @@ export default function TemplatesPage() {
                         >
                           {locale === 'fr' ? 'Utiliser' : 'Use'}
                         </button>
-                        <button
-                          onClick={() => handleDeleteTemplate(template.id, false)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title={archived ? (locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently') : (locale === 'fr' ? 'Archiver' : 'Archive')}
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d={archived ? 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16' : 'M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4'}
-                            />
-                          </svg>
-                        </button>
-                        {archived && (
-                          <button
-                            onClick={() => handleDeleteTemplate(template.id, true)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title={locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently'}
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
+                        {archived ? (
+                          <>
+                            <button
+                              onClick={() => handleDeleteTemplate(template.id, false)}
+                              className="p-2 text-gray-400 hover:text-[#08CF65] hover:bg-[#08CF65]/10 rounded-lg transition-colors"
+                              title={locale === 'fr' ? 'Désarchiver' : 'Unarchive'}
                             >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
+                              <img src="/icons/unarchive.svg" alt="" className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTemplate(template.id, true)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title={locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently'}
+                            >
+                              <img src="/icons/delete.svg" alt="" className="w-5 h-5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteTemplate(template.id, false)}
+                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            title={locale === 'fr' ? 'Archiver' : 'Archive'}
+                          >
+                            <img src="/icons/archive.svg" alt="" className="w-5 h-5" />
                           </button>
                         )}
                       </div>
