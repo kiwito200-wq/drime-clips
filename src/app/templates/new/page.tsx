@@ -131,29 +131,33 @@ function NewTemplatePageContent() {
     setIsLoading(true)
     try {
       // First, save fields to the envelope (convert template fields to envelope fields)
-      // We need to create temporary signers for each role
+      // We need to create temporary signers for each role (all at once)
       const roleToSignerMap: Record<string, string> = {}
       
-      // Create signers for each role
-      for (const role of roles) {
-        const res = await fetch(`/api/envelopes/${document.slug}/signers`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            signers: [{
-              name: role.name,
-              email: `${role.id}@template.local`, // Temporary email
-              color: role.color,
-            }],
-          }),
-          credentials: 'include',
-        })
-        
-        if (res.ok) {
-          const data = await res.json()
-          if (data.signers && data.signers.length > 0) {
-            roleToSignerMap[role.id] = data.signers[0].id
-          }
+      // Create all signers for all roles in one call
+      const templateSigners = roles.map(role => ({
+        name: role.name,
+        email: `${role.id}@template.local`, // Template email pattern
+        color: role.color,
+      }))
+      
+      const signersRes = await fetch(`/api/envelopes/${document.slug}/signers`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signers: templateSigners }),
+        credentials: 'include',
+      })
+      
+      if (signersRes.ok) {
+        const signersData = await signersRes.json()
+        if (signersData.signers) {
+          // Map role IDs to signer IDs (by matching email pattern)
+          signersData.signers.forEach((signer: any) => {
+            const roleId = signer.email.split('@')[0]
+            if (roleId) {
+              roleToSignerMap[roleId] = signer.id
+            }
+          })
         }
       }
 
