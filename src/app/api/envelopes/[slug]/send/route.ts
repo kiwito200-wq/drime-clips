@@ -4,7 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { sendSignatureRequestEmail } from '@/lib/email'
 import { logAuditEvent } from '@/lib/audit'
 import { notifyInvitation } from '@/lib/notifications'
-import { getSubscriptionInfo, useSignatureRequest } from '@/lib/subscription'
+import { getSubscriptionInfo, consumeSignatureRequest } from '@/lib/subscription'
 
 interface Params {
   params: {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     })
 
     // Increment signature request counter (this counts as 1 request regardless of signers)
-    await useSignatureRequest(user.id)
+    await consumeSignatureRequest(user.id)
 
     // Log audit event
     await logAuditEvent(envelope.id, 'sent', null, {

@@ -122,7 +122,7 @@ export async function getSubscriptionInfo(userId: string): Promise<SubscriptionI
  * Increment signature request counter for a user
  * Returns false if limit reached
  */
-export async function useSignatureRequest(userId: string): Promise<{ success: boolean; info: SubscriptionInfo }> {
+export async function consumeSignatureRequest(userId: string): Promise<{ success: boolean; info: SubscriptionInfo }> {
   const info = await getSubscriptionInfo(userId)
 
   if (!info.canCreateSignatureRequest) {
