@@ -77,6 +77,21 @@ export default function StepTemplateSigners({
       .slice(0, 2) || name.slice(0, 2).toUpperCase()
   }
 
+  // Show loading state if no roles yet
+  if (roles.length === 0) {
+    return (
+      <div className="max-w-xl mx-auto py-10 px-4">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold text-gray-900">Qui doit signer ce document ?</h1>
+          <p className="text-gray-500 mt-2">Chargement des rôles du template...</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 flex items-center justify-center">
+          <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-xl mx-auto py-10 px-4">
       {/* Header */}
