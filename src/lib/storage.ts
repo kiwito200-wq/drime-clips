@@ -84,12 +84,9 @@ export async function uploadThumbnail(
   
   await r2.uploadFile(key, buffer, 'image/png')
   
-  // Return public URL for thumbnails (less sensitive, used for display)
-  const publicUrl = process.env.R2_PUBLIC_URL 
-    ? `${process.env.R2_PUBLIC_URL}/${key}`
-    : key
-  
-  return publicUrl
+  // SECURITY: Return only the key, not a public URL
+  // Use getSignedThumbnailUrl() to generate authenticated access URLs
+  return key
 }
 
 export async function getSignedDownloadUrl(key: string, expiresIn: number = PDF_URL_EXPIRY): Promise<string> {

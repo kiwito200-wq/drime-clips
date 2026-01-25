@@ -7,6 +7,7 @@ import Link from 'next/link'
 import Tooltip from '@/components/Tooltip'
 import DrimeFilePicker from '@/components/DrimeFilePicker'
 import { useI18n } from '@/lib/i18n/I18nContext'
+import { SecureThumbnailCard } from '@/components/SecureThumbnail'
 
 interface User {
   id: string
@@ -842,31 +843,9 @@ export default function TemplatesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    {/* Thumbnail */}
+                    {/* Thumbnail - SECURITY: Use SecureThumbnail for authenticated access */}
                     <div className="aspect-[3/4] bg-white border-b border-gray-100 relative overflow-hidden flex items-center justify-center">
-                      {template.thumbnailUrl ? (
-                        <img
-                          src={getProxyUrl(template.thumbnailUrl)}
-                          alt={template.name}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-50">
-                          <svg
-                            className="w-12 h-12 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={1.5}
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                        </div>
-                      )}
+                      <SecureThumbnailCard slug={template.slug} alt={template.name} />
                     </div>
 
                     {/* Content */}

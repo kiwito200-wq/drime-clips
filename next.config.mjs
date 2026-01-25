@@ -42,16 +42,16 @@ const nextConfig = {
             value: [
               // Default: only allow same origin
               "default-src 'self'",
-              // Scripts: self, inline (for Next.js), and eval (for pdf.js)
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              // Scripts: self, inline (for Next.js), eval (for pdf.js), and jsdelivr for pdf.js worker
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
               // Styles: self and inline (for styled components, etc.)
               "style-src 'self' 'unsafe-inline'",
               // Images: self, data URIs (for signatures), and our R2 bucket
               "img-src 'self' data: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.drime.cloud",
               // Fonts: self and data URIs
               "font-src 'self' data:",
-              // Connect: self and our APIs
-              "connect-src 'self' https://*.drime.cloud https://*.r2.dev https://*.r2.cloudflarestorage.com https://api.resend.com wss:",
+              // Connect: self, our APIs, and jsdelivr for pdf.js worker
+              "connect-src 'self' https://*.drime.cloud https://*.r2.dev https://*.r2.cloudflarestorage.com https://api.resend.com https://cdn.jsdelivr.net wss:",
               // Media: self
               "media-src 'self'",
               // Objects: none (no Flash, etc.)
@@ -62,6 +62,8 @@ const nextConfig = {
               "form-action 'self'",
               // Frame ancestors: none (prevent embedding)
               "frame-ancestors 'none'",
+              // Workers: self and jsdelivr for pdf.js
+              "worker-src 'self' blob: https://cdn.jsdelivr.net",
               // Block mixed content
               "block-all-mixed-content",
               // Upgrade insecure requests in production
