@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import StepRoles from '@/components/templates/StepRoles'
 import StepFields from '@/components/send/StepFields'
 import { useTranslation } from '@/lib/i18n/I18nContext'
 
@@ -10,7 +11,7 @@ import { useTranslation } from '@/lib/i18n/I18nContext'
 export interface TemplateField {
   id: string
   type: 'signature' | 'initials' | 'date' | 'text' | 'checkbox' | 'name' | 'email'
-  role: string // Role name like "First Party", "Second Party", etc.
+  role: string // Role ID
   page: number
   x: number
   y: number
@@ -18,6 +19,12 @@ export interface TemplateField {
   height: number
   required: boolean
   label: string
+}
+
+export interface Role {
+  id: string
+  name: string
+  color: string
 }
 
 export interface DocumentData {
@@ -29,11 +36,13 @@ export interface DocumentData {
   thumbnailUrl?: string | null
 }
 
-// Default roles (like DocuSeal)
-const DEFAULT_ROLES = [
-  { id: 'first-party', name: 'Première partie', color: '#7E33F7' },
-  { id: 'second-party', name: 'Deuxième partie', color: '#FFAD12' },
-  { id: 'third-party', name: 'Troisième partie', color: '#ED3757' },
+const ROLE_COLORS = [
+  '#7E33F7', // Purple
+  '#FFAD12', // Orange
+  '#ED3757', // Red/Pink
+  '#08CF65', // Green
+  '#4F46E5', // Blue/Indigo
+  '#00B7FF', // Cyan
 ]
 
 function NewTemplatePageContent() {
@@ -41,7 +50,7 @@ function NewTemplatePageContent() {
   const searchParams = useSearchParams()
   const { locale } = useTranslation()
   
-  const [currentStep, setCurrentStep] = useState(1) // 1 = Fields, 2 = Review
+  const [currentStep, setCurrentStep] = useState(1) // 1 = Roles, 2 = Fields, 3 = Review
   const [document, setDocument] = useState<DocumentData>({
     file: null,
     name: '',
@@ -49,10 +58,10 @@ function NewTemplatePageContent() {
     envelopeId: null,
     slug: null,
   })
-  const [roles, setRoles] = useState(DEFAULT_ROLES)
+  const [roles, setRoles] = useState<Role[]>([])
   const [fields, setFields] = useState<TemplateField[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedRoleId, setSelectedRoleId] = useState(roles[0]?.id || '')
+  const [selectedRoleId, setSelectedRoleId] = useState('')
 
   // Load envelope from slug
   useEffect(() => {
@@ -110,6 +119,32 @@ function NewTemplatePageContent() {
       setIsLoading(false)
     }
   }, [document.slug])
+
+  // Roles management
+  const addRole = useCallback((name: string) => {
+    const newRole: Role = {
+      id: `role-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      color: ROLE_COLORS[roles.length % ROLE_COLORS.length],
+    }
+    setRoles(prev => [...prev, newRole])
+    if (!selectedRoleId) {
+      setSelectedRoleId(newRole.id)
+    }
+  }, [roles.length, selectedRoleId])
+
+  const removeRole = useCallback((id: string) => {
+    setRoles(prev => prev.filter(r => r.id !== id))
+    setFields(prev => prev.filter(f => f.role !== id))
+    if (selectedRoleId === id) {
+      const remaining = roles.filter(r => r.id !== id)
+      setSelectedRoleId(remaining[0]?.id || '')
+    }
+  }, [roles, selectedRoleId])
+
+  const updateRole = useCallback((id: string, name: string) => {
+    setRoles(prev => prev.map(r => r.id === id ? { ...r, name: name.trim() } : r))
+  }, [])
 
   // Fields management
   const addField = useCallback((field: Omit<TemplateField, 'id'>) => {
@@ -182,7 +217,7 @@ function NewTemplatePageContent() {
         credentials: 'include',
       })
 
-      // Now create the template
+      // Now create the template with roles
       const templateRes = await fetch('/api/templates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,11 +226,17 @@ function NewTemplatePageContent() {
           envelopeId: document.envelopeId,
           name: name.trim(),
           description: description?.trim() || undefined,
+          roles: roles.map(r => ({
+            id: r.id,
+            name: r.name,
+            color: r.color,
+          })),
         }),
       })
 
       if (templateRes.ok) {
-        router.push('/templates')
+        const data = await templateRes.json()
+        router.push(`/templates/${data.template.id}/done`)
         return true
       } else {
         const error = await templateRes.json()
@@ -278,11 +319,11 @@ function NewTemplatePageContent() {
                   )}
                 </div>
                 <span className={`text-xs mt-1 ${currentStep >= 1 ? 'text-gray-700' : 'text-gray-400'}`}>
-                  {locale === 'fr' ? 'Champs' : 'Fields'}
+                  {locale === 'fr' ? 'Rôles' : 'Roles'}
                 </span>
               </div>
             </div>
-            <div className="w-8 h-px mx-1 bg-gray-200" />
+            <div className={`w-8 h-px mx-1 ${currentStep >= 2 ? 'bg-[#08CF65]' : 'bg-gray-200'}`} />
             <div className="flex items-center">
               <div className="flex flex-col items-center">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
@@ -290,10 +331,31 @@ function NewTemplatePageContent() {
                     ? 'bg-[#08CF65] text-white' 
                     : 'bg-gray-100 text-gray-400'
                 }`}>
-                  2
+                  {currentStep > 2 ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    '2'
+                  )}
                 </div>
                 <span className={`text-xs mt-1 ${currentStep >= 2 ? 'text-gray-700' : 'text-gray-400'}`}>
-                  {locale === 'fr' ? 'Sauvegarder' : 'Save'}
+                  {locale === 'fr' ? 'Champs' : 'Fields'}
+                </span>
+              </div>
+            </div>
+            <div className={`w-8 h-px mx-1 ${currentStep >= 3 ? 'bg-[#08CF65]' : 'bg-gray-200'}`} />
+            <div className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                  currentStep >= 3 
+                    ? 'bg-[#08CF65] text-white' 
+                    : 'bg-gray-100 text-gray-400'
+                }`}>
+                  3
+                </div>
+                <span className={`text-xs mt-1 ${currentStep >= 3 ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {locale === 'fr' ? 'Terminé' : 'Done'}
                 </span>
               </div>
             </div>
@@ -304,9 +366,34 @@ function NewTemplatePageContent() {
       {/* Main content */}
       <main className="flex-1">
         <AnimatePresence mode="wait">
-          {currentStep === 1 && document.slug && (
+          {currentStep === 1 && (
             <motion.div
               key="step1"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <StepRoles
+                roles={roles}
+                onAddRole={addRole}
+                onRemoveRole={removeRole}
+                onUpdateRole={updateRole}
+                onBack={() => router.push('/templates')}
+                onNext={() => {
+                  if (roles.length > 0) {
+                    setSelectedRoleId(roles[0].id)
+                    setCurrentStep(2)
+                  }
+                }}
+                isLoading={isLoading}
+              />
+            </motion.div>
+          )}
+
+          {currentStep === 2 && document.slug && (
+            <motion.div
+              key="step2"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -342,14 +429,14 @@ function NewTemplatePageContent() {
                   }
                 }}
                 onUpdateDocumentName={updateDocumentName}
-                onBack={() => router.push('/templates')}
-                onNext={() => setCurrentStep(2)}
+                onBack={() => setCurrentStep(1)}
+                onNext={() => setCurrentStep(3)}
                 isLoading={isLoading}
               />
             </motion.div>
           )}
 
-          {currentStep === 2 && (
+          {currentStep === 3 && (
             <motion.div
               key="step2"
               initial={{ opacity: 0, y: 10 }}
@@ -361,7 +448,7 @@ function NewTemplatePageContent() {
                 document={document}
                 fields={fields}
                 roles={roles}
-                onBack={() => setCurrentStep(1)}
+                onBack={() => setCurrentStep(2)}
                 onSave={saveTemplate}
                 isLoading={isLoading}
               />
@@ -377,7 +464,7 @@ function NewTemplatePageContent() {
 interface TemplateReviewStepProps {
   document: DocumentData
   fields: TemplateField[]
-  roles: typeof DEFAULT_ROLES
+  roles: Role[]
   onBack: () => void
   onSave: (name: string, description?: string) => Promise<boolean>
   isLoading: boolean

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import StepSigners from '@/components/send/StepSigners'
+import StepTemplateSigners from '@/components/send/StepTemplateSigners'
 import StepFields from '@/components/send/StepFields'
 import StepReview from '@/components/send/StepReview'
 import { useTranslation } from '@/lib/i18n/I18nContext'
@@ -79,6 +80,8 @@ function SendPageContent() {
   const [fields, setFields] = useState<SignField[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSelfSignMode, setIsSelfSignMode] = useState(false) // Track if user chose "Je suis le seul signataire"
+  const [templateRoles, setTemplateRoles] = useState<Array<{ id: string; name: string; color: string }>>([]) // Store template roles
+  const [templateSigners, setTemplateSigners] = useState<Array<{ roleId: string; name: string; email: string; color: string }>>([]) // Store signers mapped to roles
 
   // Vérifier si on a un slug existant ou un template
   useEffect(() => {
@@ -130,105 +133,44 @@ function SendPageContent() {
             thumbnailUrl: template.thumbnailUrl,
           })
           
-          // Load signers from template
+          // Load roles from template (submitters are roles)
           const templateSubmitters = template.submitters || []
-          let savedSigners: Signer[] = []
+          const roles = templateSubmitters.map((s: any, index: number) => ({
+            id: s.id,
+            name: s.name || `Rôle ${index + 1}`,
+            color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
+          }))
+          setTemplateRoles(roles)
           
-          if (templateSubmitters.length > 0) {
-            const newSigners = templateSubmitters.map((s: any, index: number) => ({
-              id: `signer-${Date.now()}-${index}`,
-              name: s.name || s.email,
-              email: s.email,
-              color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
-            }))
-            
-            // Save signers to envelope
-            await fetch(`/api/envelopes/${envelope.slug}/signers`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                signers: newSigners.map((s: any) => ({
-                  name: s.name,
-                  email: s.email,
-                  color: s.color,
-                })),
-              }),
-              credentials: 'include',
-            })
-            
-            // Update signers with real IDs from DB
-            const signersRes = await fetch(`/api/envelopes/${envelope.slug}`, {
-              credentials: 'include',
-            })
-            if (signersRes.ok) {
-              const envelopeData = await signersRes.json()
-              if (envelopeData.envelope.signers) {
-                savedSigners = envelopeData.envelope.signers.map((s: any) => ({
-                  id: s.id,
-                  name: s.name || s.email,
-                  email: s.email,
-                  color: s.color,
-                }))
-                setSigners(savedSigners)
-              }
-            }
-          }
+          // Initialize template signers (empty, user will fill them)
+          const initialTemplateSigners = roles.map((role: any) => ({
+            roleId: role.id,
+            name: '',
+            email: '',
+            color: role.color,
+          }))
+          setTemplateSigners(initialTemplateSigners)
           
-          // Load fields from template
+          // Load fields from template (store them temporarily, will map to signers after user fills roles)
           const templateFields = template.fields || []
-          if (templateFields.length > 0 && savedSigners.length > 0) {
-            // Map template fields to saved signers by email
-            const newFields = templateFields.map((f: any) => {
-              // Find signer by email from template submitters
-              const templateSubmitter = templateSubmitters.find((s: any) => s.email === f.email || s.id === f.signerId)
-              const matchedSigner = savedSigners.find((s: any) => s.email === templateSubmitter?.email) || savedSigners[0]
-              
-              return {
-                id: `field-${Date.now()}-${Math.random()}`,
-                type: f.type,
-                signerId: matchedSigner.id,
-                page: f.page,
-                x: f.x,
-                y: f.y,
-                width: f.width,
-                height: f.height,
-                required: f.required !== false,
-                label: f.label || '',
-              }
-            })
-            
-            setFields(newFields)
-            
-            // Save fields to envelope
-            await fetch(`/api/envelopes/${envelope.slug}/fields`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                fields: newFields.map((f: any) => ({
-                  type: f.type,
-                  signerId: f.signerId,
-                  page: f.page,
-                  x: f.x,
-                  y: f.y,
-                  width: f.width,
-                  height: f.height,
-                  required: f.required,
-                  label: f.label,
-                })),
-              }),
-              credentials: 'include',
-            })
-          }
+          setFields(templateFields.map((f: any) => ({
+            id: `field-${Date.now()}-${Math.random()}`,
+            type: f.type,
+            signerId: f.roleId || f.signerId || '', // Store roleId temporarily
+            page: f.page,
+            x: f.x,
+            y: f.y,
+            width: f.width,
+            height: f.height,
+            required: f.required !== false,
+            label: f.label || '',
+          })))
           
-          // Go to appropriate step
-          if (templateSubmitters.length > 0) {
-            setCurrentStep(3) // Fields step
-          } else {
-            setCurrentStep(2) // Signers step
-          }
+          // Go to template signers step
+          setCurrentStep(2) // Template signers step
           
           // Update URL to remove template param
-          router.replace(`/send?slug=${envelope.slug}`)
+          router.replace(`/send?slug=${envelope.slug}&template=${templateId}`)
         }
       } else {
         alert('Erreur lors du chargement du template')
@@ -643,19 +585,134 @@ function SendPageContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <StepSigners
-                signers={signers}
-                onAddSigner={addSigner}
-                onRemoveSigner={removeSigner}
-                onUpdateSigner={updateSigner}
-                onSelfSign={handleSelfSign}
-                onBack={() => router.push('/dashboard/agreements')}
-                onNext={async () => {
-                  const saved = await saveSigners()
-                  if (saved) setCurrentStep(3)
-                }}
-                isLoading={isLoading}
-              />
+              {templateRoles.length > 0 ? (
+                <StepTemplateSigners
+                  roles={templateRoles}
+                  signers={templateSigners.map(ts => ({
+                    id: ts.roleId,
+                    name: ts.name,
+                    email: ts.email,
+                    color: ts.color,
+                    roleId: ts.roleId,
+                  }))}
+                  onUpdateSigner={(roleId, name, email) => {
+                    setTemplateSigners(prev => prev.map(ts => 
+                      ts.roleId === roleId 
+                        ? { ...ts, name, email }
+                        : ts
+                    ))
+                  }}
+                  onBack={() => router.push('/templates')}
+                  onNext={async () => {
+                    // Convert template signers to real signers and save
+                    const newSigners: Signer[] = templateSigners
+                      .filter(ts => ts.name.trim() && ts.email.trim())
+                      .map((ts, index) => ({
+                        id: `signer-${Date.now()}-${index}`,
+                        name: ts.name,
+                        email: ts.email,
+                        color: ts.color,
+                      }))
+                    
+                    if (newSigners.length === 0) {
+                      alert('Veuillez remplir au moins un signataire')
+                      return
+                    }
+                    
+                    // Save signers to envelope
+                    setIsLoading(true)
+                    try {
+                      const res = await fetch(`/api/envelopes/${document.slug}/signers`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          signers: newSigners.map(s => ({
+                            name: s.name,
+                            email: s.email,
+                            color: s.color,
+                          })),
+                        }),
+                        credentials: 'include',
+                      })
+                      
+                      if (res.ok) {
+                        // Get real signer IDs from DB
+                        const envelopeRes = await fetch(`/api/envelopes/${document.slug}`, {
+                          credentials: 'include',
+                        })
+                        if (envelopeRes.ok) {
+                          const envelopeData = await envelopeRes.json()
+                          const savedSigners = envelopeData.envelope.signers.map((s: any) => ({
+                            id: s.id,
+                            name: s.name || s.email,
+                            email: s.email,
+                            color: s.color,
+                          }))
+                          setSigners(savedSigners)
+                          
+                          // Map fields from roleId to signerId
+                          const roleToSignerMap: Record<string, string> = {}
+                          templateSigners.forEach(ts => {
+                            const signer = savedSigners.find(s => s.email === ts.email && s.name === ts.name)
+                            if (signer) {
+                              roleToSignerMap[ts.roleId] = signer.id
+                            }
+                          })
+                          
+                          // Update fields with correct signer IDs
+                          const updatedFields = fields.map(f => ({
+                            ...f,
+                            signerId: roleToSignerMap[f.signerId] || savedSigners[0]?.id || f.signerId,
+                          }))
+                          setFields(updatedFields)
+                          
+                          // Save fields to envelope
+                          await fetch(`/api/envelopes/${document.slug}/fields`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              fields: updatedFields.map(f => ({
+                                type: f.type,
+                                signerId: f.signerId,
+                                page: f.page,
+                                x: f.x,
+                                y: f.y,
+                                width: f.width,
+                                height: f.height,
+                                required: f.required,
+                                label: f.label,
+                              })),
+                            }),
+                            credentials: 'include',
+                          })
+                          
+                          setCurrentStep(3)
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Failed to save signers:', error)
+                      alert('Erreur lors de la sauvegarde des signataires')
+                    } finally {
+                      setIsLoading(false)
+                    }
+                  }}
+                  isLoading={isLoading}
+                />
+              ) : (
+                <StepSigners
+                  signers={signers}
+                  onAddSigner={addSigner}
+                  onRemoveSigner={removeSigner}
+                  onUpdateSigner={updateSigner}
+                  onSelfSign={handleSelfSign}
+                  onBack={() => router.push('/dashboard/agreements')}
+                  onNext={async () => {
+                    const saved = await saveSigners()
+                    if (saved) setCurrentStep(3)
+                  }}
+                  isLoading={isLoading}
+                />
+              )}
             </motion.div>
           )}
 

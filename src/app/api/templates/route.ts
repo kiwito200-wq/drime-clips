@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { envelopeId, name, description, folderName } = body
+    const { envelopeId, name, description, folderName, roles } = body
 
     if (!envelopeId || !name) {
       return NextResponse.json(
@@ -87,14 +87,39 @@ export async function POST(request: NextRequest) {
       },
     ])
 
-    // Convert fields to template format (include signer email for mapping)
+    // Convert fields to template format
+    // Map signerId to roleId for template fields
     const templateFields = envelope.fields.map((field) => {
       const signer = envelope.signers.find(s => s.id === field.signerId)
+      let roleId = field.signerId
+      
+      // If we have roles provided, map signerId to roleId
+      if (roles && Array.isArray(roles)) {
+        // Find the role that matches this signer (by email pattern or ID)
+        const isTemplateRole = signer?.email?.includes('@template.local')
+        if (isTemplateRole && signer) {
+          const extractedRoleId = signer.email.split('@')[0]
+          // Find matching role by ID
+          const matchingRole = roles.find(r => r.id === extractedRoleId)
+          roleId = matchingRole?.id || extractedRoleId
+        } else if (signer) {
+          // Try to find role by matching signer email/name to role name
+          const matchingRole = roles.find(r => 
+            r.name.toLowerCase() === (signer.name || '').toLowerCase() ||
+            r.id === signer.id
+          )
+          if (matchingRole) {
+            roleId = matchingRole.id
+          }
+        }
+      } else if (signer?.email?.includes('@template.local')) {
+        roleId = signer.email.split('@')[0]
+      }
+      
       return {
         id: field.id,
         type: field.type,
-        signerId: field.signerId,
-        email: signer?.email || '', // Store email for mapping when loading template
+        roleId: roleId, // Store roleId instead of signerId
         page: field.page,
         x: field.x,
         y: field.y,
@@ -107,21 +132,31 @@ export async function POST(request: NextRequest) {
     })
 
     // Convert signers to template format (roles)
-    // For templates, we store roles instead of specific signers
-    // Extract unique roles from signers (based on email pattern or use signer names as roles)
-    const templateSubmitters = envelope.signers.map((signer) => {
-      // If email is a template email (contains @template.local), extract role
-      const isTemplateRole = signer.email.includes('@template.local')
-      const roleId = isTemplateRole ? signer.email.split('@')[0] : signer.id
-      
-      return {
-        id: roleId,
-        name: signer.name || signer.email.split('@')[0] || 'Role',
-        email: signer.email,
-        color: signer.color,
-        order: signer.order,
-      }
-    })
+    // If roles are provided directly, use them; otherwise extract from signers
+    let templateSubmitters
+    if (roles && Array.isArray(roles)) {
+      // Use provided roles directly
+      templateSubmitters = roles.map((role: any, index: number) => ({
+        id: role.id,
+        name: role.name,
+        color: role.color,
+        order: index,
+      }))
+    } else {
+      // Fallback: Extract roles from signers (for backward compatibility)
+      templateSubmitters = envelope.signers.map((signer) => {
+        const isTemplateRole = signer.email.includes('@template.local')
+        const roleId = isTemplateRole ? signer.email.split('@')[0] : signer.id
+        
+        return {
+          id: roleId,
+          name: signer.name || signer.email.split('@')[0] || 'Role',
+          email: signer.email,
+          color: signer.color,
+          order: signer.order,
+        }
+      })
+    }
 
     // Generate unique slug
     const slug = nanoid(14)
