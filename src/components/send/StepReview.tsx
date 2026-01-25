@@ -125,6 +125,14 @@ export default function StepReview({
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
 
+  // Auto-open template modal in template mode
+  useEffect(() => {
+    if (isTemplateMode && document.envelopeId && !showTemplateModal) {
+      setShowTemplateModal(true)
+      setTemplateName(document.name || '')
+    }
+  }, [isTemplateMode, document.envelopeId, document.name, showTemplateModal])
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
