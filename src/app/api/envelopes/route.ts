@@ -59,6 +59,42 @@ export async function POST(request: NextRequest) {
       })
     }
     
+    const contentType = request.headers.get('content-type') || ''
+    
+    // Check if request is JSON (for template-based envelope creation)
+    if (contentType.includes('application/json')) {
+      const body = await request.json()
+      const { name, pdfUrl, pdfHash, thumbnailUrl } = body
+      
+      if (!name || !pdfUrl || !pdfHash) {
+        return NextResponse.json({ error: 'Name, pdfUrl, and pdfHash are required' }, { status: 400 })
+      }
+      
+      // Create envelope from template (no file upload needed)
+      const envelope = await prisma.envelope.create({
+        data: {
+          slug: generateSlug(),
+          userId: user.id,
+          name,
+          pdfUrl,
+          pdfHash,
+          thumbnailUrl: thumbnailUrl || null,
+        },
+      })
+      
+      // Create audit log
+      await prisma.auditLog.create({
+        data: {
+          envelopeId: envelope.id,
+          action: 'created',
+          details: JSON.stringify({ name, fromTemplate: true }),
+        },
+      })
+      
+      return NextResponse.json({ envelope })
+    }
+    
+    // Otherwise, handle multipart/form-data (file upload)
     const formData = await request.formData()
     const file = formData.get('file') as File
     const name = formData.get('name') as string

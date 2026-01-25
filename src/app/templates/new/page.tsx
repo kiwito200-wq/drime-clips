@@ -566,7 +566,6 @@ function TemplateReviewStep({
             </>
           ) : (
             <>
-              <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
               Sauvegarder le template
             </>
           )}
