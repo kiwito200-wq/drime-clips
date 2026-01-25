@@ -144,7 +144,7 @@ export default function CustomDatePicker({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-4 z-[9999] min-w-[300px]"
+            className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-xl p-4 z-[99999] min-w-[300px]"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">

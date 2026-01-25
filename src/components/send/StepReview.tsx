@@ -249,11 +249,11 @@ export default function StepReview({
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="overflow-hidden"
+              className="overflow-visible"
             >
               <div className="px-5 pb-5 space-y-5">
                 {/* Due date */}
-                <div>
+                <div className="relative">
                   <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
                     <span className="text-gray-400"><CalendarIcon /></span>
                     Date limite de signature
