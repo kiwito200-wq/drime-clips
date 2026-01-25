@@ -106,14 +106,22 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Convert signers to template format
-    const templateSubmitters = envelope.signers.map((signer) => ({
-      id: signer.id,
-      name: signer.name || signer.email,
-      email: signer.email,
-      color: signer.color,
-      order: signer.order,
-    }))
+    // Convert signers to template format (roles)
+    // For templates, we store roles instead of specific signers
+    // Extract unique roles from signers (based on email pattern or use signer names as roles)
+    const templateSubmitters = envelope.signers.map((signer) => {
+      // If email is a template email (contains @template.local), extract role
+      const isTemplateRole = signer.email.includes('@template.local')
+      const roleId = isTemplateRole ? signer.email.split('@')[0] : signer.id
+      
+      return {
+        id: roleId,
+        name: signer.name || signer.email.split('@')[0] || 'Role',
+        email: signer.email,
+        color: signer.color,
+        order: signer.order,
+      }
+    })
 
     // Generate unique slug
     const slug = nanoid(14)

@@ -177,7 +177,7 @@ export default function TemplatesPage() {
 
       if (response.ok) {
         const data = await response.json()
-        router.push(`/send?slug=${data.envelope.slug}&mode=template`)
+        router.push(`/templates/new?slug=${data.envelope.slug}`)
       } else {
         const error = await response.json()
         alert(error.error || (locale === 'fr' ? 'Échec de l\'upload' : 'Failed to upload'))
