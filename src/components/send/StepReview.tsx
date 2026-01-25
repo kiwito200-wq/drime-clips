@@ -548,9 +548,7 @@ export default function StepReview({
               </>
             ) : (
               <>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
+                <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
                 Sauvegarder comme template
               </>
             )}
@@ -564,9 +562,7 @@ export default function StepReview({
                 className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
                 title="Sauvegarder comme template"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                </svg>
+                <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
                 Sauvegarder comme template
               </button>
             )}

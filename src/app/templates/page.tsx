@@ -167,6 +167,19 @@ export default function TemplatesPage() {
     }
   }
 
+  // Convert R2 URL to proxy URL to bypass CORS
+  const getProxyUrl = (url: string | null | undefined): string => {
+    if (!url) return ''
+    if (url.startsWith('/')) return url
+    try {
+      const urlObj = new URL(url)
+      const path = urlObj.pathname.startsWith('/') ? urlObj.pathname.slice(1) : urlObj.pathname
+      return `/api/files/${path}`
+    } catch {
+      return url
+    }
+  }
+
   const formatDate = (dateStr: string) => {
     return new Intl.DateTimeFormat('fr-FR', {
       day: 'numeric',
@@ -665,9 +678,7 @@ export default function TemplatesPage() {
                   href="/templates"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm bg-[#ECEEF0] text-gray-900 font-medium"
                 >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
+                  <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" />
                   {locale === 'fr' ? 'Templates' : 'Templates'}
                 </Link>
               </div>
@@ -803,19 +814,11 @@ export default function TemplatesPage() {
               </div>
             ) : templates.length === 0 ? (
               <div className="text-center py-20">
-                <svg
-                  className="w-16 h-16 text-gray-400 mx-auto mb-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
-                  />
-                </svg>
+                <img
+                  src="/icons/bookmark.svg"
+                  alt=""
+                  className="w-16 h-16 text-gray-400 mx-auto mb-4 opacity-40"
+                />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {archived 
                     ? (locale === 'fr' ? 'Aucun template archivé' : 'No archived templates')
@@ -842,7 +845,7 @@ export default function TemplatesPage() {
                     <div className="aspect-[3/4] bg-gray-100 relative overflow-hidden">
                       {template.thumbnailUrl ? (
                         <img
-                          src={template.thumbnailUrl}
+                          src={getProxyUrl(template.thumbnailUrl)}
                           alt={template.name}
                           className="w-full h-full object-cover"
                         />
