@@ -89,17 +89,19 @@ function SendPageContent() {
     const slug = searchParams.get('slug')
     const templateId = searchParams.get('template')
     
+    // ALWAYS prioritize template if present in URL
     if (templateId) {
       setCurrentTemplateId(templateId)
-      // If we already have a slug, we just need to reload the template roles
-      // Otherwise, load the full template
-      if (slug && document.slug === slug) {
+      // If we already have a slug and document is loaded, just reload template roles
+      if (slug && document.slug === slug && document.slug) {
         // Just reload template roles without creating a new envelope
         loadTemplateRoles(templateId)
       } else {
+        // Load full template (creates envelope and loads roles)
         loadTemplate(templateId)
       }
     } else if (slug) {
+      // Only load existing envelope if no template param
       loadExistingEnvelope(slug)
     }
   }, [searchParams])
@@ -249,6 +251,14 @@ function SendPageContent() {
   const loadExistingEnvelope = async (slug: string) => {
     try {
       setIsLoading(true)
+      
+      // Check if we have a template param - if so, don't load envelope normally
+      const templateId = searchParams.get('template')
+      if (templateId) {
+        // We have a template, load template roles instead
+        await loadTemplateRoles(templateId)
+        return
+      }
       
       // Always set the slug from URL params so we can save even if initial load fails
       setDocument(prev => ({ ...prev, slug }))
@@ -649,9 +659,12 @@ function SendPageContent() {
               transition={{ duration: 0.2 }}
             >
               {(() => {
-                console.log('Current templateRoles:', templateRoles)
-                console.log('templateRoles.length:', templateRoles.length)
-                return templateRoles.length > 0
+                const hasTemplate = searchParams.get('template') !== null
+                const hasRoles = templateRoles.length > 0
+                console.log('Template check - hasTemplate:', hasTemplate, 'hasRoles:', hasRoles, 'templateRoles:', templateRoles)
+                // If we have a template param in URL, we MUST show template signers (even if roles not loaded yet)
+                // Otherwise check if we have roles loaded
+                return hasTemplate || hasRoles
               })() ? (
                 <StepTemplateSigners
                   roles={templateRoles}
