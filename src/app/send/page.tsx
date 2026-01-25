@@ -65,6 +65,7 @@ function SendPageContent() {
   const { locale } = useTranslation()
   
   const STEPS = getSteps(locale)
+  const isTemplateMode = searchParams.get('mode') === 'template'
   
   const [currentStep, setCurrentStep] = useState(2) // Start at signers step (Document handled by dashboard)
   const [document, setDocument] = useState<DocumentData>({
@@ -710,6 +711,11 @@ function SendPageContent() {
                 onBack={() => setCurrentStep(3)}
                 onSend={sendDocument}
                 isLoading={isLoading}
+                isTemplateMode={isTemplateMode}
+                onSaveTemplate={async () => {
+                  // After saving template, redirect to templates page
+                  router.push('/templates')
+                }}
               />
             </motion.div>
           )}

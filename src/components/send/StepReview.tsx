@@ -46,6 +46,8 @@ interface StepReviewProps {
   onBack: () => void
   onSend: (message?: string, settings?: SendSettings) => void
   isLoading: boolean
+  isTemplateMode?: boolean
+  onSaveTemplate?: () => void
 }
 
 const REMINDER_OPTIONS = [
@@ -102,6 +104,8 @@ export default function StepReview({
   onBack,
   onSend,
   isLoading,
+  isTemplateMode = false,
+  onSaveTemplate,
 }: StepReviewProps) {
   const [emailSubject, setEmailSubject] = useState(`Vous avez été invité à signer ${document.name}`)
   const [emailMessage, setEmailMessage] = useState('')
@@ -200,8 +204,12 @@ export default function StepReview({
         setShowTemplateModal(false)
         setTemplateName('')
         setTemplateDescription('')
-        // Show success message (you can add a toast here)
-        alert('Template sauvegardé avec succès!')
+        // If in template mode, redirect to templates page
+        if (isTemplateMode && onSaveTemplate) {
+          onSaveTemplate()
+        } else {
+          alert('Template sauvegardé avec succès!')
+        }
       } else {
         const error = await res.json()
         alert(error.error || 'Erreur lors de la sauvegarde du template')
@@ -518,37 +526,63 @@ export default function StepReview({
         >
           Retour
         </button>
-        {document.envelopeId && (
+        {isTemplateMode ? (
+          // Template mode: show "Sauvegarder comme template" button
           <button
             onClick={() => setShowTemplateModal(true)}
-            className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
-            title="Sauvegarder comme template"
+            disabled={isLoading || !document.envelopeId}
+            className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-            Sauvegarder comme template
+            {isSavingTemplate ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Sauvegarde...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Sauvegarder comme template
+              </>
+            )}
           </button>
+        ) : (
+          // Normal mode: show "Sauvegarder comme template" and "Envoyer" buttons
+          <>
+            {document.envelopeId && (
+              <button
+                onClick={() => setShowTemplateModal(true)}
+                className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                title="Sauvegarder comme template"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Sauvegarder comme template
+              </button>
+            )}
+            <button
+              onClick={handleSend}
+              disabled={isLoading}
+              className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Envoi...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                  Envoyer
+                </>
+              )}
+            </button>
+          </>
         )}
-        <button
-          onClick={handleSend}
-          disabled={isLoading}
-          className="px-8 py-3 bg-[#08CF65] text-white rounded-xl font-medium hover:bg-[#07b858] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isLoading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Envoi...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              Envoyer
-            </>
-          )}
-        </button>
       </motion.div>
 
       {/* Save Template Modal */}
