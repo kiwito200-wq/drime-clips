@@ -652,7 +652,7 @@ function SendPageContent() {
                 console.log('Current templateRoles:', templateRoles)
                 console.log('templateRoles.length:', templateRoles.length)
                 return templateRoles.length > 0
-              })() && templateRoles.length > 0 ? (
+              })() ? (
                 <StepTemplateSigners
                   roles={templateRoles}
                   signers={templateSigners.map(ts => ({
