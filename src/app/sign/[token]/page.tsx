@@ -14,9 +14,6 @@ import { useTranslation } from '@/lib/i18n/I18nContext'
 // Dynamic import of Lottie to avoid SSR issues
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
-// Import the animation data
-import signatureAnimation from '../../../../public/signature-animation.json'
-
 interface FieldData {
   id: string
   type: string
@@ -76,6 +73,18 @@ export default function SignPage() {
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0)
+  const [animationData, setAnimationData] = useState<any>(null)
+  
+  // Load animation data dynamically
+  useEffect(() => {
+    fetch('/signature-animation.json')
+      .then(res => res.json())
+      .then(data => setAnimationData(data))
+      .catch(() => {
+        // Fallback if animation fails to load
+        setAnimationData(null)
+      })
+  }, [])
   
   // Check if user is authenticated
   useEffect(() => {
@@ -336,11 +345,13 @@ export default function SignPage() {
         {/* Animated signature using Lottie - responsive */}
         <div className="relative mb-4">
           <div className="w-[300px] h-[200px] sm:w-[500px] sm:h-[350px] md:w-[700px] md:h-[500px] flex items-center justify-center">
-            <Lottie
-              animationData={signatureAnimation}
-              loop={false}
-              className="w-full h-full opacity-30"
-            />
+            {animationData && (
+              <Lottie
+                animationData={animationData}
+                loop={false}
+                className="w-full h-full opacity-30"
+              />
+            )}
           </div>
           
           {/* Text overlay - responsive */}
