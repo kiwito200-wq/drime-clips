@@ -32,7 +32,7 @@ export default function CustomDatePicker({
   const [isOpen, setIsOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(value ? new Date(value) : new Date())
   const pickerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const locale = locales[language] || fr
 
@@ -104,29 +104,36 @@ export default function CustomDatePicker({
 
   return (
     <div className="relative">
-      <div
-        ref={inputRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full border border-gray-200 rounded-lg px-4 py-2.5 text-sm outline-none cursor-pointer bg-white flex items-center justify-between transition-all ${
-          isOpen ? 'ring-2 ring-[#08CF65]/20 border-[#08CF65]' : 'hover:border-gray-300'
-        } ${className}`}
-      >
-        <span className={value ? 'text-gray-900' : 'text-gray-400'}>
-          {displayValue || placeholder}
-        </span>
-        {/* Calendar icon */}
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="3.09" y1="9.4" x2="20.92" y2="9.4" />
-          <line x1="16.44" y1="13.31" x2="16.45" y2="13.31" />
-          <line x1="12" y1="13.31" x2="12.01" y2="13.31" />
-          <line x1="7.56" y1="13.31" x2="7.57" y2="13.31" />
-          <line x1="16.44" y1="17.2" x2="16.45" y2="17.2" />
-          <line x1="12" y1="17.2" x2="12.01" y2="17.2" />
-          <line x1="7.56" y1="17.2" x2="7.57" y2="17.2" />
-          <line x1="16.04" y1="2" x2="16.04" y2="5.29" />
-          <line x1="7.97" y1="2" x2="7.97" y2="5.29" />
-          <path d="M16.24,3.58H7.77C4.83,3.58,3,5.21,3,8.22V15.27C3,18.33,4.83,20,7.77,20H16.23C19.17,20,21,18.35,21,15.35V8.22C21.01,5.21,19.18,3.58,16.24,3.58Z" />
-        </svg>
+      <div className="relative">
+        <input
+          type="text"
+          ref={inputRef}
+          readOnly
+          onClick={() => setIsOpen(!isOpen)}
+          value={displayValue || ''}
+          placeholder={placeholder}
+          className={`w-full border border-gray-200 rounded-lg px-4 py-2.5 pr-10 text-sm outline-none cursor-pointer bg-white transition-all ${
+            isOpen ? 'ring-2 ring-[#08CF65]/20 border-[#08CF65]' : 'hover:border-gray-300'
+          } ${value ? 'text-gray-900' : 'text-gray-400'} ${className}`}
+        />
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer pointer-events-auto"
+        >
+          {/* Calendar icon */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="text-gray-400" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3.09" y1="9.4" x2="20.92" y2="9.4" />
+            <line x1="16.44" y1="13.31" x2="16.45" y2="13.31" />
+            <line x1="12" y1="13.31" x2="12.01" y2="13.31" />
+            <line x1="7.56" y1="13.31" x2="7.57" y2="13.31" />
+            <line x1="16.44" y1="17.2" x2="16.45" y2="17.2" />
+            <line x1="12" y1="17.2" x2="12.01" y2="17.2" />
+            <line x1="7.56" y1="17.2" x2="7.57" y2="17.2" />
+            <line x1="16.04" y1="2" x2="16.04" y2="5.29" />
+            <line x1="7.97" y1="2" x2="7.97" y2="5.29" />
+            <path d="M16.24,3.58H7.77C4.83,3.58,3,5.21,3,8.22V15.27C3,18.33,4.83,20,7.77,20H16.23C19.17,20,21,18.35,21,15.35V8.22C21.01,5.21,19.18,3.58,16.24,3.58Z" />
+          </svg>
+        </div>
       </div>
       
       <AnimatePresence>
@@ -137,7 +144,7 @@ export default function CustomDatePicker({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-4 z-[100] min-w-[300px]"
+            className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-lg p-4 z-[9999] min-w-[300px]"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
