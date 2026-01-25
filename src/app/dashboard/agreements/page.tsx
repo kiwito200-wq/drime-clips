@@ -709,7 +709,7 @@ function AgreementsContent() {
       // Generate thumbnail client-side
       try {
         const { generatePdfThumbnail } = await import('@/lib/pdf-thumbnail')
-        const thumbnail = await generatePdfThumbnail(file, 128)
+        const thumbnail = await generatePdfThumbnail(file, 600)
         if (thumbnail) {
           formData.append('thumbnail', thumbnail)
         }

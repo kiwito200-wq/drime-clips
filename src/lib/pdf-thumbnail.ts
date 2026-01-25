@@ -8,7 +8,7 @@ const WORKER_URL = process.env.NEXT_PUBLIC_THUMBNAIL_WORKER_URL
 /**
  * Generate thumbnail using Cloudflare Worker (server-side, reliable)
  */
-export async function generateThumbnailViaWorker(pdfUrl: string, width: number = 150): Promise<Blob | null> {
+export async function generateThumbnailViaWorker(pdfUrl: string, width: number = 600): Promise<Blob | null> {
   if (!WORKER_URL) {
     console.log('[PDF Thumbnail] No worker URL configured')
     return null
@@ -38,7 +38,7 @@ export async function generateThumbnailViaWorker(pdfUrl: string, width: number =
  * Generate thumbnail client-side using pdf.js
  * Fallback when worker is not available
  */
-export async function generatePdfThumbnail(file: File, size: number = 150): Promise<Blob | null> {
+export async function generatePdfThumbnail(file: File, size: number = 600): Promise<Blob | null> {
   // Skip on server-side
   if (typeof window === 'undefined') {
     return null
