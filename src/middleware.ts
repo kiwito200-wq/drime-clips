@@ -46,11 +46,13 @@ const JWT_SECRET = new TextEncoder().encode(
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = [
+  '/',  // Home page handles its own auth
   '/api/auth/create-session',
   '/api/auth/drime-auto-login',
   '/api/auth/dev-login',
   '/api/auth/logout',
   '/api/auth/check',
+  '/api/auth/me',  // Auth check endpoint
   '/api/otp/',
   '/api/sign/',
   '/api/cron/',
@@ -140,7 +142,11 @@ export async function middleware(request: NextRequest) {
   // ===========================================
   
   // Check if route is public
-  const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route))
+  // Note: '/' must be an exact match, others are prefix matches
+  const isPublicRoute = PUBLIC_ROUTES.some(route => {
+    if (route === '/') return pathname === '/'
+    return pathname.startsWith(route)
+  })
   if (isPublicRoute) {
     return NextResponse.next()
   }
