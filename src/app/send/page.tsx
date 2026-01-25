@@ -82,6 +82,7 @@ function SendPageContent() {
   const [isSelfSignMode, setIsSelfSignMode] = useState(false) // Track if user chose "Je suis le seul signataire"
   const [templateRoles, setTemplateRoles] = useState<Array<{ id: string; name: string; color: string }>>([]) // Store template roles
   const [templateSigners, setTemplateSigners] = useState<Array<{ roleId: string; name: string; email: string; color: string }>>([]) // Store signers mapped to roles
+  const [currentTemplateId, setCurrentTemplateId] = useState<string | null>(null) // Store current template ID
 
   // Vérifier si on a un slug existant ou un template
   useEffect(() => {
@@ -89,11 +90,70 @@ function SendPageContent() {
     const templateId = searchParams.get('template')
     
     if (templateId) {
-      loadTemplate(templateId)
+      setCurrentTemplateId(templateId)
+      // If we already have a slug, we just need to reload the template roles
+      // Otherwise, load the full template
+      if (slug && document.slug === slug) {
+        // Just reload template roles without creating a new envelope
+        loadTemplateRoles(templateId)
+      } else {
+        loadTemplate(templateId)
+      }
     } else if (slug) {
       loadExistingEnvelope(slug)
     }
   }, [searchParams])
+  
+  // Helper function to load just template roles (when envelope already exists)
+  const loadTemplateRoles = async (templateId: string) => {
+    try {
+      const res = await fetch(`/api/templates/${templateId}`, {
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const template = data.template
+        
+        // Load roles from template (submitters are roles)
+        const templateSubmitters = template.submitters || []
+        console.log('Template submitters (reload):', templateSubmitters)
+        const roles = templateSubmitters.map((s: any, index: number) => ({
+          id: s.id,
+          name: s.name || `Rôle ${index + 1}`,
+          color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
+        }))
+        console.log('Parsed roles (reload):', roles)
+        setTemplateRoles(roles)
+        
+        // Initialize template signers (empty, user will fill them)
+        const initialTemplateSigners = roles.map((role: any) => ({
+          roleId: role.id,
+          name: '',
+          email: '',
+          color: role.color,
+        }))
+        setTemplateSigners(initialTemplateSigners)
+        
+        // Load fields from template
+        const templateFields = template.fields || []
+        setFields(templateFields.map((f: any) => ({
+          id: `field-${Date.now()}-${Math.random()}`,
+          type: f.type,
+          signerId: f.roleId || f.signerId || '', // Store roleId temporarily
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          required: f.required !== false,
+          label: f.label || '',
+        })))
+      }
+    } catch (error) {
+      console.error('Failed to load template roles:', error)
+    }
+  }
 
   const loadTemplate = async (templateId: string) => {
     try {
@@ -135,11 +195,13 @@ function SendPageContent() {
           
           // Load roles from template (submitters are roles)
           const templateSubmitters = template.submitters || []
+          console.log('Template submitters:', templateSubmitters)
           const roles = templateSubmitters.map((s: any, index: number) => ({
             id: s.id,
             name: s.name || `Rôle ${index + 1}`,
             color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
           }))
+          console.log('Parsed roles:', roles)
           setTemplateRoles(roles)
           
           // Initialize template signers (empty, user will fill them)
@@ -169,8 +231,9 @@ function SendPageContent() {
           // Go to template signers step
           setCurrentStep(2) // Template signers step
           
-          // Update URL to remove template param
+          // Keep template param in URL so we can reload roles if needed
           router.replace(`/send?slug=${envelope.slug}&template=${templateId}`)
+          setCurrentTemplateId(templateId)
         }
       } else {
         alert('Erreur lors du chargement du template')
@@ -585,7 +648,11 @@ function SendPageContent() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {templateRoles.length > 0 ? (
+              {(() => {
+                console.log('Current templateRoles:', templateRoles)
+                console.log('templateRoles.length:', templateRoles.length)
+                return templateRoles.length > 0
+              })() && templateRoles.length > 0 ? (
                 <StepTemplateSigners
                   roles={templateRoles}
                   signers={templateSigners.map(ts => ({
