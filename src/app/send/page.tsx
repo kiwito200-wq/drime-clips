@@ -595,6 +595,10 @@ function SendPageContent() {
                     color: ts.color,
                     roleId: ts.roleId,
                   }))}
+                  templateFields={fields.map(f => ({
+                    roleId: f.signerId, // signerId contains roleId for template fields
+                    type: f.type,
+                  }))}
                   onUpdateSigner={(roleId, name, email) => {
                     setTemplateSigners(prev => prev.map(ts => 
                       ts.roleId === roleId 

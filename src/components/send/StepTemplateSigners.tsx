@@ -17,9 +17,15 @@ interface Signer {
   roleId: string
 }
 
+interface TemplateField {
+  roleId: string
+  type: string
+}
+
 interface StepTemplateSignersProps {
   roles: Role[]
   signers: Signer[]
+  templateFields?: TemplateField[] // Fields from template to count per role
   onUpdateSigner: (roleId: string, name: string, email: string) => void
   onBack: () => void
   onNext: () => void
@@ -29,6 +35,7 @@ interface StepTemplateSignersProps {
 export default function StepTemplateSigners({
   roles,
   signers,
+  templateFields = [],
   onUpdateSigner,
   onBack,
   onNext,
@@ -104,9 +111,16 @@ export default function StepTemplateSigners({
                   >
                     {getInitials(role.name)}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium text-gray-900">{role.name}</p>
-                    <p className="text-xs text-gray-500">Rôle de signataire</p>
+                    <p className="text-xs text-gray-500">
+                      {(() => {
+                        const fieldCount = templateFields.filter(f => f.roleId === role.id).length
+                        return fieldCount > 0 
+                          ? `${fieldCount} champ${fieldCount > 1 ? 's' : ''} attribué${fieldCount > 1 ? 's' : ''} à ce rôle`
+                          : 'Rôle de signataire'
+                      })()}
+                    </p>
                   </div>
                 </div>
 
