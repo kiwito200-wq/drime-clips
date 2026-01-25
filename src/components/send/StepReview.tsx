@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CustomDatePicker from '@/components/CustomDatePicker'
 import { getPdfProxyUrl } from '@/lib/pdf-utils'
@@ -118,13 +119,33 @@ export default function StepReview({
   const [reminderEnabled, setReminderEnabled] = useState(true)
   const [reminderInterval, setReminderInterval] = useState('3_days')
   const [isReminderDropdownOpen, setIsReminderDropdownOpen] = useState(false)
+  const [reminderDropdownPosition, setReminderDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
+  const [mounted, setMounted] = useState(false)
   const reminderDropdownRef = useRef<HTMLDivElement>(null)
+  const reminderButtonRef = useRef<HTMLButtonElement>(null)
   
+  // Wait for client-side mount for portal
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isReminderDropdownOpen && reminderButtonRef.current) {
+      const rect = reminderButtonRef.current.getBoundingClientRect()
+      setReminderDropdownPosition({
+        top: rect.bottom + window.scrollY + 4,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      })
+    }
+  }, [isReminderDropdownOpen])
 
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (reminderDropdownRef.current && !reminderDropdownRef.current.contains(event.target as Node)) {
+      if (reminderDropdownRef.current && !reminderDropdownRef.current.contains(event.target as Node) &&
+          reminderButtonRef.current && !reminderButtonRef.current.contains(event.target as Node)) {
         setIsReminderDropdownOpen(false)
       }
     }
@@ -297,8 +318,9 @@ export default function StepReview({
                   {reminderEnabled && (
                     <div className="ml-6">
                       {/* Custom dropdown */}
-                      <div className="relative" ref={reminderDropdownRef}>
+                      <div className="relative">
                         <button
+                          ref={reminderButtonRef}
                           type="button"
                           onClick={() => setIsReminderDropdownOpen(!isReminderDropdownOpen)}
                           className={`w-full px-4 py-2.5 border rounded-lg text-sm text-left flex items-center justify-between transition-all ${
@@ -318,35 +340,47 @@ export default function StepReview({
                           </svg>
                         </button>
                         
-                        <AnimatePresence>
-                          {isReminderDropdownOpen && (
-                            <motion.div
-                              initial={{ opacity: 0, y: -10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -10 }}
-                              transition={{ duration: 0.15 }}
-                              className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg z-[9999] overflow-hidden"
-                            >
-                              {REMINDER_OPTIONS.map((option) => (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  onClick={() => {
-                                    setReminderInterval(option.value)
-                                    setIsReminderDropdownOpen(false)
-                                  }}
-                                  className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
-                                    option.value === reminderInterval
-                                      ? 'bg-[#08CF65]/10 text-[#08CF65] font-medium'
-                                      : 'text-gray-700 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  {option.label}
-                                </button>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        {/* Dropdown rendered via portal */}
+                        {mounted && createPortal(
+                          <AnimatePresence>
+                            {isReminderDropdownOpen && (
+                              <motion.div
+                                ref={reminderDropdownRef}
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                transition={{ duration: 0.15 }}
+                                style={{
+                                  position: 'fixed',
+                                  top: reminderDropdownPosition.top,
+                                  left: reminderDropdownPosition.left,
+                                  width: reminderDropdownPosition.width,
+                                  zIndex: 99999,
+                                }}
+                                className="bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden"
+                              >
+                                {REMINDER_OPTIONS.map((option) => (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => {
+                                      setReminderInterval(option.value)
+                                      setIsReminderDropdownOpen(false)
+                                    }}
+                                    className={`w-full px-4 py-2.5 text-sm text-left transition-colors ${
+                                      option.value === reminderInterval
+                                        ? 'bg-[#08CF65]/10 text-[#08CF65] font-medium'
+                                        : 'text-gray-700 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    {option.label}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>,
+                          window.document.body
+                        )}
                       </div>
                       <p className="text-xs text-gray-500 mt-1.5">
                         Un email de rappel sera envoyé aux signataires qui n&apos;ont pas encore signé

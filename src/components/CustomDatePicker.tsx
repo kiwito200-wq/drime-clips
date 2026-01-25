@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, addMonths, subMonths, isSameMonth, isSameDay, isToday } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -31,10 +32,29 @@ export default function CustomDatePicker({
 }: CustomDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(value ? new Date(value) : new Date())
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 })
   const pickerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLDivElement>(null)
+  const [mounted, setMounted] = useState(false)
 
   const locale = locales[language] || fr
+
+  // Wait for client-side mount for portal
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect()
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY + 8,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 300),
+      })
+    }
+  }, [isOpen])
 
   // Close on click outside
   useEffect(() => {
@@ -102,12 +122,108 @@ export default function CustomDatePicker({
     ? ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim']
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+  const dropdownContent = (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          ref={pickerRef}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.15 }}
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            zIndex: 99999,
+          }}
+          className="bg-white rounded-xl border border-gray-200 shadow-xl p-4 min-w-[300px]"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="text-sm font-medium text-gray-900 capitalize">
+              {format(currentMonth, 'MMMM yyyy', { locale })}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Week days */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {weekDays.map((day) => (
+              <div key={day} className="text-center text-xs font-medium text-gray-400 py-1 uppercase">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Calendar grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {days.map((day, idx) => {
+              const isCurrentMonth = isSameMonth(day, currentMonth)
+              const isSelected = selectedDate && isSameDay(day, selectedDate)
+              const isTodayDate = isToday(day)
+              const disabled = isDisabled(day)
+
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => !disabled && handleDateClick(day)}
+                  disabled={disabled}
+                  className={`
+                    w-9 h-9 text-sm rounded-lg transition-colors
+                    ${!isCurrentMonth ? 'text-gray-300' : ''}
+                    ${isSelected ? 'bg-[#08CF65] text-white font-semibold' : ''}
+                    ${!isSelected && isTodayDate ? 'bg-[#08CF65]/10 text-[#08CF65] font-semibold' : ''}
+                    ${!isSelected && !isTodayDate && isCurrentMonth && !disabled ? 'hover:bg-gray-100 text-gray-900' : ''}
+                    ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
+                  `}
+                >
+                  {format(day, 'd')}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Clear button */}
+          {value && (
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="w-full px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Supprimer la date
+              </button>
+            </div>
+          )}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   return (
     <div className="relative">
-      <div className="relative">
+      <div ref={inputRef} className="relative">
         <input
           type="text"
-          ref={inputRef}
           readOnly
           onClick={() => setIsOpen(!isOpen)}
           value={displayValue || ''}
@@ -136,94 +252,8 @@ export default function CustomDatePicker({
         </div>
       </div>
       
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={pickerRef}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
-            className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-gray-200 shadow-xl p-4 z-[99999] min-w-[300px]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <button
-                type="button"
-                onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <span className="text-sm font-medium text-gray-900 capitalize">
-                {format(currentMonth, 'MMMM yyyy', { locale })}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Week days */}
-            <div className="grid grid-cols-7 gap-1 mb-2">
-              {weekDays.map((day) => (
-                <div key={day} className="text-center text-xs font-medium text-gray-400 py-1 uppercase">
-                  {day}
-                </div>
-              ))}
-            </div>
-
-            {/* Calendar grid */}
-            <div className="grid grid-cols-7 gap-1">
-              {days.map((day, idx) => {
-                const isCurrentMonth = isSameMonth(day, currentMonth)
-                const isSelected = selectedDate && isSameDay(day, selectedDate)
-                const isTodayDate = isToday(day)
-                const disabled = isDisabled(day)
-
-                return (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => !disabled && handleDateClick(day)}
-                    disabled={disabled}
-                    className={`
-                      w-9 h-9 text-sm rounded-lg transition-colors
-                      ${!isCurrentMonth ? 'text-gray-300' : ''}
-                      ${isSelected ? 'bg-[#08CF65] text-white font-semibold' : ''}
-                      ${!isSelected && isTodayDate ? 'bg-[#08CF65]/10 text-[#08CF65] font-semibold' : ''}
-                      ${!isSelected && !isTodayDate && isCurrentMonth && !disabled ? 'hover:bg-gray-100 text-gray-900' : ''}
-                      ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}
-                    `}
-                  >
-                    {format(day, 'd')}
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Clear button */}
-            {value && (
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="w-full px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Supprimer la date
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Render dropdown via portal to escape overflow:hidden */}
+      {mounted && createPortal(dropdownContent, document.body)}
     </div>
   )
 }
