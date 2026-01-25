@@ -85,6 +85,21 @@ export default function TemplatesPage() {
     }
     return []
   })
+  
+  // Subscription info
+  const [subscription, setSubscription] = useState<{
+    plan: string
+    planName: string
+    signatureRequests: {
+      used: number
+      limit: number
+      remaining: number
+      isUnlimited: boolean
+    }
+    canCreateSignatureRequest: boolean
+    resetDate: string | null
+  } | null>(null)
+  
   const notificationsRef = useRef<HTMLDivElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const importDropdownRef = useRef<HTMLDivElement>(null)
@@ -115,6 +130,20 @@ export default function TemplatesPage() {
         .then(data => {
           if (data.envelopes) {
             setEnvelopes(data.envelopes)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [user])
+
+  // Load subscription info
+  useEffect(() => {
+    if (user) {
+      fetch('/api/subscription', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error) {
+            setSubscription(data)
           }
         })
         .catch(() => {})
@@ -601,6 +630,58 @@ export default function TemplatesPage() {
                     </div>
                     <p className="font-semibold text-gray-900">{user?.name || (locale === 'fr' ? 'Utilisateur' : 'User')}</p>
                     <p className="text-sm text-gray-500">{user?.email}</p>
+                  </div>
+
+                  {/* Plan info */}
+                  <div className="p-4 border-b border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">{locale === 'fr' ? 'Demandes de signature' : 'Signature requests'}:</p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </div>
+                          <span className="text-sm text-gray-700">Sign - {subscription?.planName || (locale === 'fr' ? 'Gratuit' : 'Free')}</span>
+                        </div>
+                        {!subscription?.signatureRequests?.isUnlimited && (
+                          <a href="https://drime.cloud/fr/pricing" className="text-xs text-[#08CF65] hover:underline">{locale === 'fr' ? 'Mettre à niveau' : 'Upgrade'}</a>
+                        )}
+                      </div>
+                      {subscription?.signatureRequests?.isUnlimited ? (
+                        <p className="text-xs text-gray-500 pl-8 flex items-center gap-1">
+                          <svg className="w-3 h-3 text-[#08CF65]" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          {locale === 'fr' ? 'Illimité ce mois' : 'Unlimited this month'}
+                        </p>
+                      ) : (
+                        <div className="pl-8">
+                          <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                            <span>{subscription?.signatureRequests?.used || 0}/{subscription?.signatureRequests?.limit || 3} {locale === 'fr' ? 'ce mois' : 'this month'}</span>
+                            <span>{subscription?.signatureRequests?.remaining || 0} {locale === 'fr' ? 'restantes' : 'remaining'}</span>
+                          </div>
+                          <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all ${
+                                (subscription?.signatureRequests?.remaining || 0) === 0 
+                                  ? 'bg-red-500' 
+                                  : 'bg-[#08CF65]'
+                              }`}
+                              style={{ 
+                                width: `${Math.min(100, ((subscription?.signatureRequests?.used || 0) / (subscription?.signatureRequests?.limit || 3)) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                          {(subscription?.signatureRequests?.remaining || 0) === 0 && (
+                            <p className="text-xs text-red-500 mt-1">
+                              {locale === 'fr' ? 'Limite atteinte - passez à un plan supérieur' : 'Limit reached - upgrade your plan'}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Menu items */}

@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { sendSignatureRequestEmail } from '@/lib/email'
 import { logAuditEvent } from '@/lib/audit'
 import { notifyInvitation } from '@/lib/notifications'
+import { getSubscriptionInfo, useSignatureRequest } from '@/lib/subscription'
 
 interface Params {
   params: {
@@ -21,6 +22,22 @@ export async function POST(request: NextRequest, { params }: Params) {
     // SECURITY: Require authentication - no exceptions
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Check subscription limits BEFORE processing
+    const subscriptionInfo = await getSubscriptionInfo(user.id)
+    if (!subscriptionInfo.canCreateSignatureRequest) {
+      return NextResponse.json({ 
+        error: 'Limite de signatures atteinte',
+        errorCode: 'SIGNATURE_LIMIT_REACHED',
+        subscription: {
+          plan: subscriptionInfo.plan,
+          planName: subscriptionInfo.planName,
+          used: subscriptionInfo.signatureRequestsUsed,
+          limit: subscriptionInfo.signatureRequestsLimit,
+          resetDate: subscriptionInfo.resetDate?.toISOString(),
+        }
+      }, { status: 403 })
     }
 
     const envelope = await prisma.envelope.findFirst({
@@ -87,6 +104,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       where: { envelopeId: envelope.id },
       data: { status: 'sent' },
     })
+
+    // Increment signature request counter (this counts as 1 request regardless of signers)
+    await useSignatureRequest(user.id)
 
     // Log audit event
     await logAuditEvent(envelope.id, 'sent', null, {

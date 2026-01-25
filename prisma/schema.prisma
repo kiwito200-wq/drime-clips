@@ -28,6 +28,15 @@ model User {
   drimeUserId String? @unique
   drimeToken  String?
 
+  // Subscription & Usage tracking
+  // Cached from Drime API for performance
+  subscriptionPlan     String?   // gratuit, starter, essentials, professional, advanced
+  subscriptionUpdatedAt DateTime?
+  
+  // Monthly signature request counter
+  signatureRequestsThisMonth Int       @default(0)
+  signatureRequestsResetAt   DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
