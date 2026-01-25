@@ -15,7 +15,8 @@ interface Params {
  * SECURITY: Returns a signed URL for the thumbnail
  * - Requires authentication
  * - Verifies user has access to the document (owner or signer)
- * - Returns a temporary signed URL (1 hour)
+ * - Works for both Envelopes and Templates
+ * - Returns a temporary signed URL (24 hours)
  */
 export async function GET(request: NextRequest, { params }: Params) {
   try {
@@ -26,8 +27,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const { slug } = params
+    let thumbnailUrl: string | null = null
 
-    // Find the envelope and verify access
+    // Try to find in Envelopes first
     const envelope = await prisma.envelope.findFirst({
       where: {
         slug,
@@ -43,16 +45,31 @@ export async function GET(request: NextRequest, { params }: Params) {
       }
     })
 
-    if (!envelope) {
+    if (envelope) {
+      thumbnailUrl = envelope.thumbnailUrl
+    } else {
+      // Try to find in Templates (only owner can access)
+      const template = await prisma.template.findFirst({
+        where: {
+          slug,
+          userId: user.id, // Only owner can access template thumbnails
+        },
+        select: {
+          thumbnailUrl: true,
+        }
+      })
+
+      if (template) {
+        thumbnailUrl = template.thumbnailUrl
+      }
+    }
+
+    if (!thumbnailUrl) {
       return NextResponse.json({ error: 'Document not found or access denied' }, { status: 404 })
     }
 
-    if (!envelope.thumbnailUrl) {
-      return NextResponse.json({ error: 'No thumbnail available' }, { status: 404 })
-    }
-
     // Generate signed URL
-    const signedUrl = await getSignedThumbnailUrl(envelope.thumbnailUrl)
+    const signedUrl = await getSignedThumbnailUrl(thumbnailUrl)
 
     return NextResponse.json({ url: signedUrl })
   } catch (error) {
