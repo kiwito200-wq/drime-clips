@@ -61,6 +61,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     const { searchParams } = new URL(request.url)
     const permanently = searchParams.get('permanently') === 'true'
+    const action = searchParams.get('action') // 'archive' | 'unarchive' | null
 
     const template = await prisma.template.findFirst({
       where: {
@@ -80,7 +81,13 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       await prisma.template.delete({
         where: { id: params.id },
       })
+    } else if (action === 'unarchive') {
+      await prisma.template.update({
+        where: { id: params.id },
+        data: { archivedAt: null },
+      })
     } else {
+      // Default: archive
       await prisma.template.update({
         where: { id: params.id },
         data: { archivedAt: new Date() },

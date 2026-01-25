@@ -104,6 +104,17 @@ export default function TemplatesPage() {
   const profileMenuRef = useRef<HTMLDivElement>(null)
   const importDropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean
+    title: string
+    message: string
+    confirmText: string
+    cancelText: string
+    onConfirm: () => void
+    isDanger?: boolean
+  } | null>(null)
 
   // Load user
   useEffect(() => {
@@ -178,23 +189,77 @@ export default function TemplatesPage() {
     router.push(`/send?template=${templateId}`)
   }
 
-  const handleDeleteTemplate = async (templateId: string, permanently: boolean = false) => {
-    if (!confirm(permanently ? 'Êtes-vous sûr de vouloir supprimer définitivement ce template ?' : 'Voulez-vous archiver ce template ?')) {
-      return
-    }
+  const handleArchiveTemplate = (templateId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: locale === 'fr' ? 'Archiver le template' : 'Archive template',
+      message: locale === 'fr' ? 'Voulez-vous archiver ce template ? Vous pourrez le retrouver dans les templates archivés.' : 'Do you want to archive this template? You can find it in archived templates.',
+      confirmText: locale === 'fr' ? 'Archiver' : 'Archive',
+      cancelText: locale === 'fr' ? 'Annuler' : 'Cancel',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/templates/${templateId}?action=archive`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (res.ok) {
+            loadTemplates()
+          }
+        } catch (error) {
+          console.error('Failed to archive template:', error)
+        }
+        setConfirmModal(null)
+      },
+    })
+  }
 
-    try {
-      const res = await fetch(`/api/templates/${templateId}?permanently=${permanently}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-      if (res.ok) {
-        loadTemplates()
-      }
-    } catch (error) {
-      console.error('Failed to delete template:', error)
-      alert('Erreur lors de la suppression du template')
-    }
+  const handleUnarchiveTemplate = (templateId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: locale === 'fr' ? 'Désarchiver le template' : 'Unarchive template',
+      message: locale === 'fr' ? 'Voulez-vous désarchiver ce template ? Il sera de nouveau visible dans vos templates actifs.' : 'Do you want to unarchive this template? It will be visible again in your active templates.',
+      confirmText: locale === 'fr' ? 'Désarchiver' : 'Unarchive',
+      cancelText: locale === 'fr' ? 'Annuler' : 'Cancel',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/templates/${templateId}?action=unarchive`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (res.ok) {
+            loadTemplates()
+          }
+        } catch (error) {
+          console.error('Failed to unarchive template:', error)
+        }
+        setConfirmModal(null)
+      },
+    })
+  }
+
+  const handleDeleteTemplatePermanently = (templateId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently',
+      message: locale === 'fr' ? 'Êtes-vous sûr de vouloir supprimer définitivement ce template ? Cette action est irréversible.' : 'Are you sure you want to permanently delete this template? This action cannot be undone.',
+      confirmText: locale === 'fr' ? 'Supprimer' : 'Delete',
+      cancelText: locale === 'fr' ? 'Annuler' : 'Cancel',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/templates/${templateId}?permanently=true`, {
+            method: 'DELETE',
+            credentials: 'include',
+          })
+          if (res.ok) {
+            loadTemplates()
+          }
+        } catch (error) {
+          console.error('Failed to delete template:', error)
+        }
+        setConfirmModal(null)
+      },
+    })
   }
 
   // Convert R2 URL to proxy URL to bypass CORS
@@ -944,29 +1009,32 @@ export default function TemplatesPage() {
                         </button>
                         {archived ? (
                           <>
-                            <button
-                              onClick={() => handleDeleteTemplate(template.id, false)}
-                              className="p-2 text-gray-400 hover:text-[#08CF65] hover:bg-[#08CF65]/10 rounded-lg transition-colors"
-                              title={locale === 'fr' ? 'Désarchiver' : 'Unarchive'}
-                            >
-                              <img src="/icons/unarchive.svg" alt="" className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTemplate(template.id, true)}
-                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title={locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently'}
-                            >
-                              <img src="/icons/delete.svg" alt="" className="w-5 h-5" />
-                            </button>
+                            <Tooltip content={locale === 'fr' ? 'Désarchiver' : 'Unarchive'} position="top">
+                              <button
+                                onClick={() => handleUnarchiveTemplate(template.id)}
+                                className="p-2 text-gray-400 hover:text-[#08CF65] hover:bg-[#08CF65]/10 rounded-lg transition-colors"
+                              >
+                                <img src="/icons/unarchive.svg" alt="" className="w-5 h-5" />
+                              </button>
+                            </Tooltip>
+                            <Tooltip content={locale === 'fr' ? 'Supprimer définitivement' : 'Delete permanently'} position="top">
+                              <button
+                                onClick={() => handleDeleteTemplatePermanently(template.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              >
+                                <img src="/icons/delete.svg" alt="" className="w-5 h-5" />
+                              </button>
+                            </Tooltip>
                           </>
                         ) : (
-                          <button
-                            onClick={() => handleDeleteTemplate(template.id, false)}
-                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            title={locale === 'fr' ? 'Archiver' : 'Archive'}
-                          >
-                            <img src="/icons/archive.svg" alt="" className="w-5 h-5" />
-                          </button>
+                          <Tooltip content={locale === 'fr' ? 'Archiver' : 'Archive'} position="top">
+                            <button
+                              onClick={() => handleArchiveTemplate(template.id)}
+                              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                              <img src="/icons/archive.svg" alt="" className="w-5 h-5" />
+                            </button>
+                          </Tooltip>
                         )}
                       </div>
                     </div>
@@ -984,6 +1052,44 @@ export default function TemplatesPage() {
         onClose={() => setShowDrimeFilePicker(false)}
         onSelect={handleDrimeFileSelect}
       />
+
+      {/* Confirmation Modal */}
+      {confirmModal?.isOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 overflow-hidden"
+          >
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {confirmModal.title}
+              </h3>
+              <p className="text-gray-600">
+                {confirmModal.message}
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                {confirmModal.cancelText}
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  confirmModal.isDanger
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-[#08CF65] hover:bg-[#07B859]'
+                }`}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   )
 }
