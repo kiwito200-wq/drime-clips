@@ -78,13 +78,166 @@ function SendPageContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSelfSignMode, setIsSelfSignMode] = useState(false) // Track if user chose "Je suis le seul signataire"
 
-  // Vérifier si on a un slug existant
+  // Vérifier si on a un slug existant ou un template
   useEffect(() => {
     const slug = searchParams.get('slug')
-    if (slug) {
+    const templateId = searchParams.get('template')
+    
+    if (templateId) {
+      loadTemplate(templateId)
+    } else if (slug) {
       loadExistingEnvelope(slug)
     }
   }, [searchParams])
+
+  const loadTemplate = async (templateId: string) => {
+    try {
+      setIsLoading(true)
+      
+      const res = await fetch(`/api/templates/${templateId}`, {
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const template = data.template
+        
+        // Create a new envelope from template
+        const createRes = await fetch('/api/envelopes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: template.name + ' (copie)',
+            pdfUrl: template.pdfUrl,
+            pdfHash: template.pdfHash,
+            thumbnailUrl: template.thumbnailUrl,
+          }),
+        })
+        
+        if (createRes.ok) {
+          const envelopeData = await createRes.json()
+          const envelope = envelopeData.envelope
+          
+          setDocument({
+            file: null,
+            name: template.name + ' (copie)',
+            pdfUrl: template.pdfUrl,
+            envelopeId: envelope.id,
+            slug: envelope.slug,
+            thumbnailUrl: template.thumbnailUrl,
+          })
+          
+          // Load signers from template
+          const templateSubmitters = template.submitters || []
+          let savedSigners: Signer[] = []
+          
+          if (templateSubmitters.length > 0) {
+            const newSigners = templateSubmitters.map((s: any, index: number) => ({
+              id: `signer-${Date.now()}-${index}`,
+              name: s.name || s.email,
+              email: s.email,
+              color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
+            }))
+            
+            // Save signers to envelope
+            await fetch(`/api/envelopes/${envelope.slug}/signers`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                signers: newSigners.map((s: any) => ({
+                  name: s.name,
+                  email: s.email,
+                  color: s.color,
+                })),
+              }),
+              credentials: 'include',
+            })
+            
+            // Update signers with real IDs from DB
+            const signersRes = await fetch(`/api/envelopes/${envelope.slug}`, {
+              credentials: 'include',
+            })
+            if (signersRes.ok) {
+              const envelopeData = await signersRes.json()
+              if (envelopeData.envelope.signers) {
+                savedSigners = envelopeData.envelope.signers.map((s: any) => ({
+                  id: s.id,
+                  name: s.name || s.email,
+                  email: s.email,
+                  color: s.color,
+                }))
+                setSigners(savedSigners)
+              }
+            }
+          }
+          
+          // Load fields from template
+          const templateFields = template.fields || []
+          if (templateFields.length > 0 && savedSigners.length > 0) {
+            // Map template fields to saved signers by email
+            const newFields = templateFields.map((f: any) => {
+              // Find signer by email from template submitters
+              const templateSubmitter = templateSubmitters.find((s: any) => s.email === f.email || s.id === f.signerId)
+              const matchedSigner = savedSigners.find((s: any) => s.email === templateSubmitter?.email) || savedSigners[0]
+              
+              return {
+                id: `field-${Date.now()}-${Math.random()}`,
+                type: f.type,
+                signerId: matchedSigner.id,
+                page: f.page,
+                x: f.x,
+                y: f.y,
+                width: f.width,
+                height: f.height,
+                required: f.required !== false,
+                label: f.label || '',
+              }
+            })
+            
+            setFields(newFields)
+            
+            // Save fields to envelope
+            await fetch(`/api/envelopes/${envelope.slug}/fields`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                fields: newFields.map((f: any) => ({
+                  type: f.type,
+                  signerId: f.signerId,
+                  page: f.page,
+                  x: f.x,
+                  y: f.y,
+                  width: f.width,
+                  height: f.height,
+                  required: f.required,
+                  label: f.label,
+                })),
+              }),
+              credentials: 'include',
+            })
+          }
+          
+          // Go to appropriate step
+          if (templateSubmitters.length > 0) {
+            setCurrentStep(3) // Fields step
+          } else {
+            setCurrentStep(2) // Signers step
+          }
+          
+          // Update URL to remove template param
+          router.replace(`/send?slug=${envelope.slug}`)
+        }
+      } else {
+        alert('Erreur lors du chargement du template')
+      }
+    } catch (error) {
+      console.error('Failed to load template:', error)
+      alert('Erreur lors du chargement du template')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const loadExistingEnvelope = async (slug: string) => {
     try {

@@ -15,27 +15,28 @@ datasource db {
 // ============================================
 
 model User {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  name            String?
-  avatarUrl       String?
-  passwordHash    String?
-  
+  id           String  @id @default(cuid())
+  email        String  @unique
+  name         String?
+  avatarUrl    String?
+  passwordHash String?
+
   // Saved signature (base64 data URL)
-  signatureData   String?   @db.Text
-  
+  signatureData String? @db.Text
+
   // Drime integration
-  drimeUserId     String?   @unique
-  drimeToken      String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  drimeUserId String? @unique
+  drimeToken  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  envelopes       Envelope[]
-  sessions        Session[]
-  notifications   Notification[]
-  
+  envelopes     Envelope[]
+  sessions      Session[]
+  notifications Notification[]
+  templates     Template[]
+
   @@index([email])
   @@index([drimeUserId])
 }
@@ -45,29 +46,29 @@ model User {
 // ============================================
 
 model Notification {
-  id              String    @id @default(cuid())
-  userId          String
-  
-  type            String    // invitation, signed, completed, reminder, rejected
-  title           String
-  message         String?
-  
+  id     String @id @default(cuid())
+  userId String
+
+  type    String // invitation, signed, completed, reminder, rejected
+  title   String
+  message String?
+
   // Link to related document
-  envelopeId      String?
-  envelopeSlug    String?
-  
+  envelopeId   String?
+  envelopeSlug String?
+
   // Sender info (for invitations)
-  senderEmail     String?
-  senderName      String?
-  
-  read            Boolean   @default(false)
-  readAt          DateTime?
-  
-  createdAt       DateTime  @default(now())
-  
+  senderEmail String?
+  senderName  String?
+
+  read   Boolean   @default(false)
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+
   // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([userId, read])
   @@index([createdAt])
@@ -79,9 +80,9 @@ model Session {
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-  
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([token])
   @@index([userId])
 }
@@ -91,129 +92,167 @@ model Session {
 // ============================================
 
 model Envelope {
-  id              String    @id @default(cuid())
-  slug            String    @unique
-  userId          String
-  
-  name            String
-  message         String?
-  status          String    @default("draft") // draft, pending, completed, expired, cancelled
-  
+  id     String @id @default(cuid())
+  slug   String @unique
+  userId String
+
+  name    String
+  message String?
+  status  String  @default("draft") // draft, pending, completed, expired, cancelled
+
   // PDF storage
-  pdfUrl          String
-  pdfHash         String    // SHA-256 hash of original PDF
-  thumbnailUrl    String?   // First page thumbnail
-  finalPdfUrl     String?   // Signed PDF
-  finalPdfHash    String?
-  
+  pdfUrl       String
+  pdfHash      String // SHA-256 hash of original PDF
+  thumbnailUrl String? // First page thumbnail
+  finalPdfUrl  String? // Signed PDF
+  finalPdfHash String?
+
   // Settings
-  signingOrder    String    @default("parallel") // parallel, sequential
-  expiresAt       DateTime?
-  
+  signingOrder String    @default("parallel") // parallel, sequential
+  expiresAt    DateTime?
+
   // Reminders
-  reminderEnabled   Boolean   @default(true)
-  reminderInterval  String    @default("3_days") // 1_day, 2_days, 3_days, 7_days
-  lastReminderAt    DateTime?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  completedAt     DateTime?
-  
+  reminderEnabled  Boolean   @default(true)
+  reminderInterval String    @default("3_days") // 1_day, 2_days, 3_days, 7_days
+  lastReminderAt   DateTime?
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
+
   // Relations
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  signers         Signer[]
-  fields          Field[]
-  auditLogs       AuditLog[]
-  
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  signers   Signer[]
+  fields    Field[]
+  auditLogs AuditLog[]
+
   @@index([userId])
   @@index([status])
   @@index([slug])
 }
 
 model Signer {
-  id              String    @id @default(cuid())
-  envelopeId      String
-  
-  email           String
-  name            String?
-  color           String    @default("#EF4444")
-  order           Int       @default(0)
-  status          String    @default("pending") // pending, sent, viewed, signed, declined
-  token           String    @unique // Unique signing URL token
-  
+  id         String @id @default(cuid())
+  envelopeId String
+
+  email  String
+  name   String?
+  color  String  @default("#EF4444")
+  order  Int     @default(0)
+  status String  @default("pending") // pending, sent, viewed, signed, declined
+  token  String  @unique // Unique signing URL token
+
   // Phone 2FA
-  phone2FA        Boolean   @default(false)
-  phone2FANumber  String?   // Phone number for 2FA verification
-  phone2FAVerified Boolean  @default(false) // Has the signer verified their phone?
-  
-  signedAt        DateTime?
-  viewedAt        DateTime?
-  declinedAt      DateTime?
-  declineReason   String?
-  ipAddress       String?
-  userAgent       String?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  phone2FA         Boolean @default(false)
+  phone2FANumber   String? // Phone number for 2FA verification
+  phone2FAVerified Boolean @default(false) // Has the signer verified their phone?
+
+  signedAt      DateTime?
+  viewedAt      DateTime?
+  declinedAt    DateTime?
+  declineReason String?
+  ipAddress     String?
+  userAgent     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
-  fields          Field[]
-  auditLogs       AuditLog[]
-  
+  envelope  Envelope   @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  fields    Field[]
+  auditLogs AuditLog[]
+
   @@index([envelopeId])
   @@index([token])
   @@index([email])
 }
 
 model Field {
-  id              String    @id @default(cuid())
-  envelopeId      String
-  signerId        String
-  
-  type            String    // signature, initials, text, date, checkbox
-  label           String?
-  placeholder     String?
-  required        Boolean   @default(true)
-  
+  id         String @id @default(cuid())
+  envelopeId String
+  signerId   String
+
+  type        String // signature, initials, text, date, checkbox
+  label       String?
+  placeholder String?
+  required    Boolean @default(true)
+
   // Position (percentage 0-1)
-  page            Int
-  x               Float
-  y               Float
-  width           Float
-  height          Float
-  
+  page   Int
+  x      Float
+  y      Float
+  width  Float
+  height Float
+
   // Value after signing
-  value           String?
-  filledAt        DateTime?
-  
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  
+  value    String?
+  filledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // Relations
-  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
-  signer          Signer    @relation(fields: [signerId], references: [id], onDelete: Cascade)
-  
+  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  signer   Signer   @relation(fields: [signerId], references: [id], onDelete: Cascade)
+
   @@index([envelopeId])
   @@index([signerId])
 }
 
 model AuditLog {
-  id              String    @id @default(cuid())
-  envelopeId      String
-  signerId        String?
-  
-  action          String    // created, sent, viewed, signed, completed, downloaded
-  details         String?   // JSON
-  ipAddress       String?
-  userAgent       String?
-  
-  createdAt       DateTime  @default(now())
-  
+  id         String  @id @default(cuid())
+  envelopeId String
+  signerId   String?
+
+  action    String // created, sent, viewed, signed, completed, downloaded
+  details   String? // JSON
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
   // Relations
-  envelope        Envelope  @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
-  signer          Signer?   @relation(fields: [signerId], references: [id], onDelete: SetNull)
-  
+  envelope Envelope @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  signer   Signer?  @relation(fields: [signerId], references: [id], onDelete: SetNull)
+
   @@index([envelopeId])
   @@index([action])
+}
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+model Template {
+  id     String @id @default(cuid())
+  slug   String @unique
+  userId String
+
+  name        String
+  description String?
+
+  // PDF storage (copie du PDF original)
+  pdfUrl       String
+  pdfHash      String // SHA-256 hash
+  thumbnailUrl String? // First page thumbnail
+
+  // Template structure (JSON)
+  schema     String @db.Text // JSON: structure des pages
+  fields     String @db.Text // JSON: array of fields avec positions/types
+  submitters String @db.Text // JSON: array of signers/rôles
+
+  // Folder (simplifié, juste un nom pour l'instant)
+  folderName String? @default("Mes templates")
+
+  archivedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([slug])
+  @@index([userId, archivedAt])
 }

@@ -114,6 +114,12 @@ export default function StepReview({
   const [reminderInterval, setReminderInterval] = useState('3_days')
   const [isReminderDropdownOpen, setIsReminderDropdownOpen] = useState(false)
   const reminderDropdownRef = useRef<HTMLDivElement>(null)
+  
+  // Template saving
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
+  const [showTemplateModal, setShowTemplateModal] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+  const [templateDescription, setTemplateDescription] = useState('')
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -169,6 +175,43 @@ export default function StepReview({
       reminderEnabled,
       reminderInterval,
     })
+  }
+
+  // Handle save as template
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim() || !document.envelopeId) {
+      return
+    }
+
+    setIsSavingTemplate(true)
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          envelopeId: document.envelopeId,
+          name: templateName.trim(),
+          description: templateDescription.trim() || undefined,
+        }),
+      })
+
+      if (res.ok) {
+        setShowTemplateModal(false)
+        setTemplateName('')
+        setTemplateDescription('')
+        // Show success message (you can add a toast here)
+        alert('Template sauvegardé avec succès!')
+      } else {
+        const error = await res.json()
+        alert(error.error || 'Erreur lors de la sauvegarde du template')
+      }
+    } catch (error) {
+      console.error('Failed to save template:', error)
+      alert('Erreur lors de la sauvegarde du template')
+    } finally {
+      setIsSavingTemplate(false)
+    }
   }
 
   const selectedReminderOption = REMINDER_OPTIONS.find(o => o.value === reminderInterval) || REMINDER_OPTIONS[2]
@@ -475,6 +518,18 @@ export default function StepReview({
         >
           Retour
         </button>
+        {document.envelopeId && (
+          <button
+            onClick={() => setShowTemplateModal(true)}
+            className="px-6 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+            title="Sauvegarder comme template"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            Sauvegarder comme template
+          </button>
+        )}
         <button
           onClick={handleSend}
           disabled={isLoading}
@@ -495,6 +550,88 @@ export default function StepReview({
           )}
         </button>
       </motion.div>
+
+      {/* Save Template Modal */}
+      <AnimatePresence>
+        {showTemplateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => !isSavingTemplate && setShowTemplateModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-xl p-6 max-w-md w-full"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Sauvegarder comme template
+              </h3>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nom du template *
+                  </label>
+                  <input
+                    type="text"
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="Ex: Contrat de travail"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65]/20 focus:border-[#08CF65] outline-none"
+                    autoFocus
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Description (optionnel)
+                  </label>
+                  <textarea
+                    value={templateDescription}
+                    onChange={(e) => setTemplateDescription(e.target.value)}
+                    placeholder="Décrivez ce template..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65]/20 focus:border-[#08CF65] outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowTemplateModal(false)
+                    setTemplateName('')
+                    setTemplateDescription('')
+                  }}
+                  disabled={isSavingTemplate}
+                  className="px-4 py-2 text-gray-700 font-medium hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleSaveAsTemplate}
+                  disabled={!templateName.trim() || isSavingTemplate}
+                  className="px-4 py-2 bg-[#08CF65] text-white font-medium hover:bg-[#07b858] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSavingTemplate ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Sauvegarde...
+                    </>
+                  ) : (
+                    'Sauvegarder'
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
