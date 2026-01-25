@@ -38,6 +38,7 @@ export interface DocumentData {
   pdfUrl: string | null
   envelopeId: string | null
   slug: string | null
+  thumbnailUrl?: string | null
 }
 
 // Step labels will be translated dynamically
