@@ -65,11 +65,13 @@ export async function uploadPdf(
   
   await r2.uploadFile(key, buffer, 'application/pdf')
   
-  // SECURITY: Return key instead of public URL - URLs should be generated on demand with expiration
-  // The key is stored in DB and used to generate signed URLs when needed
-  const url = key // Store key, not public URL
+  // Store the public URL for internal use (worker needs it)
+  // User-facing access should use getSignedPdfUrl() for security
+  const publicUrl = process.env.R2_PUBLIC_URL 
+    ? `${process.env.R2_PUBLIC_URL}/${key}`
+    : key // Fallback to key if no public URL configured
   
-  return { url, key, hash }
+  return { url: publicUrl, key, hash }
 }
 
 export async function uploadThumbnail(
@@ -82,9 +84,12 @@ export async function uploadThumbnail(
   
   await r2.uploadFile(key, buffer, 'image/png')
   
-  // SECURITY: Return key instead of public URL
-  // Thumbnails can use longer-lived signed URLs since they're less sensitive
-  return key
+  // Return public URL for thumbnails (less sensitive, used for display)
+  const publicUrl = process.env.R2_PUBLIC_URL 
+    ? `${process.env.R2_PUBLIC_URL}/${key}`
+    : key
+  
+  return publicUrl
 }
 
 export async function getSignedDownloadUrl(key: string, expiresIn: number = PDF_URL_EXPIRY): Promise<string> {
