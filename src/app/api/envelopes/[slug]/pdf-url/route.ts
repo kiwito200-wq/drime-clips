@@ -45,19 +45,23 @@ export async function GET(
           { signers: { some: { email: user.email } } }
         ]
       },
-      select: { pdfUrl: true },
+      select: { pdfUrl: true, finalPdfUrl: true, status: true },
     })
 
     if (!envelope || !envelope.pdfUrl) {
       return NextResponse.json({ error: 'Envelope not found' }, { status: 404 })
     }
 
+    // Use signed PDF if available (document is completed), otherwise use original
+    const pdfUrlToUse = envelope.finalPdfUrl || envelope.pdfUrl
+    console.log('[PDF URL] Status:', envelope.status, '| Using:', envelope.finalPdfUrl ? 'finalPdfUrl' : 'pdfUrl')
+
     // Extract key from URL and decode it
     // URL format: https://pub-xxx.r2.dev/pdfs/timestamp-filename.pdf
     // or: https://xxx.r2.cloudflarestorage.com/bucket/pdfs/timestamp-filename.pdf
     let key: string
     try {
-      const url = new URL(envelope.pdfUrl)
+      const url = new URL(pdfUrlToUse)
       // Decode the pathname to handle %20 -> space, etc.
       key = decodeURIComponent(url.pathname)
       key = key.startsWith('/') ? key.slice(1) : key
@@ -72,10 +76,10 @@ export async function GET(
         key = key.slice('drime-sign/'.length)
       }
     } catch {
-      key = decodeURIComponent(envelope.pdfUrl)
+      key = decodeURIComponent(pdfUrlToUse)
     }
 
-    console.log('[PDF URL] pdfUrl from DB:', envelope.pdfUrl)
+    console.log('[PDF URL] pdfUrl from DB:', pdfUrlToUse)
     console.log('[PDF URL] Extracted key:', key)
 
     const client = getS3Client()

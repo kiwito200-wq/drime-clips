@@ -40,11 +40,38 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Extract key from URL and generate signed URL for download
     let downloadUrl = pdfUrl
     
-    // If it's a Cloudflare R2 URL, generate a signed URL
-    if (pdfUrl.includes('r2.cloudflarestorage.com')) {
-      const urlParts = new URL(pdfUrl)
-      const key = urlParts.pathname.replace(/^\/[^/]+\//, '') // Remove bucket name
+    // Generate a signed URL for R2 storage
+    // Handle multiple URL formats:
+    // - https://xxx.r2.cloudflarestorage.com/bucket/key
+    // - https://pub-xxx.r2.dev/key
+    // - Direct key (e.g., "signed-pdfs/xxx-signed.pdf")
+    try {
+      let key: string
+      
+      if (pdfUrl.startsWith('http')) {
+        const urlParts = new URL(pdfUrl)
+        key = decodeURIComponent(urlParts.pathname)
+        key = key.startsWith('/') ? key.slice(1) : key
+        
+        // Remove bucket name if present
+        const bucketName = process.env.R2_BUCKET_NAME || 'drimesign'
+        if (key.startsWith(bucketName + '/')) {
+          key = key.slice(bucketName.length + 1)
+        }
+        // Also handle drime-sign bucket variant
+        if (key.startsWith('drime-sign/')) {
+          key = key.slice('drime-sign/'.length)
+        }
+      } else {
+        // Direct key
+        key = pdfUrl
+      }
+      
+      console.log('[Download] Generating signed URL for key:', key)
       downloadUrl = await getSignedDownloadUrl(key)
+    } catch (e) {
+      console.error('[Download] Failed to generate signed URL, using original:', e)
+      // Fallback to original URL
     }
 
     // Fetch the PDF
@@ -57,8 +84,11 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     const pdfBuffer = await pdfResponse.arrayBuffer()
     
-    // Create filename from envelope name
-    const filename = `${envelope.name.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`
+    // Create filename from envelope name - add "_signe" suffix if this is the signed version
+    const safeName = envelope.name.replace(/[^a-zA-Z0-9_-]/g, '_')
+    const filename = envelope.finalPdfUrl 
+      ? `${safeName}_signe.pdf` 
+      : `${safeName}.pdf`
 
     // Return the PDF as a download
     return new NextResponse(pdfBuffer, {
