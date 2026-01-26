@@ -271,18 +271,15 @@ export default function ViewDocumentPage() {
               {statusBadge.label}
             </span>
             
-            {pdfUrl && (
-              <a
-                href={pdfUrl}
-                download={envelope.name}
-                className="flex items-center gap-2 px-4 py-2 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Télécharger
-              </a>
-            )}
+            <a
+              href={`/api/envelopes/${slug}/download`}
+              className="flex items-center gap-2 px-4 py-2 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Télécharger
+            </a>
           </div>
         </div>
       </header>
