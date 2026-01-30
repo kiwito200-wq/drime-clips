@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, ReactNode } from 'react'
 import { motion } from 'framer-motion'
+import { thumbnailCache } from '@/lib/thumbnail-cache'
 
 interface PDFViewerProps {
   fileUrl: string
@@ -87,6 +88,19 @@ export default function PDFViewer({
           const page = await pdfDoc.getPage(i)
           const viewport = page.getViewport({ scale: 1.5 }) // Base scale for quality
           
+          // Check cache first
+          const cached = thumbnailCache.get(fileUrl, i)
+          if (cached) {
+            loadedPages.push({
+              pageNumber: i,
+              width: cached.width,
+              height: cached.height,
+              canvas: null,
+              imageUrl: cached.imageUrl,
+            })
+            continue
+          }
+          
           // Create canvas for this page
           const canvas = document.createElement('canvas')
           const context = canvas.getContext('2d')
@@ -101,6 +115,9 @@ export default function PDFViewer({
 
           // Convert to image URL for better performance
           const imageUrl = canvas.toDataURL('image/png')
+          
+          // Store in cache
+          thumbnailCache.set(fileUrl, i, imageUrl, viewport.width, viewport.height)
 
           loadedPages.push({
             pageNumber: i,
