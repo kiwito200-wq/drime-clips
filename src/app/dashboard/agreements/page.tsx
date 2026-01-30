@@ -195,6 +195,9 @@ function AgreementsContent() {
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null)
   const [selectionEnd, setSelectionEnd] = useState<{ x: number; y: number } | null>(null)
+  
+  // Context menu state (right-click)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; envelopeId: string; showAbove: boolean } | null>(null)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -214,9 +217,30 @@ function AgreementsContent() {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setShowNotifications(false)
       }
+      // Close context menu on click outside
+      setContextMenu(null)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+  
+  // Handle right-click context menu
+  const handleContextMenu = useCallback((e: React.MouseEvent, envelope: Envelope) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    // Calculate if menu should show above or below
+    const menuHeight = 280 // Approximate menu height
+    const viewportHeight = window.innerHeight
+    const showAbove = e.clientY + menuHeight > viewportHeight - 20
+    
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      envelopeId: envelope.id,
+      showAbove
+    })
+    setOpenMenuId(null) // Close any open three-dot menu
   }, [])
 
   // Handle URL query params for filtering
@@ -1536,6 +1560,7 @@ function AgreementsContent() {
                         }
                       }}
                       onClick={() => handleDocumentClick(envelope)}
+                      onContextMenu={(e) => handleContextMenu(e, envelope)}
                       className={`flex items-center py-2.5 px-8 border-b border-gray-50 hover:bg-[#F5F5F5] cursor-pointer transition-colors group ${
                         selectedDocs.includes(envelope.id) ? 'bg-[#08CF65]/5' : ''
                       }`}
@@ -1689,6 +1714,72 @@ function AgreementsContent() {
           </div>
         </main>
       </div>
+
+      {/* Context Menu (Right-click) */}
+      {contextMenu && (() => {
+        const envelope = envelopes.find(e => e.id === contextMenu.envelopeId)
+        if (!envelope) return null
+        
+        return (
+          <div
+            className="fixed z-[9999] bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[220px]"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.showAbove ? 'auto' : contextMenu.y,
+              bottom: contextMenu.showAbove ? `calc(100vh - ${contextMenu.y}px)` : 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={(e) => { e.stopPropagation(); handleView(envelope); setContextMenu(null) }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+            >
+              <ViewIcon />
+              {locale === 'fr' ? 'Voir' : 'View'}
+            </button>
+            <button
+              onClick={(e) => { 
+                e.stopPropagation()
+                window.open(`/api/envelopes/${envelope.slug}/download`, '_blank')
+                setContextMenu(null)
+              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+            >
+              <DownloadIcon />
+              {locale === 'fr' ? 'Télécharger' : 'Download'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleAddRecipients(envelope); setContextMenu(null) }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+            >
+              <AddRecipientsIcon />
+              <span className="text-left whitespace-pre-line">{locale === 'fr' ? 'Ajouter des\ndestinataires' : 'Add\nrecipients'}</span>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleAuditTrail(envelope); setContextMenu(null) }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+            >
+              <AuditIcon />
+              {locale === 'fr' ? 'Historique' : 'Activity'}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleRename(envelope); setContextMenu(null) }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-900 hover:bg-[#F5F5F5] transition-colors"
+            >
+              <RenameIcon />
+              {locale === 'fr' ? 'Renommer' : 'Rename'}
+            </button>
+            <div className="border-t border-gray-100 my-1" />
+            <button
+              onClick={(e) => { e.stopPropagation(); handleDelete(envelope); setContextMenu(null) }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+            >
+              <DeleteIcon />
+              {locale === 'fr' ? 'Supprimer' : 'Delete'}
+            </button>
+          </div>
+        )
+      })()}
 
       {/* Rename Modal - Transfr style with animation */}
       <AnimatePresence>
