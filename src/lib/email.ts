@@ -76,8 +76,8 @@ Si vous avez des difficultés à cliquer sur le bouton, copiez et collez cette U
  * Base email wrapper with header and footer images - Transfr style
  */
 function getEmailWrapper(content: string): string {
-  const headerImage = `${APP_URL}/email-header.webp`
-  const footerImage = `${APP_URL}/email-footer.webp`
+  const headerImage = `${APP_URL}/email-header.png`
+  const footerImage = `${APP_URL}/email-footer.png`
   
   const year = new Date().getFullYear()
   const copyrightText = `© ${year} Drime, All rights reserved.`
