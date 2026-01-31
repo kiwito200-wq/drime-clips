@@ -123,7 +123,7 @@ ${emailStyles}
 </table>
 
 <!-- Main Card -->
-<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" class="main-card" style="width: 100%; max-width: 428px; margin: 0 auto; background-color: #fffffe; border-radius: 0;">
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" class="main-card" style="width: 100%; max-width: 428px; margin: 0 auto; background-color: #fffffe; border-radius: 12px;">
 <tbody>
 <tr>
 <td class="content-wrapper" style="padding: 32px 22px;">
