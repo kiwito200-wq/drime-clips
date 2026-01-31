@@ -32,6 +32,143 @@ function sanitizeUrl(url: string): string {
   }
 }
 
+// Email styles based on Transfr template
+const emailStyles = `
+#outlook a { padding:0; }
+body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
+table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
+p { display:block;margin:13px 0; }
+body {
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+a[x-apple-data-detectors] {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+@media only screen and (max-width:459px) {
+  .emailify { height:100% !important; margin:0 !important; padding:0 !important; width:100% !important; }
+  .content-wrapper { padding: 16px !important; }
+  .main-card { border-radius: 16px !important; }
+}
+`
+
+function getFallbackUrlHtml(url: string): string {
+  return `
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 8px 0 0 0;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 11px; font-weight: 400; line-height: 150%; color: #999999; text-align: center;">
+Si vous avez des difficultés à cliquer sur le bouton, copiez et collez cette URL dans votre navigateur :
+</p>
+<p style="margin: 4px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 11px; font-weight: 400; line-height: 150%; color: #666666; text-align: center; word-break: break-all;">
+<a href="${url}" style="color: #666666; text-decoration: underline;">${url}</a>
+</p>
+</td>
+</tr>
+</tbody>
+</table>`
+}
+
+/**
+ * Base email wrapper with header and footer images - Transfr style
+ */
+function getEmailWrapper(content: string): string {
+  const headerImage = `${APP_URL}/email-header.webp`
+  const footerImage = `${APP_URL}/email-footer.webp`
+  
+  const year = new Date().getFullYear()
+  const copyrightText = `© ${year} Drime, All rights reserved.`
+  
+  return `<!doctype html>
+<html lang="fr" dir="auto" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+<title>${COMPANY_NAME}</title>
+<!--[if !mso]><!-->
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!--<![endif]-->
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="format-detection" content="telephone=no, date=no, address=no, email=no, url=no">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<!--[if !mso]><!-->
+<link href="https://fonts.googleapis.com/css?family=Schibsted+Grotesk:700,500&display=swap" rel="stylesheet" type="text/css">
+<!--<![endif]-->
+<style type="text/css">
+${emailStyles}
+</style>
+</head>
+<body lang="fr" class="emailify" style="mso-line-height-rule: exactly; mso-hyphenate: none; word-spacing: normal; background-color: #f0f2f5; margin: 0; padding: 0;">
+<div style="background-color:#f0f2f5;" lang="fr" dir="auto">
+
+<!-- Container -->
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 460px; margin: 0 auto; background-color: #f0f2f5;">
+<tbody>
+<tr>
+<td style="padding: 0 16px;">
+
+<!-- Header Image -->
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 428px; margin: 0 auto;">
+<tbody>
+<tr>
+<td style="padding: 20px 0 0 0;">
+<img src="${headerImage}" alt="${COMPANY_NAME}" style="width: 100%; max-width: 428px; height: auto; display: block; border-radius: 12px 12px 0 0;" />
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Main Card -->
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" class="main-card" style="width: 100%; max-width: 428px; margin: 0 auto; background-color: #fffffe; border-radius: 0;">
+<tbody>
+<tr>
+<td class="content-wrapper" style="padding: 32px 22px;">
+
+${content}
+
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Footer Image -->
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 428px; margin: 0 auto;">
+<tbody>
+<tr>
+<td style="padding: 0;">
+<img src="${footerImage}" alt="" style="width: 100%; max-width: 428px; height: auto; display: block; border-radius: 0 0 12px 12px;" />
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Copyright -->
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 428px; margin: 0 auto;">
+<tbody>
+<tr>
+<td style="padding: 24px 0 16px 0; text-align: center;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 11px; font-weight: 500; line-height: 118%; color: #aaaaaa;">
+${copyrightText}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</body>
+</html>`
+}
+
 export interface SignatureRequestEmailData {
   to: string
   signerName: string | null
@@ -78,15 +215,91 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
   const safeSenderEmail = escapeHtml(senderEmail)
   const safeMessage = escapeHtml(message)
   const safeSigningLink = sanitizeUrl(signingLink)
-  const safeTo = escapeHtml(to)
   
   const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
   const expiresText = expiresAt 
-    ? `<p style="color: #6B7280; font-size: 14px; margin-top: 16px;">Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR')}.</p>`
+    ? `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.`
     : ''
-  const customMessage = safeMessage 
-    ? `<div style="background-color: #F3F4F6; padding: 16px; border-radius: 8px; margin: 16px 0;"><p style="margin: 0; color: #374151;">"${safeMessage}"</p></div>`
-    : ''
+
+  const htmlContent = `
+<!-- Greeting -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
+${greeting}
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+<strong>${safeSenderName}</strong> vous a envoyé le document <strong>"${safeDocumentName}"</strong> à signer.
+</p>
+${safeMessage ? `<p style="margin: 16px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 400; line-height: 150%; color: #666666; font-style: italic;">"${safeMessage}"</p>` : ''}
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Button -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin: 16px 0;">
+<tbody>
+<tr>
+<td align="center">
+<a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
+Signer le document
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Fallback URL -->
+${getFallbackUrlHtml(safeSigningLink)}
+
+<!-- Expires Text -->
+${expiresText ? `
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 8px 0;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 500; line-height: 150%; color: #f59e0b; text-align: center;">
+${expiresText}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+` : ''}
+
+<!-- Signature -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 16px 0;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+Cordialement,<br>${COMPANY_NAME}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Footer Info -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding-top: 16px; text-align: center;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 12px; font-weight: 500; line-height: 150%; color: #474747;">
+Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a invité à signer un document.
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+`
 
   try {
     const result = await resend.emails.send({
@@ -94,69 +307,11 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
       to: [to],
       reply_to: senderEmail,
       subject: `${safeSenderName} vous invite à signer "${safeDocumentName}"`,
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background-color: #F9FAFB;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <!-- Header -->
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: #08CF65; border-radius: 12px; margin-bottom: 16px;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h1 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0;">${COMPANY_NAME}</h1>
-    </div>
-    
-    <!-- Content -->
-    <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
-      
-      <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">
-        <strong>${safeSenderName}</strong> vous a envoyé le document <strong>"${safeDocumentName}"</strong> à signer.
-      </p>
-      
-      ${customMessage}
-      
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
-          Signer le document
-        </a>
-      </div>
-      
-      ${expiresText}
-      
-      <hr style="border: none; border-top: 1px solid #E5E7EB; margin: 24px 0;">
-      
-      <p style="font-size: 14px; color: #6B7280; margin: 0;">
-        Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br>
-        <a href="${safeSigningLink}" style="color: #08CF65; word-break: break-all;">${safeSigningLink}</a>
-      </p>
-    </div>
-    
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 32px;">
-      <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
-        Envoyé par ${COMPANY_NAME} · Une solution <a href="https://drime.cloud" style="color: #08CF65; text-decoration: none;">Drime</a>
-      </p>
-      <p style="font-size: 12px; color: #9CA3AF; margin: 8px 0 0 0;">
-        Cet email a été envoyé à ${safeTo} car ${safeSenderEmail} vous a invité à signer un document.
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-`,
+      html: getEmailWrapper(htmlContent),
     })
 
     console.log('[Email] Signature request sent to:', to, result)
     
-    // Check if there's an error in the response (rate limit, etc.)
     if (result.error) {
       console.error('[Email] API error for', to, ':', result.error)
       return { success: false, error: result.error }
@@ -182,6 +337,8 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
   const safeAuditTrailLink = auditTrailLink ? sanitizeUrl(auditTrailLink) : undefined
   
   const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
+  const completedDate = completedAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+  const completedTime = completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
   // Build attachments array for Resend
   const emailAttachments: { filename: string; content: Buffer }[] = []
@@ -200,73 +357,104 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
     })
   }
 
+  const htmlContent = `
+<!-- Greeting -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
+${greeting}
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé le ${completedDate} à ${completedTime}.
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Success Box -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin: 16px 0;">
+<tbody>
+<tr>
+<td align="center">
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; max-width: 382px; border: 1.5px solid #08CF65; border-radius: 12px; background-color: #f0fdf4;">
+<tbody>
+<tr>
+<td align="center" style="padding: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #166534; line-height: 150%;">
+✓ Signature vérifiée cryptographiquement
+</p>
+<p style="margin: 4px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 12px; font-weight: 400; color: #166534; line-height: 150%;">
+Ce document est juridiquement valide et inclut un certificat d'audit complet.
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+
+${safeDownloadLink ? `
+<!-- Button -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin: 16px 0;">
+<tbody>
+<tr>
+<td align="center">
+<a href="${safeDownloadLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
+Télécharger le document
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Fallback URL -->
+${getFallbackUrlHtml(safeDownloadLink)}
+` : ''}
+
+${safeAuditTrailLink ? `
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 8px 0; text-align: center;">
+<a href="${safeAuditTrailLink}" style="font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 500; color: #666666; text-decoration: underline;">
+Voir le certificat d'audit
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+` : ''}
+
+<!-- Signature -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 16px 0;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+Cordialement,<br>${COMPANY_NAME}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+`
+
   try {
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: `✅ "${safeDocumentName}" a été signé`,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background-color: #F9FAFB;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <!-- Header -->
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background-color: #DCFCE7; border-radius: 50%; margin-bottom: 16px;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 13L9 17L19 7" stroke="#16A34A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h1 style="font-size: 24px; font-weight: 700; color: #111827; margin: 0;">Document signé !</h1>
-    </div>
-    
-    <!-- Content -->
-    <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
-      
-      <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
-        Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé le ${completedAt.toLocaleDateString('fr-FR')} à ${completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}.
-      </p>
-      
-      <div style="background-color: #F0FDF4; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-        <p style="margin: 0; font-size: 14px; color: #166534;">
-          <strong>✓ Signature vérifiée cryptographiquement</strong><br>
-          Ce document est juridiquement valide et inclut un certificat d'audit complet.
-        </p>
-      </div>
-      
-      ${safeDownloadLink ? `
-      <div style="text-align: center; margin: 24px 0;">
-        <a href="${safeDownloadLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
-          Télécharger le document
-        </a>
-      </div>
-      ` : ''}
-      
-      ${safeAuditTrailLink ? `
-      <p style="text-align: center;">
-        <a href="${safeAuditTrailLink}" style="color: #6B7280; font-size: 14px; text-decoration: underline;">
-          Voir le certificat d'audit
-        </a>
-      </p>
-      ` : ''}
-    </div>
-    
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 32px;">
-      <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
-        ${COMPANY_NAME} · Signature électronique sécurisée
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-`,
+      html: getEmailWrapper(htmlContent),
     })
 
     console.log('[Email] Completed notification sent to:', to, result)
@@ -294,49 +482,66 @@ export async function sendReminderEmail(data: ReminderEmailData) {
     ? '⚠️ Ce document expire demain !' 
     : `📅 Il vous reste ${daysRemaining} jours pour signer.`
 
+  const htmlContent = `
+<!-- Greeting -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
+${greeting}
+</p>
+</td>
+</tr>
+<tr>
+<td style="padding-bottom: 16px;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+Vous n'avez pas encore signé le document <strong>"${safeDocumentName}"</strong> envoyé par ${safeSenderName}.
+</p>
+<p style="margin: 8px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600; line-height: 150%; color: #f59e0b;">
+${urgencyText}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Button -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%; margin: 16px 0;">
+<tbody>
+<tr>
+<td align="center">
+<a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
+Signer maintenant
+</a>
+</td>
+</tr>
+</tbody>
+</table>
+
+<!-- Fallback URL -->
+${getFallbackUrlHtml(safeSigningLink)}
+
+<!-- Signature -->
+<table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
+<tbody>
+<tr>
+<td style="padding: 16px 0;">
+<p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
+Cordialement,<br>${COMPANY_NAME}
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+`
+
   try {
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: `Rappel: "${safeDocumentName}" attend votre signature`,
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background-color: #F9FAFB;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-    <!-- Content -->
-    <div style="background-color: white; border-radius: 12px; padding: 32px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-      <p style="font-size: 16px; color: #374151; margin: 0 0 16px 0;">${greeting}</p>
-      
-      <p style="font-size: 16px; color: #374151; margin: 0 0 8px 0;">
-        Vous n'avez pas encore signé le document <strong>"${safeDocumentName}"</strong> envoyé par ${safeSenderName}.
-      </p>
-      
-      <p style="font-size: 14px; color: #F59E0B; font-weight: 600; margin: 0 0 24px 0;">
-        ${urgencyText}
-      </p>
-      
-      <div style="text-align: center; margin: 24px 0;">
-        <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: white; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px;">
-          Signer maintenant
-        </a>
-      </div>
-    </div>
-    
-    <!-- Footer -->
-    <div style="text-align: center; margin-top: 32px;">
-      <p style="font-size: 12px; color: #9CA3AF; margin: 0;">
-        ${COMPANY_NAME} · Une solution Drime
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-`,
+      html: getEmailWrapper(htmlContent),
     })
 
     console.log('[Email] Reminder sent to:', to, result)
