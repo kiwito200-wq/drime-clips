@@ -4,6 +4,7 @@ import { logAuditEvent, generateSignatureHash, generateSignedPdf, generateAuditT
 import { sendCompletedEmail } from '@/lib/email'
 import { r2 } from '@/lib/storage'
 import { notifySigned, notifyCompleted } from '@/lib/notifications'
+import { uploadSignedDocumentToDrime, uploadSignedDocumentForSigner } from '@/lib/drime-upload'
 import crypto from 'crypto'
 
 interface Params {
@@ -184,6 +185,31 @@ export async function POST(request: NextRequest, { params }: Params) {
           signer.envelope.slug,
           signer.envelope.name
         )
+        
+        // Upload signed document to Drime for document owner
+        if (signedPdfBuffer) {
+          try {
+            await uploadSignedDocumentToDrime(
+              signer.envelope.userId,
+              signedPdfBuffer,
+              signer.envelope.name
+            )
+            
+            // Also upload for each signer who has a Drime account
+            for (const s of allSigners) {
+              // Skip if same email as owner
+              if (s.email.toLowerCase() !== signer.envelope.user.email.toLowerCase()) {
+                await uploadSignedDocumentForSigner(
+                  s.email,
+                  signedPdfBuffer,
+                  signer.envelope.name
+                )
+              }
+            }
+          } catch {
+            // Silent fail for Drime upload - document is still saved in R2
+          }
+        }
       } catch (pdfError: any) {
         // Still mark as completed even if PDF generation fails
         await prisma.envelope.update({
