@@ -178,24 +178,27 @@ async function uploadFileToDrime(
     debugLog('Uploading file:', fileName, 'size:', pdfBuffer.length, 'bytes')
     debugLog('Folder ID:', folderId, 'Workspace ID:', workspaceId)
     
-    // Create form data
+    // Create form data with all required fields per Drime API docs
     const formData = new FormData()
     
-    // Convert Buffer to File object (Node.js 20+ has native File support)
-    // Use Uint8Array for better compatibility
-    const uint8Array = new Uint8Array(pdfBuffer)
-    const file = new File([uint8Array], fileName, { type: 'application/pdf' })
+    // Create Blob from Buffer - this is the most compatible approach
+    const blob = new Blob([pdfBuffer], { type: 'application/pdf' })
     
-    formData.append('file', file)
+    // Append file with filename (3rd param sets Content-Disposition filename)
+    formData.append('file', blob, fileName)
+    
+    // Required: workspaceId (0 = personal workspace)
     formData.append('workspaceId', String(workspaceId))
     
-    // Include parentId (null/empty for root, folder ID otherwise)
+    // Optional: parentId (folder ID or null for root)
     if (folderId) {
       formData.append('parentId', folderId)
-    } else {
-      // Some APIs expect parentId to be present even if null
-      formData.append('parentId', '')
     }
+    
+    // Optional: relativePath (can help with folder creation)
+    formData.append('relativePath', fileName)
+    
+    debugLog('FormData fields: file, workspaceId=' + workspaceId + ', parentId=' + (folderId || 'null') + ', relativePath=' + fileName)
     
     // Get write headers but remove Content-Type (FormData sets it with boundary)
     const writeHeaders = getWriteHeaders(drimeToken, xsrfToken)
