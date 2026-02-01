@@ -24,11 +24,49 @@ interface DrimeUploadResult {
 }
 
 /**
+ * Get XSRF token from Drime (required for POST requests in Laravel)
+ */
+async function getXsrfToken(drimeToken: string): Promise<string | null> {
+  try {
+    debugLog('Fetching XSRF token from Drime...')
+    const csrfRes = await fetch(`${DRIME_API_URL}/sanctum/csrf-cookie`, {
+      method: 'GET',
+      headers: {
+        'Cookie': `drime_session=${drimeToken}`,
+        'Accept': 'application/json',
+      },
+      credentials: 'include',
+    })
+    
+    debugLog('CSRF cookie response status:', csrfRes.status)
+    
+    // Extract XSRF-TOKEN from set-cookie header
+    const setCookie = csrfRes.headers.get('set-cookie')
+    if (setCookie) {
+      const xsrfMatch = setCookie.match(/XSRF-TOKEN=([^;]+)/)
+      if (xsrfMatch) {
+        const token = decodeURIComponent(xsrfMatch[1])
+        debugLog('Got XSRF token, length:', token.length)
+        return token
+      }
+    }
+    
+    debugLog('No XSRF token found in response')
+    return null
+  } catch (error) {
+    debugLog('Error getting XSRF token:', error)
+    return null
+  }
+}
+
+/**
  * Get headers for Drime API requests
  */
-function getDrimeHeaders(drimeToken: string, xsrfToken?: string): Record<string, string> {
+function getDrimeHeaders(drimeToken: string, xsrfToken?: string | null): Record<string, string> {
   const headers: Record<string, string> = {
-    'Cookie': `drime_session=${drimeToken}`,
+    'Cookie': xsrfToken 
+      ? `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
+      : `drime_session=${drimeToken}`,
     'Accept': 'application/json',
     'Origin': DRIME_API_URL,
     'Referer': `${DRIME_API_URL}/`,
@@ -44,9 +82,9 @@ function getDrimeHeaders(drimeToken: string, xsrfToken?: string): Record<string,
 /**
  * Find or create the "Documents signés" folder in user's Drime
  */
-async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): Promise<string | null> {
+async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, workspaceId: number = 0): Promise<string | null> {
   try {
-    const headers = getDrimeHeaders(drimeToken)
+    const headers = getDrimeHeaders(drimeToken, xsrfToken)
     debugLog('Finding/creating folder with token length:', drimeToken?.length)
     
     // Search for existing folder
@@ -79,32 +117,44 @@ async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): 
       debugLog('Search failed:', searchRes.status, errorText.substring(0, 200))
     }
     
-    // Create folder if not found
+    // Create folder if not found - use file-entries endpoint with type=folder
     debugLog('Creating new folder:', SIGNED_DOCS_FOLDER_NAME)
-    const createUrl = `${DRIME_API_URL}/api/v1/drive/folders`
-    const createRes = await fetch(createUrl, {
-      method: 'POST',
-      headers: { 
-        ...headers, 
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        name: SIGNED_DOCS_FOLDER_NAME,
-        workspaceId,
-      }),
-    })
     
-    debugLog('Create folder response status:', createRes.status)
+    // Try different endpoints for folder creation
+    const endpoints = [
+      `${DRIME_API_URL}/api/v1/drive/file-entries`,  // Laravel common pattern
+      `${DRIME_API_URL}/api/v1/folders`,              // Alternative
+    ]
     
-    if (createRes.ok) {
-      const folderData = await createRes.json()
-      debugLog('Created folder:', folderData)
-      return folderData.id || folderData.folder?.id || null
-    } else {
-      const errorText = await createRes.text()
-      debugLog('Create folder failed:', createRes.status, errorText.substring(0, 200))
+    for (const createUrl of endpoints) {
+      debugLog('Trying folder creation at:', createUrl)
+      const createRes = await fetch(createUrl, {
+        method: 'POST',
+        headers: { 
+          ...headers, 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: SIGNED_DOCS_FOLDER_NAME,
+          type: 'folder',
+          workspaceId,
+        }),
+      })
+      
+      debugLog('Create folder response status:', createRes.status)
+      
+      if (createRes.ok) {
+        const folderData = await createRes.json()
+        debugLog('Created folder:', folderData)
+        return folderData.id || folderData.folder?.id || folderData.fileEntry?.id || null
+      } else if (createRes.status !== 404 && createRes.status !== 405) {
+        const errorText = await createRes.text()
+        debugLog('Create folder failed:', createRes.status, errorText.substring(0, 200))
+      }
     }
     
+    // If folder creation fails, upload to root (no folder)
+    debugLog('Could not create folder, will upload to root')
     return null
   } catch (error) {
     console.error('[Drime Upload] Error finding/creating folder:', error)
@@ -117,15 +167,16 @@ async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): 
  */
 async function uploadFileToDrime(
   drimeToken: string,
+  xsrfToken: string | null,
   pdfBuffer: Buffer,
   fileName: string,
   folderId: string | null,
   workspaceId: number = 0
 ): Promise<{ success: boolean; fileId?: string; error?: string }> {
   try {
-    const headers = getDrimeHeaders(drimeToken)
     debugLog('Uploading file:', fileName, 'size:', pdfBuffer.length, 'bytes')
     debugLog('Folder ID:', folderId, 'Workspace ID:', workspaceId)
+    debugLog('Has XSRF token:', !!xsrfToken)
     
     // Create form data
     const formData = new FormData()
@@ -142,16 +193,29 @@ async function uploadFileToDrime(
       formData.append('parentId', folderId)
     }
     
+    // Build headers for multipart upload
+    const cookieValue = xsrfToken 
+      ? `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
+      : `drime_session=${drimeToken}`
+    
+    const uploadHeaders: Record<string, string> = {
+      'Cookie': cookieValue,
+      'Accept': 'application/json',
+      'Origin': DRIME_API_URL,
+      'Referer': `${DRIME_API_URL}/`,
+    }
+    
+    if (xsrfToken) {
+      uploadHeaders['X-XSRF-TOKEN'] = xsrfToken
+    }
+    
     // Upload file
     const uploadUrl = `${DRIME_API_URL}/api/v1/drive/uploads`
     debugLog('Upload URL:', uploadUrl)
     
     const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
-      headers: {
-        ...headers,
-        // Don't set Content-Type for FormData - browser will set it with boundary
-      },
+      headers: uploadHeaders,
       body: formData,
     })
     
@@ -160,7 +224,7 @@ async function uploadFileToDrime(
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text()
       console.error('[Drime Upload] Upload failed:', uploadRes.status, errorText.substring(0, 500))
-      return { success: false, error: `Upload failed: ${uploadRes.status}` }
+      return { success: false, error: `Upload failed: ${uploadRes.status} - ${errorText.substring(0, 100)}` }
     }
     
     const uploadData = await uploadRes.json()
@@ -212,8 +276,12 @@ export async function uploadSignedDocumentToDrime(
       return { success: false, error: 'Failed to decrypt Drime token' }
     }
     
+    // Get XSRF token first (required for POST requests in Laravel)
+    const xsrfToken = await getXsrfToken(drimeToken)
+    debugLog('Got XSRF token:', !!xsrfToken)
+    
     // Find or create the signed documents folder
-    const folderId = await findOrCreateFolder(drimeToken)
+    const folderId = await findOrCreateFolder(drimeToken, xsrfToken)
     debugLog('Folder ID result:', folderId)
     
     // Generate filename with date
@@ -224,7 +292,7 @@ export async function uploadSignedDocumentToDrime(
     debugLog('Filename:', fileName)
     
     // Upload the file
-    const uploadResult = await uploadFileToDrime(drimeToken, pdfBuffer, fileName, folderId)
+    const uploadResult = await uploadFileToDrime(drimeToken, xsrfToken, pdfBuffer, fileName, folderId)
     debugLog('Upload result:', uploadResult)
     
     if (uploadResult.success) {
