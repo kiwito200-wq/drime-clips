@@ -180,18 +180,21 @@ async function uploadFileToDrime(
     
     // Create form data
     const formData = new FormData()
-    // Convert Buffer to ArrayBuffer for Blob compatibility
-    const arrayBuffer = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength
-    ) as ArrayBuffer
-    const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
-    formData.append('file', blob, fileName)
+    
+    // Convert Buffer to File object (Node.js 20+ has native File support)
+    // Use Uint8Array for better compatibility
+    const uint8Array = new Uint8Array(pdfBuffer)
+    const file = new File([uint8Array], fileName, { type: 'application/pdf' })
+    
+    formData.append('file', file)
     formData.append('workspaceId', String(workspaceId))
     
-    // Always include parentId (null for root)
+    // Include parentId (null/empty for root, folder ID otherwise)
     if (folderId) {
       formData.append('parentId', folderId)
+    } else {
+      // Some APIs expect parentId to be present even if null
+      formData.append('parentId', '')
     }
     
     // Get write headers but remove Content-Type (FormData sets it with boundary)
