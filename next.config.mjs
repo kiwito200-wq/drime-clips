@@ -44,12 +44,12 @@ const nextConfig = {
               "default-src 'self'",
               // Scripts: self, inline (for Next.js), eval (for pdf.js), and jsdelivr for pdf.js worker
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
-              // Styles: self and inline (for styled components, etc.)
-              "style-src 'self' 'unsafe-inline'",
+              // Styles: self, inline (for styled components, etc.), and Google Fonts
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // Images: self, data URIs (for signatures), and our R2 bucket
               "img-src 'self' data: blob: https://*.r2.dev https://*.r2.cloudflarestorage.com https://*.drime.cloud",
-              // Fonts: self and data URIs
-              "font-src 'self' data:",
+              // Fonts: self, data URIs, and Google Fonts
+              "font-src 'self' data: https://fonts.gstatic.com",
               // Connect: self, our APIs, and jsdelivr for pdf.js worker
               "connect-src 'self' https://*.drime.cloud https://*.r2.dev https://*.r2.cloudflarestorage.com https://api.resend.com https://cdn.jsdelivr.net wss:",
               // Media: self
