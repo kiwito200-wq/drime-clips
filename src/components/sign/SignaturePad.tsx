@@ -161,28 +161,33 @@ export default function SignaturePad({
   }, [])
 
   const generateTypedSignature = useCallback((): string => {
+    // Use high resolution canvas for better quality (3x scale)
+    const scale = 3
+    const baseWidth = 400
+    const baseHeight = 100
     const canvas = document.createElement('canvas')
-    canvas.width = 400
-    canvas.height = 100
+    canvas.width = baseWidth * scale
+    canvas.height = baseHeight * scale
     
     const ctx = canvas.getContext('2d')
     if (!ctx) return ''
 
+    ctx.scale(scale, scale)
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.fillRect(0, 0, baseWidth, baseHeight)
 
     ctx.fillStyle = '#1a1a1a'
     ctx.font = `italic 40px ${selectedFont}`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(typedName || 'Signature', canvas.width / 2, canvas.height / 2)
+    ctx.fillText(typedName || 'Signature', baseWidth / 2, baseHeight / 2)
 
     const textWidth = ctx.measureText(typedName || 'Signature').width
     ctx.beginPath()
     ctx.strokeStyle = '#1a1a1a'
     ctx.lineWidth = 1
-    ctx.moveTo((canvas.width - textWidth) / 2 - 10, canvas.height / 2 + 18)
-    ctx.lineTo((canvas.width + textWidth) / 2 + 10, canvas.height / 2 + 18)
+    ctx.moveTo((baseWidth - textWidth) / 2 - 10, baseHeight / 2 + 18)
+    ctx.lineTo((baseWidth + textWidth) / 2 + 10, baseHeight / 2 + 18)
     ctx.stroke()
 
     return canvas.toDataURL('image/png')

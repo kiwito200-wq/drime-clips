@@ -249,7 +249,8 @@ export default function SigningBanner({
   useEffect(() => {
     if (canvasRef.current && signatureMode === 'draw' && (currentField?.type === 'signature' || currentField?.type === 'initials')) {
       const canvas = canvasRef.current
-      const ratio = Math.max(window.devicePixelRatio || 1, 1)
+      // Use at least 2x scale for better quality signatures
+      const ratio = Math.max(window.devicePixelRatio || 2, 2)
       canvas.width = canvas.offsetWidth * ratio
       canvas.height = canvas.offsetHeight * ratio
       canvas.getContext('2d')?.scale(ratio, ratio)
@@ -468,18 +469,23 @@ export default function SigningBanner({
           saveSignatureToUser(uploadedImage)
         }
       } else if (signatureMode === 'type' && typedSignature.trim()) {
+        // Use high resolution canvas for better quality (3x scale)
+        const scale = 3
+        const baseWidth = 400
+        const baseHeight = 120
         const canvas = document.createElement('canvas')
-        canvas.width = 400
-        canvas.height = 120
+        canvas.width = baseWidth * scale
+        canvas.height = baseHeight * scale
         const ctx = canvas.getContext('2d')
         if (ctx) {
+          ctx.scale(scale, scale)
           ctx.fillStyle = 'white'
-          ctx.fillRect(0, 0, 400, 120)
+          ctx.fillRect(0, 0, baseWidth, baseHeight)
           ctx.fillStyle = 'black'
           ctx.font = `italic 42px "${SIGNATURE_FONTS[selectedFont].name}", cursive`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText(typedSignature, 200, 60)
+          ctx.fillText(typedSignature, baseWidth / 2, baseHeight / 2)
           signatureDataUrl = canvas.toDataURL('image/png')
           onValueChange(currentField.id, signatureDataUrl)
           // Save typed signature for future use

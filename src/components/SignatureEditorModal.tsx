@@ -138,7 +138,8 @@ export default function SignatureEditorModal({
       if (!canvasRef.current) return
       
       const canvas = canvasRef.current
-      const ratio = Math.max(window.devicePixelRatio || 1, 1)
+      // Use at least 2x scale for better quality signatures
+      const ratio = Math.max(window.devicePixelRatio || 2, 2)
       canvas.width = canvas.offsetWidth * ratio
       canvas.height = canvas.offsetHeight * ratio
       const ctx = canvas.getContext('2d')
@@ -235,18 +236,23 @@ export default function SignatureEditorModal({
       }
       return signaturePadRef.current.toDataURL('image/png')
     } else if (mode === 'type' && typedName.trim()) {
+      // Use high resolution canvas for better quality (3x scale)
+      const scale = 3
+      const baseWidth = 400
+      const baseHeight = 120
       const canvas = document.createElement('canvas')
-      canvas.width = 400
-      canvas.height = 120
+      canvas.width = baseWidth * scale
+      canvas.height = baseHeight * scale
       const ctx = canvas.getContext('2d')
       if (ctx) {
+        ctx.scale(scale, scale)
         ctx.fillStyle = 'white'
-        ctx.fillRect(0, 0, 400, 120)
+        ctx.fillRect(0, 0, baseWidth, baseHeight)
         ctx.fillStyle = 'black'
         ctx.font = `italic 42px "${SIGNATURE_FONTS[selectedFont].name}", cursive`
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.fillText(typedName, 200, 60)
+        ctx.fillText(typedName, baseWidth / 2, baseHeight / 2)
         return canvas.toDataURL('image/png')
       }
     } else if (mode === 'upload' && uploadedImage) {
