@@ -60,40 +60,44 @@ async function getXsrfToken(drimeToken: string): Promise<string | null> {
 }
 
 /**
- * Get headers for Drime API requests
+ * Get headers for Drime API GET requests (no XSRF needed)
  */
-function getDrimeHeaders(drimeToken: string, xsrfToken?: string | null): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Cookie': xsrfToken 
-      ? `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
-      : `drime_session=${drimeToken}`,
+function getReadHeaders(drimeToken: string): Record<string, string> {
+  return {
+    'Cookie': `drime_session=${drimeToken}`,
     'Accept': 'application/json',
     'Origin': DRIME_API_URL,
     'Referer': `${DRIME_API_URL}/`,
   }
-  
-  if (xsrfToken) {
-    headers['X-XSRF-TOKEN'] = xsrfToken
+}
+
+/**
+ * Get headers for Drime API POST/PUT/DELETE requests (XSRF required)
+ */
+function getWriteHeaders(drimeToken: string, xsrfToken: string): Record<string, string> {
+  return {
+    'Cookie': `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`,
+    'Accept': 'application/json',
+    'Origin': DRIME_API_URL,
+    'Referer': `${DRIME_API_URL}/`,
+    'X-XSRF-TOKEN': xsrfToken,
   }
-  
-  return headers
 }
 
 /**
  * Find or create the "Documents signés" folder in user's Drime
  */
-async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, workspaceId: number = 0): Promise<string | null> {
+async function findOrCreateFolder(drimeToken: string, xsrfToken: string, workspaceId: number = 0): Promise<string | null> {
   try {
-    const headers = getDrimeHeaders(drimeToken, xsrfToken)
     debugLog('Finding/creating folder with token length:', drimeToken?.length)
     
-    // Search for existing folder
+    // Search for existing folder (GET - no XSRF needed)
     const searchUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?perPage=100&workspaceId=${workspaceId}&type=folder`
     debugLog('Searching folders at:', searchUrl)
     
     const searchRes = await fetch(searchUrl, {
       method: 'GET',
-      headers: { ...headers, 'Accept': 'application/json' },
+      headers: getReadHeaders(drimeToken),
     })
     
     debugLog('Search response status:', searchRes.status)
@@ -102,6 +106,7 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
       const data = await searchRes.json()
       const entries = Array.isArray(data) ? data : (data.data || [])
       debugLog('Found', entries.length, 'folder entries')
+      debugLog('Folder names:', entries.map((f: any) => f.name))
       
       // Find folder by name
       const existingFolder = entries.find((f: any) => 
@@ -109,8 +114,8 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
       )
       
       if (existingFolder) {
-        debugLog('Found existing folder:', existingFolder.id)
-        return existingFolder.id
+        debugLog('Found existing folder:', existingFolder.id, existingFolder.name)
+        return String(existingFolder.id)
       }
     } else {
       const errorText = await searchRes.text()
@@ -127,7 +132,7 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
     const createRes = await fetch(createUrl, {
       method: 'POST',
       headers: { 
-        ...headers, 
+        ...getWriteHeaders(drimeToken, xsrfToken), 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -142,7 +147,8 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
       const folderData = await createRes.json()
       debugLog('Created folder:', folderData)
       // Response format: { status: "success", folder: { id: ..., name: ..., ... } }
-      return folderData.folder?.id || folderData.id || null
+      const folderId = folderData.folder?.id || folderData.id || null
+      return folderId ? String(folderId) : null
     } else {
       const errorText = await createRes.text()
       debugLog('Create folder failed:', createRes.status, errorText.substring(0, 300))
@@ -162,7 +168,7 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
  */
 async function uploadFileToDrime(
   drimeToken: string,
-  xsrfToken: string | null,
+  xsrfToken: string,
   pdfBuffer: Buffer,
   fileName: string,
   folderId: string | null,
@@ -171,7 +177,6 @@ async function uploadFileToDrime(
   try {
     debugLog('Uploading file:', fileName, 'size:', pdfBuffer.length, 'bytes')
     debugLog('Folder ID:', folderId, 'Workspace ID:', workspaceId)
-    debugLog('Has XSRF token:', !!xsrfToken)
     
     // Create form data
     const formData = new FormData()
@@ -184,33 +189,22 @@ async function uploadFileToDrime(
     formData.append('file', blob, fileName)
     formData.append('workspaceId', String(workspaceId))
     
+    // Always include parentId (null for root)
     if (folderId) {
       formData.append('parentId', folderId)
     }
     
-    // Build headers for multipart upload
-    const cookieValue = xsrfToken 
-      ? `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
-      : `drime_session=${drimeToken}`
-    
-    const uploadHeaders: Record<string, string> = {
-      'Cookie': cookieValue,
-      'Accept': 'application/json',
-      'Origin': DRIME_API_URL,
-      'Referer': `${DRIME_API_URL}/`,
-    }
-    
-    if (xsrfToken) {
-      uploadHeaders['X-XSRF-TOKEN'] = xsrfToken
-    }
+    // Get write headers but remove Content-Type (FormData sets it with boundary)
+    const writeHeaders = getWriteHeaders(drimeToken, xsrfToken)
     
     // Upload file - correct endpoint is /api/v1/uploads (NOT /drive/uploads)
     const uploadUrl = `${DRIME_API_URL}/api/v1/uploads`
     debugLog('Upload URL:', uploadUrl)
+    debugLog('Request headers:', Object.keys(writeHeaders))
     
     const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
-      headers: uploadHeaders,
+      headers: writeHeaders,  // Don't add Content-Type - FormData handles it
       body: formData,
     })
     
@@ -226,7 +220,7 @@ async function uploadFileToDrime(
     debugLog('Upload success:', uploadData)
     return { 
       success: true, 
-      fileId: uploadData.id || uploadData.fileEntry?.id || uploadData.file?.id 
+      fileId: uploadData.fileEntry?.id || uploadData.id || uploadData.file?.id 
     }
   } catch (error) {
     console.error('[Drime Upload] Error uploading file:', error)
@@ -274,6 +268,11 @@ export async function uploadSignedDocumentToDrime(
     // Get XSRF token first (required for POST requests in Laravel)
     const xsrfToken = await getXsrfToken(drimeToken)
     debugLog('Got XSRF token:', !!xsrfToken)
+    
+    if (!xsrfToken) {
+      debugLog('ERROR: Could not get XSRF token from Drime')
+      return { success: false, error: 'Could not get XSRF token from Drime' }
+    }
     
     // Find or create the signed documents folder
     const folderId = await findOrCreateFolder(drimeToken, xsrfToken)
