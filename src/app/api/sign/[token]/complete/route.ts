@@ -188,27 +188,34 @@ export async function POST(request: NextRequest, { params }: Params) {
         
         // Upload signed document to Drime for document owner
         if (signedPdfBuffer) {
+          console.log('[Complete] Starting Drime upload for owner:', signer.envelope.userId)
           try {
-            await uploadSignedDocumentToDrime(
+            const drimeResult = await uploadSignedDocumentToDrime(
               signer.envelope.userId,
               signedPdfBuffer,
               signer.envelope.name
             )
+            console.log('[Complete] Drime upload result for owner:', drimeResult)
             
             // Also upload for each signer who has a Drime account
             for (const s of allSigners) {
               // Skip if same email as owner
               if (s.email.toLowerCase() !== signer.envelope.user.email.toLowerCase()) {
-                await uploadSignedDocumentForSigner(
+                console.log('[Complete] Starting Drime upload for signer:', s.email)
+                const signerResult = await uploadSignedDocumentForSigner(
                   s.email,
                   signedPdfBuffer,
                   signer.envelope.name
                 )
+                console.log('[Complete] Drime upload result for signer:', signerResult)
               }
             }
-          } catch {
+          } catch (drimeError) {
+            console.error('[Complete] Drime upload error:', drimeError)
             // Silent fail for Drime upload - document is still saved in R2
           }
+        } else {
+          console.log('[Complete] No signedPdfBuffer, skipping Drime upload')
         }
       } catch (pdfError: any) {
         // Still mark as completed even if PDF generation fails

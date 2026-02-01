@@ -10,6 +10,12 @@ import { safeDecrypt } from './encryption'
 const DRIME_API_URL = process.env.DRIME_API_URL || 'https://front.preprod.drime.cloud'
 const SIGNED_DOCS_FOLDER_NAME = 'Documents signés'
 
+// Enable debug logging
+const DEBUG = true
+function debugLog(...args: any[]) {
+  if (DEBUG) console.log('[Drime Upload]', ...args)
+}
+
 interface DrimeUploadResult {
   success: boolean
   fileId?: string
@@ -41,17 +47,23 @@ function getDrimeHeaders(drimeToken: string, xsrfToken?: string): Record<string,
 async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): Promise<string | null> {
   try {
     const headers = getDrimeHeaders(drimeToken)
+    debugLog('Finding/creating folder with token length:', drimeToken?.length)
     
     // Search for existing folder
     const searchUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?perPage=100&workspaceId=${workspaceId}&type=folder`
+    debugLog('Searching folders at:', searchUrl)
+    
     const searchRes = await fetch(searchUrl, {
       method: 'GET',
       headers: { ...headers, 'Accept': 'application/json' },
     })
     
+    debugLog('Search response status:', searchRes.status)
+    
     if (searchRes.ok) {
       const data = await searchRes.json()
       const entries = Array.isArray(data) ? data : (data.data || [])
+      debugLog('Found', entries.length, 'folder entries')
       
       // Find folder by name
       const existingFolder = entries.find((f: any) => 
@@ -59,11 +71,16 @@ async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): 
       )
       
       if (existingFolder) {
+        debugLog('Found existing folder:', existingFolder.id)
         return existingFolder.id
       }
+    } else {
+      const errorText = await searchRes.text()
+      debugLog('Search failed:', searchRes.status, errorText.substring(0, 200))
     }
     
     // Create folder if not found
+    debugLog('Creating new folder:', SIGNED_DOCS_FOLDER_NAME)
     const createUrl = `${DRIME_API_URL}/api/v1/drive/folders`
     const createRes = await fetch(createUrl, {
       method: 'POST',
@@ -77,9 +94,15 @@ async function findOrCreateFolder(drimeToken: string, workspaceId: number = 0): 
       }),
     })
     
+    debugLog('Create folder response status:', createRes.status)
+    
     if (createRes.ok) {
       const folderData = await createRes.json()
+      debugLog('Created folder:', folderData)
       return folderData.id || folderData.folder?.id || null
+    } else {
+      const errorText = await createRes.text()
+      debugLog('Create folder failed:', createRes.status, errorText.substring(0, 200))
     }
     
     return null
@@ -101,6 +124,8 @@ async function uploadFileToDrime(
 ): Promise<{ success: boolean; fileId?: string; error?: string }> {
   try {
     const headers = getDrimeHeaders(drimeToken)
+    debugLog('Uploading file:', fileName, 'size:', pdfBuffer.length, 'bytes')
+    debugLog('Folder ID:', folderId, 'Workspace ID:', workspaceId)
     
     // Create form data
     const formData = new FormData()
@@ -119,6 +144,8 @@ async function uploadFileToDrime(
     
     // Upload file
     const uploadUrl = `${DRIME_API_URL}/api/v1/drive/uploads`
+    debugLog('Upload URL:', uploadUrl)
+    
     const uploadRes = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
@@ -128,13 +155,16 @@ async function uploadFileToDrime(
       body: formData,
     })
     
+    debugLog('Upload response status:', uploadRes.status)
+    
     if (!uploadRes.ok) {
       const errorText = await uploadRes.text()
-      console.error('[Drime Upload] Upload failed:', uploadRes.status, errorText)
+      console.error('[Drime Upload] Upload failed:', uploadRes.status, errorText.substring(0, 500))
       return { success: false, error: `Upload failed: ${uploadRes.status}` }
     }
     
     const uploadData = await uploadRes.json()
+    debugLog('Upload success:', uploadData)
     return { 
       success: true, 
       fileId: uploadData.id || uploadData.fileEntry?.id || uploadData.file?.id 
@@ -154,36 +184,51 @@ export async function uploadSignedDocumentToDrime(
   pdfBuffer: Buffer,
   documentName: string
 ): Promise<DrimeUploadResult> {
+  debugLog('========== Starting Drime Upload ==========')
+  debugLog('User ID:', userId)
+  debugLog('Document:', documentName)
+  debugLog('PDF size:', pdfBuffer.length, 'bytes')
+  
   try {
     // Get user with Drime token
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { drimeToken: true, drimeUserId: true },
+      select: { drimeToken: true, drimeUserId: true, email: true },
     })
     
+    debugLog('User found:', user?.email, 'has token:', !!user?.drimeToken)
+    
     if (!user?.drimeToken) {
+      debugLog('ERROR: User has no Drime token')
       return { success: false, error: 'User has no Drime token' }
     }
     
     // Decrypt the token
     const drimeToken = safeDecrypt(user.drimeToken)
+    debugLog('Token decrypted:', !!drimeToken, 'length:', drimeToken?.length)
+    
     if (!drimeToken) {
+      debugLog('ERROR: Failed to decrypt Drime token')
       return { success: false, error: 'Failed to decrypt Drime token' }
     }
     
     // Find or create the signed documents folder
     const folderId = await findOrCreateFolder(drimeToken)
+    debugLog('Folder ID result:', folderId)
     
     // Generate filename with date
     const date = new Date()
     const dateStr = date.toISOString().split('T')[0] // YYYY-MM-DD
     const safeDocName = documentName.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ\s\-_.]/g, '')
     const fileName = `${safeDocName} - Signé ${dateStr}.pdf`
+    debugLog('Filename:', fileName)
     
     // Upload the file
     const uploadResult = await uploadFileToDrime(drimeToken, pdfBuffer, fileName, folderId)
+    debugLog('Upload result:', uploadResult)
     
     if (uploadResult.success) {
+      debugLog('========== Drime Upload SUCCESS ==========')
       return {
         success: true,
         fileId: uploadResult.fileId,
@@ -191,9 +236,11 @@ export async function uploadSignedDocumentToDrime(
       }
     }
     
+    debugLog('========== Drime Upload FAILED ==========')
     return { success: false, error: uploadResult.error }
   } catch (error) {
     console.error('[Drime Upload] Error:', error)
+    debugLog('========== Drime Upload ERROR ==========', error)
     return { success: false, error: String(error) }
   }
 }
