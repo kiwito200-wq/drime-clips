@@ -164,12 +164,29 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
       return
     }
 
+    let currentElement: HTMLElement | null = null
+
     const findElement = () => {
-      const element = document.querySelector(step.target)
+      // Remove styles from previous element
+      if (currentElement) {
+        currentElement.style.removeProperty('position')
+        currentElement.style.removeProperty('z-index')
+        currentElement.style.removeProperty('background-color')
+        currentElement.style.removeProperty('border-radius')
+      }
+
+      const element = document.querySelector(step.target) as HTMLElement | null
       if (element) {
         const rect = element.getBoundingClientRect()
         setTargetRect(rect)
         element.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' })
+        
+        // Style the target element to appear above the overlay
+        element.style.position = 'relative'
+        element.style.zIndex = '10000'
+        element.style.backgroundColor = '#ffffff'
+        element.style.borderRadius = '8px'
+        currentElement = element
       }
     }
 
@@ -180,6 +197,13 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
     return () => {
       clearTimeout(timeout)
       window.removeEventListener('resize', findElement)
+      // Clean up styles when unmounting or changing steps
+      if (currentElement) {
+        currentElement.style.removeProperty('position')
+        currentElement.style.removeProperty('z-index')
+        currentElement.style.removeProperty('background-color')
+        currentElement.style.removeProperty('border-radius')
+      }
     }
   }, [step.target])
 
@@ -313,11 +337,9 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
           }}
           className="absolute rounded-xl pointer-events-none"
           style={{
-            backgroundColor: '#ffffff',
             boxShadow: `
               0 0 0 3px #08CF65,
-              0 0 15px rgba(8, 207, 101, 0.5),
-              0 0 0 9999px rgba(0, 0, 0, 0.6)
+              0 0 15px rgba(8, 207, 101, 0.5)
             `,
           }}
         />
