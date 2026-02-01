@@ -41,7 +41,7 @@ interface Workspace {
 interface DrimeFilePickerProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (file: DrimeFile, blob?: Blob) => void
+  onSelect: (file: DrimeFile, blob: Blob) => void
 }
 
 // PDF Icon component
@@ -261,14 +261,31 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   const handleConfirmSelection = async () => {
     if (!selectedFile) return
     
-    // Pass Drime file info directly without downloading
-    // The parent component will create the envelope with a reference to the Drime file
-    const fileWithWorkspace = {
-      ...selectedFile,
-      workspaceId: selectedWorkspace?.id || 0,
+    setDownloading(true)
+    try {
+      const res = await fetch('/api/drime/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          fileId: selectedFile.id, 
+          fileName: selectedFile.name,
+          workspaceId: selectedWorkspace?.id || 0 
+        }),
+        credentials: 'include',
+      })
+
+      if (res.ok) {
+        const blob = await res.blob()
+        onSelect(selectedFile, blob)
+        onClose()
+      } else {
+        setError(locale === 'fr' ? 'Échec du téléchargement' : 'Download failed')
+      }
+    } catch {
+      setError(locale === 'fr' ? 'Échec du téléchargement' : 'Download failed')
+    } finally {
+      setDownloading(false)
     }
-    onSelect(fileWithWorkspace)
-    onClose()
   }
 
   return (

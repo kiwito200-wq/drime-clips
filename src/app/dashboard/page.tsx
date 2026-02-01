@@ -416,36 +416,10 @@ export default function DashboardHome() {
     if (file) handleFileUpload(file)
   }
 
-  // Handle file from Drime - create envelope directly without downloading/uploading
-  const handleDrimeFileSelect = async (drimeFile: any, blob?: Blob) => {
-    try {
-      // Create envelope directly with Drime file reference
-      const response = await fetch('/api/envelopes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: (drimeFile.name || drimeFile.file_name || 'document.pdf').replace('.pdf', ''),
-          drimeFileId: drimeFile.id,
-          drimeHash: drimeFile.hash,
-          drimeWorkspaceId: drimeFile.workspaceId || 0,
-        }),
-        credentials: 'include',
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        // Redirect to step 2 (signers) since document is already uploaded
-        router.push(`/send?slug=${data.envelope.slug}`)
-      } else {
-        const error = await response.json()
-        alert(error.error || 'Failed to create document from Drime')
-      }
-    } catch (error) {
-      console.error('Error creating envelope from Drime:', error)
-      alert('Failed to create document from Drime')
-    }
+  // Handle file from Drime
+  const handleDrimeFileSelect = async (drimeFile: any, blob: Blob) => {
+    const file = new File([blob], drimeFile.name || drimeFile.file_name || 'document.pdf', { type: 'application/pdf' })
+    await handleFileUpload(file)
   }
 
   // Show skeleton instead of spinner for smoother transition

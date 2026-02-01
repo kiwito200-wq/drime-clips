@@ -23,16 +23,22 @@ export async function GET(request: NextRequest) {
     const workspaceId = searchParams.get('workspaceId') || '0'
 
     // Build Drime API URL
+    // Include shared files by not filtering by ownership
     let apiUrl = `${DRIME_API_URL}/api/v1/drive/file-entries?page=${page}&perPage=${perPage}&workspaceId=${workspaceId}`
     
     if (folderId) {
-      // Use parentIds for folder filtering
+      // Use parentIds for folder filtering - this will include files shared in the folder
       apiUrl += `&parentIds=${folderId}`
     }
     
     if (search) {
       apiUrl += `&query=${encodeURIComponent(search)}`
     }
+    
+    // Note: The Drime API should automatically return files that are:
+    // - Owned by the user
+    // - Shared with the user (even if in a folder owned by the user)
+    // We don't need additional parameters as the API handles permissions
 
     console.log('[Drime Files] Fetching from:', apiUrl)
 
