@@ -1639,7 +1639,7 @@ function AgreementsContent() {
 
                       {/* Actions */}
                       <div className="w-10 flex justify-center relative" ref={openMenuId === envelope.id ? menuRef : null}>
-                        <Tooltip content="More actions" position="top">
+                        <Tooltip content={t('agreements.moreActions')} position="top">
                           <button 
                             onClick={(e) => { 
                               e.stopPropagation()

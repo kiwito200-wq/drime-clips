@@ -97,6 +97,7 @@ export const fr = {
     visibleOnlyToYou: 'Visible uniquement par vous',
     signSecurely: 'Signer',
     searchDocuments: 'Rechercher des documents...',
+    moreActions: 'Plus d\'actions',
   },
 
   // Status

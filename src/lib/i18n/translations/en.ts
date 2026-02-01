@@ -97,6 +97,7 @@ export const en = {
     visibleOnlyToYou: 'Visible only to you',
     signSecurely: 'Sign securely',
     searchDocuments: 'Search documents...',
+    moreActions: 'More actions',
   },
 
   // Status
