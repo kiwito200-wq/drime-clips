@@ -117,40 +117,35 @@ async function findOrCreateFolder(drimeToken: string, xsrfToken: string | null, 
       debugLog('Search failed:', searchRes.status, errorText.substring(0, 200))
     }
     
-    // Create folder if not found - use file-entries endpoint with type=folder
+    // Create folder if not found - use /api/v1/folders endpoint per Drime API docs
     debugLog('Creating new folder:', SIGNED_DOCS_FOLDER_NAME)
     
-    // Try different endpoints for folder creation
-    const endpoints = [
-      `${DRIME_API_URL}/api/v1/drive/file-entries`,  // Laravel common pattern
-      `${DRIME_API_URL}/api/v1/folders`,              // Alternative
-    ]
+    // Correct endpoint: POST /api/v1/folders?workspaceId=0
+    const createUrl = `${DRIME_API_URL}/api/v1/folders?workspaceId=${workspaceId}`
+    debugLog('Creating folder at:', createUrl)
     
-    for (const createUrl of endpoints) {
-      debugLog('Trying folder creation at:', createUrl)
-      const createRes = await fetch(createUrl, {
-        method: 'POST',
-        headers: { 
-          ...headers, 
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: SIGNED_DOCS_FOLDER_NAME,
-          type: 'folder',
-          workspaceId,
-        }),
-      })
-      
-      debugLog('Create folder response status:', createRes.status)
-      
-      if (createRes.ok) {
-        const folderData = await createRes.json()
-        debugLog('Created folder:', folderData)
-        return folderData.id || folderData.folder?.id || folderData.fileEntry?.id || null
-      } else if (createRes.status !== 404 && createRes.status !== 405) {
-        const errorText = await createRes.text()
-        debugLog('Create folder failed:', createRes.status, errorText.substring(0, 200))
-      }
+    const createRes = await fetch(createUrl, {
+      method: 'POST',
+      headers: { 
+        ...headers, 
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: SIGNED_DOCS_FOLDER_NAME,
+        parentId: null,  // Root level folder
+      }),
+    })
+    
+    debugLog('Create folder response status:', createRes.status)
+    
+    if (createRes.ok) {
+      const folderData = await createRes.json()
+      debugLog('Created folder:', folderData)
+      // Response format: { status: "success", folder: { id: ..., name: ..., ... } }
+      return folderData.folder?.id || folderData.id || null
+    } else {
+      const errorText = await createRes.text()
+      debugLog('Create folder failed:', createRes.status, errorText.substring(0, 300))
     }
     
     // If folder creation fails, upload to root (no folder)
