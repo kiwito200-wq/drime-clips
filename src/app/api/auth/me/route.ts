@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
+import { encrypt } from '@/lib/encryption'
 
 const DRIME_API_URL = 'https://front.preprod.drime.cloud'
+
+/**
+ * Extract drime_session token from cookie header
+ */
+function extractDrimeToken(cookieHeader: string): string | null {
+  const match = cookieHeader.match(/drime_session=([^;]+)/)
+  return match ? match[1] : null
+}
 
 // GET /api/auth/me - Check local session OR forward cookies to Drime
 export async function GET(request: NextRequest) {
@@ -31,9 +40,10 @@ export async function GET(request: NextRequest) {
 
       
       if (hasDrimeSession) {
-        // Forward cookies to Drime
-
+        // Extract the drime_session token for storage
+        const drimeToken = extractDrimeToken(cookieHeader)
         
+        // Forward cookies to Drime
         const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
           method: 'GET',
           headers: {
@@ -41,8 +51,6 @@ export async function GET(request: NextRequest) {
             'Accept': 'application/json',
           },
         })
-        
-
         
         if (drimeRes.ok) {
           const drimeData = await drimeRes.json()
@@ -56,21 +64,24 @@ export async function GET(request: NextRequest) {
               avatarUrl = `${DRIME_API_URL}/${avatarUrl.replace(/^\//, '')}`
             }
             
-
+            // Encrypt the Drime token before storing
+            const encryptedDrimeToken = drimeToken ? encrypt(drimeToken) : null
             
-            // Create local user and session
+            // Create local user and session (including drimeToken!)
             const user = await prisma.user.upsert({
               where: { email: drimeData.user.email },
               update: {
                 name: drimeData.user.name || drimeData.user.display_name,
                 avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
+                drimeToken: encryptedDrimeToken, // Store encrypted token!
               },
               create: {
                 email: drimeData.user.email,
                 name: drimeData.user.name || drimeData.user.display_name,
                 avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
+                drimeToken: encryptedDrimeToken, // Store encrypted token!
               },
             })
             
