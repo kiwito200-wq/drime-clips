@@ -4,7 +4,8 @@ import { logAuditEvent, generateSignatureHash, generateSignedPdf, generateAuditT
 import { sendCompletedEmail } from '@/lib/email'
 import { r2 } from '@/lib/storage'
 import { notifySigned, notifyCompleted } from '@/lib/notifications'
-import { uploadSignedDocumentToDrime, uploadSignedDocumentForSigner } from '@/lib/drime-upload'
+// TODO: Drime upload disabled for now
+// import { uploadSignedDocumentToDrime, uploadSignedDocumentForSigner } from '@/lib/drime-upload'
 import crypto from 'crypto'
 
 interface Params {
@@ -186,37 +187,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           signer.envelope.name
         )
         
-        // Upload signed document to Drime for document owner
-        if (signedPdfBuffer) {
-          console.log('[Complete] Starting Drime upload for owner:', signer.envelope.userId)
-          try {
-            const drimeResult = await uploadSignedDocumentToDrime(
-              signer.envelope.userId,
-              signedPdfBuffer,
-              signer.envelope.name
-            )
-            console.log('[Complete] Drime upload result for owner:', drimeResult)
-            
-            // Also upload for each signer who has a Drime account
-            for (const s of allSigners) {
-              // Skip if same email as owner
-              if (s.email.toLowerCase() !== signer.envelope.user.email.toLowerCase()) {
-                console.log('[Complete] Starting Drime upload for signer:', s.email)
-                const signerResult = await uploadSignedDocumentForSigner(
-                  s.email,
-                  signedPdfBuffer,
-                  signer.envelope.name
-                )
-                console.log('[Complete] Drime upload result for signer:', signerResult)
-              }
-            }
-          } catch (drimeError) {
-            console.error('[Complete] Drime upload error:', drimeError)
-            // Silent fail for Drime upload - document is still saved in R2
-          }
-        } else {
-          console.log('[Complete] No signedPdfBuffer, skipping Drime upload')
-        }
+        // TODO: Drime upload disabled for now - will be re-enabled later
+        // The signed document is still saved in R2 storage
       } catch (pdfError: any) {
         // Still mark as completed even if PDF generation fails
         await prisma.envelope.update({
