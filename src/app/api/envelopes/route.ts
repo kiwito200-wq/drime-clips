@@ -45,11 +45,45 @@ export async function POST(request: NextRequest) {
     
     const contentType = request.headers.get('content-type') || ''
     
-    // Check if request is JSON (for template-based envelope creation)
+    // Check if request is JSON (for template-based or Drime file-based envelope creation)
     if (contentType.includes('application/json')) {
       const body = await request.json()
-      const { name, pdfUrl, pdfHash, thumbnailUrl } = body
+      const { name, pdfUrl, pdfHash, thumbnailUrl, drimeFileId, drimeHash, drimeWorkspaceId } = body
       
+      // Handle Drime file directly (no download/upload needed)
+      if (drimeFileId && drimeHash) {
+        if (!name) {
+          return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+        }
+        
+        // Create envelope with reference to Drime file
+        // pdfUrl will be a proxy endpoint to serve the file from Drime
+        const proxyPdfUrl = `/api/drime/pdf/${drimeHash}?fileId=${drimeFileId}&workspaceId=${drimeWorkspaceId || 0}`
+        
+        const envelope = await prisma.envelope.create({
+          data: {
+            slug: generateSlug(),
+            userId: user.id,
+            name,
+            pdfUrl: proxyPdfUrl,
+            pdfHash: drimeHash, // Use Drime hash as pdfHash
+            thumbnailUrl: thumbnailUrl || null,
+          },
+        })
+        
+        // Create audit log
+        await prisma.auditLog.create({
+          data: {
+            envelopeId: envelope.id,
+            action: 'created',
+            details: JSON.stringify({ name, fromDrime: true, drimeFileId, drimeWorkspaceId }),
+          },
+        })
+        
+        return NextResponse.json({ envelope })
+      }
+      
+      // Handle template-based creation
       if (!name || !pdfUrl || !pdfHash) {
         return NextResponse.json({ error: 'Name, pdfUrl, and pdfHash are required' }, { status: 400 })
       }
