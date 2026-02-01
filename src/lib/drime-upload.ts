@@ -204,8 +204,8 @@ async function uploadFileToDrime(
       uploadHeaders['X-XSRF-TOKEN'] = xsrfToken
     }
     
-    // Upload file
-    const uploadUrl = `${DRIME_API_URL}/api/v1/drive/uploads`
+    // Upload file - correct endpoint is /api/v1/uploads (NOT /drive/uploads)
+    const uploadUrl = `${DRIME_API_URL}/api/v1/uploads`
     debugLog('Upload URL:', uploadUrl)
     
     const uploadRes = await fetch(uploadUrl, {
