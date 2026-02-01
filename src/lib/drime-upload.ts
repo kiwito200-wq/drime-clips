@@ -181,8 +181,9 @@ async function uploadFileToDrime(
     // Create form data with all required fields per Drime API docs
     const formData = new FormData()
     
-    // Create Blob from Buffer - this is the most compatible approach
-    const blob = new Blob([pdfBuffer], { type: 'application/pdf' })
+    // Convert Buffer to Uint8Array for Blob compatibility (TypeScript requirement)
+    const uint8Array = new Uint8Array(pdfBuffer.buffer, pdfBuffer.byteOffset, pdfBuffer.byteLength)
+    const blob = new Blob([uint8Array], { type: 'application/pdf' })
     
     // Append file with filename (3rd param sets Content-Disposition filename)
     formData.append('file', blob, fileName)
