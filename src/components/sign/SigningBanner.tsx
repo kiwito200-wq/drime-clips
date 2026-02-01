@@ -482,6 +482,10 @@ export default function SigningBanner({
           ctx.fillText(typedSignature, 200, 60)
           signatureDataUrl = canvas.toDataURL('image/png')
           onValueChange(currentField.id, signatureDataUrl)
+          // Save typed signature for future use
+          if (currentField.type === 'signature' && isAuthenticated) {
+            saveSignatureToUser(signatureDataUrl)
+          }
         }
       }
     } else if (currentField.type === 'checkbox') {
