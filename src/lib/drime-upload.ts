@@ -104,7 +104,9 @@ async function uploadFileToDrime(
     
     // Create form data
     const formData = new FormData()
-    const blob = new Blob([pdfBuffer], { type: 'application/pdf' })
+    // Convert Buffer to Uint8Array for Blob compatibility
+    const uint8Array = new Uint8Array(pdfBuffer.buffer, pdfBuffer.byteOffset, pdfBuffer.byteLength)
+    const blob = new Blob([uint8Array], { type: 'application/pdf' })
     formData.append('file', blob, fileName)
     formData.append('workspaceId', String(workspaceId))
     
