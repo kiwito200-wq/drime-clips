@@ -34,17 +34,17 @@ const STEPS_FR: OnboardingStep[] = [
     position: 'right',
   },
   {
-    id: 'templates',
-    title: 'Templates',
-    description: 'Créez des modèles réutilisables pour vos documents fréquents. Gagnez du temps en préconfigurant les champs de signature.',
-    target: '[data-onboarding="templates"]',
-    position: 'right',
-  },
-  {
     id: 'received',
     title: 'Documents reçus',
     description: 'Les documents que d\'autres personnes vous ont envoyés pour signature.',
     target: '[data-onboarding="received"]',
+    position: 'right',
+  },
+  {
+    id: 'templates',
+    title: 'Templates',
+    description: 'Créez des modèles réutilisables pour vos documents fréquents. Gagnez du temps en préconfigurant les champs de signature.',
+    target: '[data-onboarding="templates"]',
     position: 'right',
   },
   {
@@ -100,17 +100,17 @@ const STEPS_EN: OnboardingStep[] = [
     position: 'right',
   },
   {
-    id: 'templates',
-    title: 'Templates',
-    description: 'Create reusable templates for your frequent documents. Save time by preconfiguring signature fields.',
-    target: '[data-onboarding="templates"]',
-    position: 'right',
-  },
-  {
     id: 'received',
     title: 'Received Documents',
     description: 'Documents that others have sent you for signature.',
     target: '[data-onboarding="received"]',
+    position: 'right',
+  },
+  {
+    id: 'templates',
+    title: 'Templates',
+    description: 'Create reusable templates for your frequent documents. Save time by preconfiguring signature fields.',
+    target: '[data-onboarding="templates"]',
     position: 'right',
   },
   {
