@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 
 interface OnboardingStep {
   id: string
@@ -31,6 +31,13 @@ const STEPS_FR: OnboardingStep[] = [
     title: 'Mes documents',
     description: 'Retrouvez tous vos documents : brouillons, en cours de signature, et documents signés.',
     target: '[data-onboarding="agreements"]',
+    position: 'right',
+  },
+  {
+    id: 'templates',
+    title: 'Templates',
+    description: 'Créez des modèles réutilisables pour vos documents fréquents. Gagnez du temps en préconfigurant les champs de signature.',
+    target: '[data-onboarding="templates"]',
     position: 'right',
   },
   {
@@ -93,6 +100,13 @@ const STEPS_EN: OnboardingStep[] = [
     position: 'right',
   },
   {
+    id: 'templates',
+    title: 'Templates',
+    description: 'Create reusable templates for your frequent documents. Save time by preconfiguring signature fields.',
+    target: '[data-onboarding="templates"]',
+    position: 'right',
+  },
+  {
     id: 'received',
     title: 'Received Documents',
     description: 'Documents that others have sent you for signature.',
@@ -137,7 +151,7 @@ interface OnboardingProps {
 export default function Onboarding({ locale, onComplete }: OnboardingProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [direction, setDirection] = useState(1) // 1 for next, -1 for prev
   
   const steps = locale === 'fr' ? STEPS_FR : STEPS_EN
   const step = steps[currentStep]
@@ -159,7 +173,8 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
       }
     }
 
-    const timeout = setTimeout(findElement, 150)
+    // Small delay to allow DOM to settle
+    const timeout = setTimeout(findElement, 100)
     window.addEventListener('resize', findElement)
     
     return () => {
@@ -169,29 +184,26 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
   }, [step.target])
 
   const goToStep = useCallback((newStep: number) => {
-    if (isAnimating) return
-    setIsAnimating(true)
+    setDirection(newStep > currentStep ? 1 : -1)
     setCurrentStep(newStep)
-    setTimeout(() => setIsAnimating(false), 400)
-  }, [isAnimating])
+  }, [currentStep])
 
   const handleNext = useCallback(() => {
-    if (isAnimating) return
     if (isLast) {
       onComplete()
     } else {
       goToStep(currentStep + 1)
     }
-  }, [isLast, onComplete, isAnimating, currentStep, goToStep])
+  }, [isLast, onComplete, currentStep, goToStep])
 
   const handleSkip = useCallback(() => {
     onComplete()
   }, [onComplete])
 
   const handlePrev = useCallback(() => {
-    if (isAnimating || currentStep === 0) return
+    if (currentStep === 0) return
     goToStep(currentStep - 1)
-  }, [currentStep, isAnimating, goToStep])
+  }, [currentStep, goToStep])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -239,164 +251,194 @@ export default function Onboarding({ locale, onComplete }: OnboardingProps) {
 
   const tooltipPosition = getTooltipPosition()
 
-  // Card content (shared between welcome and other steps)
-  const CardContent = () => (
-    <>
-      {/* Header */}
-      <div className="px-6 pt-5 pb-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-gray-900 font-semibold text-lg">{step.title}</h3>
-          <span className="text-gray-400 text-sm">
-            {currentStep + 1} / {steps.length}
-          </span>
-        </div>
-      </div>
+  // Smooth slide animation variants
+  const cardVariants = {
+    initial: (dir: number) => ({
+      opacity: 0,
+      x: dir * 40,
+      scale: 0.98,
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: [0.25, 0.46, 0.45, 0.94],
+      },
+    },
+  }
 
-      {/* Content */}
-      <div className="px-6 pb-4">
-        <p className="text-gray-600 leading-relaxed">{step.description}</p>
-      </div>
-
-      {/* Progress dots */}
-      <div className="px-6 pb-4 flex justify-center gap-1.5">
-        {steps.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => goToStep(index)}
-            className={`h-2 rounded-full ${
-              index === currentStep
-                ? 'bg-[#08CF65] w-6'
-                : index < currentStep
-                ? 'bg-[#08CF65]/50 w-2'
-                : 'bg-gray-200 w-2'
-            }`}
-          />
-        ))}
-      </div>
-
-      {/* Actions */}
-      <div className="px-6 pb-5 flex items-center justify-between">
-        {isWelcome ? (
-          <button
-            onClick={handleSkip}
-            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
-          </button>
-        ) : (
-          <div />
-        )}
-
-        <div className="flex items-center gap-2">
-          {currentStep > 0 && (
-            <button
-              onClick={handlePrev}
-              disabled={isAnimating}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-            >
-              {locale === 'fr' ? 'Précédent' : 'Previous'}
-            </button>
-          )}
-          <button
-            onClick={handleNext}
-            disabled={isAnimating}
-            className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1 disabled:opacity-50"
-          >
-            {isLast ? (
-              locale === 'fr' ? "C'est parti !" : "Let's go!"
-            ) : (
-              <>
-                {locale === 'fr' ? 'Suivant' : 'Next'}
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </>
-  )
+  // Content animation for smooth text transitions
+  const contentVariants = {
+    initial: (dir: number) => ({
+      opacity: 0,
+      x: dir * 20,
+    }),
+    animate: {
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.25,
+        ease: 'easeOut',
+      },
+    },
+  }
 
   return (
     <div className="fixed inset-0 z-[9999]">
-      {/* Welcome screen: dark overlay + centered card */}
-      {isWelcome && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="absolute inset-0 bg-black/60"
-            onClick={handleNext}
-          />
-          {/* Centered card using flexbox */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+      {/* Dark overlay - always present, smooth transition */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="absolute inset-0 bg-black/60"
+        onClick={handleNext}
+      />
+
+      {/* Spotlight for non-welcome steps */}
+      {!isWelcome && targetRect && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ 
+            opacity: 1,
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
+          }}
+          transition={{ 
+            duration: 0.35,
+            ease: [0.25, 0.46, 0.45, 0.94],
+          }}
+          className="absolute rounded-xl pointer-events-none"
+          style={{
+            boxShadow: `
+              0 0 0 3px #08CF65,
+              0 0 15px rgba(8, 207, 101, 0.5),
+              0 0 0 9999px rgba(0, 0, 0, 0.6)
+            `,
+          }}
+        />
+      )}
+
+      {/* Card - either centered (welcome) or positioned */}
+      <div 
+        className={`absolute ${isWelcome ? 'inset-0 flex items-center justify-center' : ''}`}
+        style={!isWelcome && tooltipPosition ? {
+          top: tooltipPosition.top,
+          left: tooltipPosition.left,
+        } : undefined}
+      >
+        <motion.div
+          key={`card-container-${isWelcome ? 'welcome' : 'positioned'}`}
+          initial={false}
+          animate={tooltipPosition || isWelcome ? {
+            top: !isWelcome && tooltipPosition ? tooltipPosition.top : undefined,
+            left: !isWelcome && tooltipPosition ? tooltipPosition.left : undefined,
+          } : undefined}
+          transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className={`w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto ${!isWelcome ? 'fixed' : ''}`}
+          style={!isWelcome && tooltipPosition ? {
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+          } : undefined}
+        >
+          {/* Header */}
+          <div className="px-6 pt-5 pb-3">
+            <div className="flex items-center justify-between">
+              <motion.h3 
+                key={`title-${currentStep}`}
+                custom={direction}
+                variants={contentVariants}
+                initial="initial"
+                animate="animate"
+                className="text-gray-900 font-semibold text-lg"
               >
-                <CardContent />
-              </motion.div>
-            </AnimatePresence>
+                {step.title}
+              </motion.h3>
+              <span className="text-gray-400 text-sm tabular-nums">
+                {currentStep + 1} / {steps.length}
+              </span>
+            </div>
           </div>
-        </>
-      )}
-      
-      {/* Other steps: spotlight + positioned card */}
-      {!isWelcome && (
-        <>
-          {/* Spotlight */}
-          {targetRect && (
-            <motion.div
-              key={`spotlight-${currentStep}`}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-              className="absolute rounded-xl pointer-events-none"
-              style={{
-                top: targetRect.top - 8,
-                left: targetRect.left - 8,
-                width: targetRect.width + 16,
-                height: targetRect.height + 16,
-                boxShadow: `
-                  0 0 0 3px #08CF65,
-                  0 0 15px rgba(8, 207, 101, 0.5),
-                  0 0 0 9999px rgba(0, 0, 0, 0.6)
-                `,
-              }}
-            />
-          )}
 
-          {/* Click catcher */}
-          <div className="absolute inset-0" onClick={handleNext} />
+          {/* Content */}
+          <div className="px-6 pb-4 min-h-[72px]">
+            <motion.p 
+              key={`desc-${currentStep}`}
+              custom={direction}
+              variants={contentVariants}
+              initial="initial"
+              animate="animate"
+              className="text-gray-600 leading-relaxed"
+            >
+              {step.description}
+            </motion.p>
+          </div>
 
-          {/* Positioned card */}
-          {tooltipPosition && (
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="fixed w-[360px] bg-white rounded-2xl shadow-2xl overflow-hidden pointer-events-auto"
+          {/* Progress dots */}
+          <div className="px-6 pb-4 flex justify-center gap-1.5">
+            {steps.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => goToStep(index)}
+                className="h-2 rounded-full transition-all duration-300 ease-out"
                 style={{
-                  top: tooltipPosition.top,
-                  left: tooltipPosition.left,
+                  width: index === currentStep ? 24 : 8,
+                  backgroundColor: index === currentStep 
+                    ? '#08CF65' 
+                    : index < currentStep 
+                      ? 'rgba(8, 207, 101, 0.5)' 
+                      : '#E5E7EB',
                 }}
+              />
+            ))}
+          </div>
+
+          {/* Actions */}
+          <div className="px-6 pb-5 flex items-center justify-between">
+            {isWelcome ? (
+              <button
+                onClick={handleSkip}
+                className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
               >
-                <CardContent />
-              </motion.div>
-            </AnimatePresence>
-          )}
-        </>
-      )}
+                {locale === 'fr' ? 'Passer la visite' : 'Skip tour'}
+              </button>
+            ) : (
+              <div />
+            )}
+
+            <div className="flex items-center gap-2">
+              {currentStep > 0 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={handlePrev}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  {locale === 'fr' ? 'Précédent' : 'Previous'}
+                </motion.button>
+              )}
+              <button
+                onClick={handleNext}
+                className="px-5 py-2 text-sm font-medium text-white bg-[#08CF65] rounded-lg hover:bg-[#06B557] transition-colors flex items-center gap-1"
+              >
+                {isLast ? (
+                  locale === 'fr' ? "C'est parti !" : "Let's go!"
+                ) : (
+                  <>
+                    {locale === 'fr' ? 'Suivant' : 'Next'}
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
     </div>
   )
 }
