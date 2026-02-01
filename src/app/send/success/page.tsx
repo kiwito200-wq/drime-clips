@@ -9,11 +9,32 @@ import { useTranslation } from '@/lib/i18n/I18nContext'
 // Dynamic import of Lottie to avoid SSR issues
 const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
+// Sanitize document name to prevent content spoofing
+function sanitizeDocumentName(name: string | null): string | null {
+  if (!name) return null
+  
+  // Max length to prevent abuse
+  const MAX_LENGTH = 100
+  
+  // Remove any characters that could be used for spoofing
+  // Only allow: letters, numbers, spaces, dots, dashes, underscores, parentheses
+  const sanitized = name
+    .slice(0, MAX_LENGTH)
+    .replace(/[^\w\s.\-_()àâäéèêëïîôùûüçÀÂÄÉÈÊËÏÎÔÙÛÜÇ]/g, '')
+    .trim()
+  
+  // If nothing left after sanitization, return null
+  if (!sanitized) return null
+  
+  return sanitized
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { t, locale } = useTranslation()
-  const documentName = searchParams.get('name')
+  const rawName = searchParams.get('name')
+  const documentName = sanitizeDocumentName(rawName)
   const [animationData, setAnimationData] = useState<any>(null)
 
   // Load animation data dynamically
