@@ -11,6 +11,11 @@ export function getPdfProxyUrl(pdfUrl: string): string {
     return pdfUrl
   }
   
+  // Si c'est déjà une URL proxy Drime, la retourner telle quelle
+  if (pdfUrl.startsWith('/api/drime/pdf/')) {
+    return pdfUrl
+  }
+  
   // Extraire le chemin depuis l'URL R2
   // Format: https://pub-xxx.r2.dev/pdfs/timestamp-filename.pdf
   // Ou: https://xxx.r2.cloudflarestorage.com/bucket/pdfs/timestamp-filename.pdf
