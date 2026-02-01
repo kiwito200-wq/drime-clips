@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
     
-    console.log('[Dev Login] Session created for:', email)
+
     
     return response
   } catch (error) {

@@ -55,15 +55,13 @@ export default function PDFViewer({
         setError(null)
 
         // First, fetch the blob URL and convert to ArrayBuffer
-        console.log('[PDFViewer] Fetching PDF from:', fileUrl.substring(0, 100) + '...')
         const response = await fetch(fileUrl)
         if (!response.ok) {
-          console.error('[PDFViewer] Fetch failed:', response.status, response.statusText)
           throw new Error(`Failed to fetch PDF file: ${response.status} ${response.statusText}`)
         }
-        console.log('[PDFViewer] Fetch succeeded, converting to ArrayBuffer...')
+
         const arrayBuffer = await response.arrayBuffer()
-        console.log('[PDFViewer] ArrayBuffer size:', arrayBuffer.byteLength)
+
 
         if (cancelled) return
 
@@ -135,11 +133,6 @@ export default function PDFViewer({
         setIsLoading(false)
       } catch (err) {
         if (cancelled) return
-        console.error('Error loading PDF:', err)
-        // Log more details about the error
-        if (err instanceof Error) {
-          console.error('Error details:', err.message, err.stack)
-        }
         setError(`Failed to load PDF: ${err instanceof Error ? err.message : 'Unknown error'}`)
         setIsLoading(false)
       }

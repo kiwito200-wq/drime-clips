@@ -310,7 +310,7 @@ Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a inv
       html: getEmailWrapper(htmlContent),
     })
 
-    console.log('[Email] Signature request sent to:', to, result)
+
     
     if (result.error) {
       console.error('[Email] API error for', to, ':', result.error)
@@ -457,7 +457,7 @@ Cordialement,<br>${COMPANY_NAME}
       html: getEmailWrapper(htmlContent),
     })
 
-    console.log('[Email] Completed notification sent to:', to, result)
+
     return { success: true, id: result.data?.id }
   } catch (error) {
     console.error('[Email] Failed to send completed email:', error)
@@ -544,7 +544,7 @@ Cordialement,<br>${COMPANY_NAME}
       html: getEmailWrapper(htmlContent),
     })
 
-    console.log('[Email] Reminder sent to:', to, result)
+
     return { success: true, id: result.data?.id }
   } catch (error) {
     console.error('[Email] Failed to send reminder:', error)

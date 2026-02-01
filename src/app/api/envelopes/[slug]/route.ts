@@ -15,7 +15,6 @@ export async function GET(request: NextRequest, { params }: Params) {
     
     // Must be authenticated
     if (!user) {
-      console.log('[GET /api/envelopes/[slug]] No authenticated user')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

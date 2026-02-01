@@ -116,7 +116,7 @@ export function sanitizeForLog(data: unknown, depth: number = 0): unknown {
  */
 export function secureLog(prefix: string, ...args: unknown[]): void {
   const sanitizedArgs = args.map(arg => sanitizeForLog(arg))
-  console.log(prefix, ...sanitizedArgs)
+
 }
 
 /**

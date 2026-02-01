@@ -10,7 +10,7 @@ const WORKER_URL = process.env.NEXT_PUBLIC_THUMBNAIL_WORKER_URL
  */
 export async function generateThumbnailViaWorker(pdfUrl: string, width: number = 600): Promise<Blob | null> {
   if (!WORKER_URL) {
-    console.log('[PDF Thumbnail] No worker URL configured')
+
     return null
   }
 

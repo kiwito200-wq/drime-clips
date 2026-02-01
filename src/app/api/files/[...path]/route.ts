@@ -30,8 +30,6 @@ export async function GET(
     if (key.startsWith('drime-sign/')) {
       key = key.slice('drime-sign/'.length)
     }
-    
-    console.log('[Files Proxy] Fetching:', key)
 
     const command = new GetObjectCommand({
       Bucket: BUCKET,

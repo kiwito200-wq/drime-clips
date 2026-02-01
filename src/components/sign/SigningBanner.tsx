@@ -135,7 +135,7 @@ export default function SigningBanner({
           throw new Error('Not authenticated')
         })
         .then(data => {
-          console.log('[SigningBanner] Loaded signature:', data.signatureData ? 'yes' : 'no')
+
           if (data.signatureData) {
             setSavedSignature(data.signatureData)
             setSignatureMode('draw') // Show draw mode with saved signature
@@ -146,7 +146,7 @@ export default function SigningBanner({
           setSignatureLoaded(true)
         })
         .catch(() => {
-          console.log('[SigningBanner] No saved signature or not authenticated')
+
           setSignatureMode('type')
           setSignatureLoaded(true)
         })
@@ -160,7 +160,7 @@ export default function SigningBanner({
     // If we're in confirmation mode and the field index changed from when we entered confirmation,
     // that means the user clicked on a different field - exit confirmation to show that field
     if (showConfirmation && confirmationFieldIndexRef.current !== null && confirmationFieldIndexRef.current !== currentFieldIndex) {
-      console.log('[SigningBanner] Field changed from', confirmationFieldIndexRef.current, 'to', currentFieldIndex, '- exiting confirmation')
+
       setShowConfirmation(false)
       setAgreedToTerms(false)
       confirmationFieldIndexRef.current = null
@@ -270,7 +270,7 @@ export default function SigningBanner({
       
       // Load saved signature into canvas if available (only for signature type, not initials)
       if (savedSignature && currentField?.type === 'signature') {
-        console.log('[SigningBanner] Loading saved signature into canvas')
+
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -290,7 +290,7 @@ export default function SigningBanner({
             
             ctx.drawImage(img, x, y, img.width * scale, img.height * scale)
             setHasDrawn(true)
-            console.log('[SigningBanner] Saved signature loaded into canvas')
+
           }
         }
         img.onerror = (e) => {

@@ -21,11 +21,11 @@ export async function GET(request: NextRequest) {
   // Check if user has drime_session cookie
   const hasDrimeSession = cookieHeader?.includes('drime_session')
   
-  console.log('[Auth Check] Has drime_session cookie:', hasDrimeSession)
+
 
   // STRICT: No drime_session = clear local session and deny access
   if (!hasDrimeSession) {
-    console.log('[Auth Check] No drime_session cookie - clearing local session')
+
     
     // Clear local session if exists
     if (localSessionToken) {
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   // Try to get current Drime user
   let drimeUser = null
   try {
-    console.log('[Auth Check] Checking Drime session...')
+
     const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
       method: 'GET',
       headers: {
@@ -69,10 +69,10 @@ export async function GET(request: NextRequest) {
           name: drimeData.user.name || drimeData.user.display_name || null,
           avatarUrl: avatarUrl,
         }
-        console.log('[Auth Check] Drime user found:', drimeUser.email, 'avatar:', avatarUrl)
+
       } else {
         // Drime returned OK but no user = logged out
-        console.log('[Auth Check] Drime returned no user - session expired')
+
         if (localSessionToken) {
           try {
             await prisma.session.deleteMany({ where: { token: localSessionToken } })
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       // Drime returned error
-      console.log('[Auth Check] Drime returned error:', drimeRes.status)
+
       if (localSessionToken) {
         try {
           await prisma.session.deleteMany({ where: { token: localSessionToken } })
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
             localUser.avatarUrl = drimeUser.avatarUrl
           }
           
-          console.log('[Auth Check] Session valid for:', localUser.email)
+
           return NextResponse.json({
             user: {
               id: localUser.id,
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
           })
         } else {
           // Different user - delete old session
-          console.log('[Auth Check] User changed from', localUser.email, 'to', drimeUser.email)
+
           await prisma.session.deleteMany({ where: { token: localSessionToken } })
         }
       }
@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Create new session for Drime user
-  console.log('[Auth Check] Creating session for:', drimeUser.email)
+
   
   const user = await prisma.user.upsert({
     where: { email: drimeUser.email },

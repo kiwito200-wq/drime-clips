@@ -54,7 +54,6 @@ export async function GET(
 
     // Use signed PDF if available (document is completed), otherwise use original
     const pdfUrlToUse = envelope.finalPdfUrl || envelope.pdfUrl
-    console.log('[PDF URL] Status:', envelope.status, '| Using:', envelope.finalPdfUrl ? 'finalPdfUrl' : 'pdfUrl')
 
     // Extract key from URL and decode it
     // URL format: https://pub-xxx.r2.dev/pdfs/timestamp-filename.pdf
@@ -78,9 +77,6 @@ export async function GET(
     } catch {
       key = decodeURIComponent(pdfUrlToUse)
     }
-
-    console.log('[PDF URL] pdfUrl from DB:', pdfUrlToUse)
-    console.log('[PDF URL] Extracted key:', key)
 
     const client = getS3Client()
     const bucket = process.env.R2_BUCKET_NAME || 'drimesign'

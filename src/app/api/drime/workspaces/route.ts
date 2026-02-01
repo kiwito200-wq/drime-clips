@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const apiUrl = `${DRIME_API_URL}/api/v1/me/workspaces`
 
-    console.log('[Drime Workspaces] Fetching from:', apiUrl)
+
 
     const xsrfMatch = cookieHeader.match(/XSRF-TOKEN=([^;]+)/)
     const xsrfToken = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : ''
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     
     const workspaces = data.workspaces || []
     
-    console.log('[Drime Workspaces] Got', workspaces.length, 'workspaces')
+
 
     // Add "Personal workspace" as first option (id: 0)
     const allWorkspaces = [

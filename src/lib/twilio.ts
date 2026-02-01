@@ -32,7 +32,7 @@ export async function sendVerifyOTP(to: string): Promise<{ success: boolean; err
     }
     // Development mode only - with clear warning
     console.warn('[Twilio Verify] ⚠️ DEV MODE - Twilio not configured, simulating OTP send')
-    console.log(`[Twilio Verify DEV] Would send OTP to ${to}`)
+
     return { success: true }
   }
 
@@ -46,7 +46,7 @@ export async function sendVerifyOTP(to: string): Promise<{ success: boolean; err
         channel: 'sms',
       })
     
-    console.log(`[Twilio Verify] OTP sent to ${formattedNumber}`)
+
     return { success: true }
   } catch (error: unknown) {
     console.error('[Twilio Verify] Failed to send OTP:', error)
@@ -70,7 +70,7 @@ export async function checkVerifyOTP(to: string, code: string): Promise<{ succes
     console.warn('[Twilio Verify] ⚠️ DEV MODE - Twilio not configured, using test code validation')
     // SECURITY: Only accept specific test code in dev, not any 6-digit code
     if (code === '123456') {
-      console.log('[Twilio Verify DEV] Test code accepted')
+
       return { success: true }
     }
     return { success: false, error: 'Invalid code (dev mode: use 123456)' }
@@ -87,10 +87,10 @@ export async function checkVerifyOTP(to: string, code: string): Promise<{ succes
       })
     
     if (verification.status === 'approved') {
-      console.log(`[Twilio Verify] OTP verified for ${formattedNumber}`)
+
       return { success: true }
     } else {
-      console.log(`[Twilio Verify] OTP check failed: ${verification.status}`)
+
       return { success: false, error: 'Code incorrect ou expiré' }
     }
   } catch (error: unknown) {
@@ -105,8 +105,8 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
   const fromNumber = process.env.TWILIO_PHONE_NUMBER
   
   if (!client || !fromNumber) {
-    console.log('[Twilio] Missing credentials - SMS not sent')
-    console.log(`[Twilio DEV] Would send to ${to}: ${message}`)
+
+
     return true
   }
 
@@ -119,7 +119,7 @@ export async function sendSMS(to: string, message: string): Promise<boolean> {
       to: formattedNumber,
     })
     
-    console.log(`[Twilio] SMS sent to ${formattedNumber}`)
+
     return true
   } catch (error) {
     console.error('[Twilio] Failed to send SMS:', error)

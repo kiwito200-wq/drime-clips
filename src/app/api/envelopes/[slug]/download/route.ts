@@ -67,10 +67,8 @@ export async function GET(request: NextRequest, { params }: Params) {
         key = pdfUrl
       }
       
-      console.log('[Download] Generating signed URL for key:', key)
       downloadUrl = await getSignedDownloadUrl(key)
-    } catch (e) {
-      console.error('[Download] Failed to generate signed URL, using original:', e)
+    } catch {
       // Fallback to original URL
     }
 

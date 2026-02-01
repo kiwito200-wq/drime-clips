@@ -30,7 +30,7 @@ export async function createNotification(params: CreateNotificationParams) {
         senderName: params.senderName,
       },
     })
-    console.log(`[Notification] Created ${params.type} notification for user ${params.userId}`)
+
     return notification
   } catch (error) {
     console.error('[Notification] Failed to create notification:', error)
@@ -52,7 +52,7 @@ export async function notifyInvitation(
   // Find user by email
   const user = await prisma.user.findUnique({ where: { email: recipientEmail } })
   if (!user) {
-    console.log(`[Notification] No user found for ${recipientEmail}, skipping notification`)
+
     return null
   }
 

@@ -79,9 +79,9 @@ let cachedP12Buffer: Buffer | null = null
 
 function getP12Buffer(): Buffer {
   if (!cachedP12Buffer) {
-    console.log('[PDF Signer] Generating P12 certificate...')
+
     cachedP12Buffer = generateP12Buffer('')
-    console.log('[PDF Signer] P12 certificate generated')
+
   }
   return cachedP12Buffer
 }
@@ -109,10 +109,10 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
   const signedAt = new Date()
   
   try {
-    console.log('[PDF Signer] Starting PDF signing process...')
+
     
     // Step 1: Add signature placeholder to ORIGINAL PDF (not modified by pdf-lib)
-    console.log('[PDF Signer] Adding signature placeholder to original PDF...')
+
     const pdfWithPlaceholder = plainAddPlaceholder({
       pdfBuffer: pdfBuffer, // Use original PDF, not modified
       reason: reason,
@@ -123,7 +123,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
     })
     
     // Step 2: Sign the PDF with our P12 certificate
-    console.log('[PDF Signer] Signing PDF with Drime certificate...')
+
     const p12Buffer = getP12Buffer()
     const signedPdf = pdfSigner.sign(pdfWithPlaceholder, p12Buffer)
     
@@ -133,10 +133,6 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
     
     // Calculate final document hash
     const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
-    
-    console.log('[PDF Signer] PDF signed successfully!')
-    console.log('[PDF Signer] Certificate: Drime Sign')
-    console.log('[PDF Signer] Document hash:', documentHash.substring(0, 16) + '...')
     
     return {
       pdfBuffer: signedPdf,
@@ -151,7 +147,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
     
     // Try signing without visual stamp first
     try {
-      console.log('[PDF Signer] Retrying without visual stamp...')
+
       const pdfWithPlaceholder = plainAddPlaceholder({
         pdfBuffer: pdfBuffer,
         reason: reason,
@@ -166,7 +162,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
       
       const documentHash = crypto.createHash('sha256').update(signedPdf).digest('hex')
       
-      console.log('[PDF Signer] PDF signed without visual stamp')
+
       
       return {
         pdfBuffer: signedPdf,
@@ -180,7 +176,7 @@ export async function signPdfWithCertificate(options: SignPdfOptions): Promise<S
       console.error('[PDF Signer] Retry also failed:', retryError)
       
       // Final fallback: return PDF with visual signature only
-      console.log('[PDF Signer] Falling back to visual signature only...')
+
       const visualPdf = await addVisualSignatureStamp(pdfBuffer, signerName, signedAt)
       const documentHash = crypto.createHash('sha256').update(visualPdf).digest('hex')
       

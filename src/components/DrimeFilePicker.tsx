@@ -95,22 +95,20 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   // Fetch workspaces
   const fetchWorkspaces = useCallback(async () => {
     try {
-      console.log('[DrimeFilePicker] Fetching workspaces...')
+
       const res = await fetch('/api/drime/workspaces', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json()
-        console.log('[DrimeFilePicker] Got workspaces:', data.workspaces)
+
         const ws = data.workspaces || []
         setWorkspaces(ws)
         // Default to personal workspace
         if (ws.length > 0) {
           setSelectedWorkspace(ws[0])
         }
-      } else {
-        console.error('[DrimeFilePicker] Failed to fetch workspaces:', res.status)
       }
-    } catch (err) {
-      console.error('[DrimeFilePicker] Error fetching workspaces:', err)
+    } catch {
+      // Silent fail for workspace fetch
     }
   }, [])
 
@@ -137,7 +135,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
       if (workspaceCache && workspaceCache[cacheKey]) {
         const cached = workspaceCache[cacheKey]
         if (Date.now() - cached.timestamp < CACHE_TTL) {
-          console.log('[DrimeFilePicker] Using cached data for workspace', workspaceId, 'folder', cacheKey)
+
           setFolders(cached.folders)
           setFiles(cached.files)
           setLoading(false)
@@ -203,7 +201,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
   // Fetch files when workspace changes
   useEffect(() => {
     if (isOpen && selectedWorkspace !== null) {
-      console.log('[DrimeFilePicker] Workspace changed to:', selectedWorkspace.name, 'id:', selectedWorkspace.id)
+
       setCurrentFolderId(null)
       setBreadcrumbs([{ id: null, name: 'Drime' }])
       fetchFiles(null, '', selectedWorkspace.id)

@@ -192,7 +192,7 @@ export async function syncSubscriptionFromDrime(
       }
     })
 
-    console.log(`[Subscription] Synced plan for user ${userId}: ${plan}`)
+
     return plan
   } catch (error) {
     console.error('[Subscription] Error syncing from Drime:', error)

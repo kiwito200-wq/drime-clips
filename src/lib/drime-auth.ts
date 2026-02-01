@@ -32,16 +32,12 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
                         request.cookies.get('access_token')?.value ||
                         request.headers.get('authorization')?.replace('Bearer ', '')
 
-    // Log all cookies for debugging
-    const allCookies = request.cookies.getAll()
-    console.log('[Drime Auto-Login] Available cookies:', allCookies.map(c => c.name))
-
     if (!drimeCookie) {
-      console.log('[Drime Auto-Login] No Drime cookie found')
+
       return { user: null, sessionToken: null }
     }
 
-    console.log('[Drime Auto-Login] Found cookie, validating with Drime API...')
+
 
     if (!DRIME_EXTERNAL_TOKEN) {
       console.error('[Drime Auto-Login] DRIME_EXTERNAL_TOKEN not set')
@@ -63,14 +59,12 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
         'Origin': 'https://sign.drime.cloud',
       },
     })
-    console.log('[Drime Auto-Login] /api/v1/cli/loggedUser status:', drimeResponse.status)
+
     
-    // Log response for debugging
     const responseText = await drimeResponse.text()
-    console.log('[Drime Auto-Login] Response:', responseText.substring(0, 200))
     
     if (!drimeResponse.ok) {
-      console.log('[Drime Auto-Login] Failed to get user from Drime')
+
       return { user: null, sessionToken: null }
     }
     
@@ -86,7 +80,7 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
     const drimeUser = drimeData.user || drimeData
 
     if (!drimeUser || !drimeUser.email) {
-      console.log('[Drime Auto-Login] No user data in response')
+
       return { user: null, sessionToken: null }
     }
 
@@ -129,7 +123,7 @@ export async function attemptDrimeAutoLogin(request: NextRequest): Promise<{
     // Set session cookie
     await setSessionCookie(sessionToken)
 
-    console.log('[Drime Auto-Login] Success for user:', email)
+
 
     return {
       user: {

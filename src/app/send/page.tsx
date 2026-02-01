@@ -119,13 +119,11 @@ function SendPageContent() {
         
         // Load roles from template (submitters are roles)
         const templateSubmitters = template.submitters || []
-        console.log('Template submitters (reload):', templateSubmitters)
         const roles = templateSubmitters.map((s: any, index: number) => ({
           id: s.id,
           name: s.name || `Rôle ${index + 1}`,
           color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
         }))
-        console.log('Parsed roles (reload):', roles)
         setTemplateRoles(roles)
         
         // Initialize template signers (empty, user will fill them)
@@ -197,13 +195,13 @@ function SendPageContent() {
           
           // Load roles from template (submitters are roles)
           const templateSubmitters = template.submitters || []
-          console.log('Template submitters:', templateSubmitters)
+
           const roles = templateSubmitters.map((s: any, index: number) => ({
             id: s.id,
             name: s.name || `Rôle ${index + 1}`,
             color: s.color || SIGNER_COLORS[index % SIGNER_COLORS.length],
           }))
-          console.log('Parsed roles:', roles)
+
           setTemplateRoles(roles)
           
           // Initialize template signers (empty, user will fill them)
@@ -661,7 +659,7 @@ function SendPageContent() {
               {(() => {
                 const hasTemplate = searchParams.get('template') !== null
                 const hasRoles = templateRoles.length > 0
-                console.log('Template check - hasTemplate:', hasTemplate, 'hasRoles:', hasRoles, 'templateRoles:', templateRoles)
+
                 // If we have a template param in URL, we MUST show template signers (even if roles not loaded yet)
                 // Otherwise check if we have roles loaded
                 return hasTemplate || hasRoles

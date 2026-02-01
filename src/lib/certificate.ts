@@ -273,9 +273,9 @@ export function getDrimeCertificates(): DrimeCertificateStore {
   
   // Use cached or generate new
   if (!cachedCertificates) {
-    console.log('[Drime Cert] Generating new certificate chain...')
+
     cachedCertificates = generateCertificateChain()
-    console.log('[Drime Cert] Certificate chain generated successfully')
+
   }
   
   return cachedCertificates

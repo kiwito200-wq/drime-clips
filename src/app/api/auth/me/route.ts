@@ -25,16 +25,14 @@ export async function GET(request: NextRequest) {
     // 2. No local session - forward ALL cookies to Drime
     const cookieHeader = request.headers.get('cookie')
     
-    console.log('[Auth] Cookies received from browser:', cookieHeader?.substring(0, 200))
-    
     if (cookieHeader) {
       // Check if we have drime_session cookie
       const hasDrimeSession = cookieHeader.includes('drime_session')
-      console.log('[Auth] Has drime_session cookie:', hasDrimeSession)
+
       
       if (hasDrimeSession) {
         // Forward cookies to Drime
-        console.log('[Auth] Forwarding cookies to Drime...')
+
         
         const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
           method: 'GET',
@@ -44,16 +42,12 @@ export async function GET(request: NextRequest) {
           },
         })
         
-        console.log('[Auth] Drime response status:', drimeRes.status)
+
         
         if (drimeRes.ok) {
           const drimeData = await drimeRes.json()
-          console.log('[Auth] Drime full response:', JSON.stringify(drimeData).substring(0, 500))
           
           if (drimeData.user) {
-            // Log all user fields to find the avatar
-            console.log('[Auth] Drime user fields:', Object.keys(drimeData.user))
-            
             // Extract avatar URL - same logic as Transfr
             let avatarUrl = drimeData.user.avatar_url || drimeData.user.avatar || null
             
@@ -62,7 +56,7 @@ export async function GET(request: NextRequest) {
               avatarUrl = `${DRIME_API_URL}/${avatarUrl.replace(/^\//, '')}`
             }
             
-            console.log('[Auth] Avatar URL found:', avatarUrl)
+
             
             // Create local user and session
             const user = await prisma.user.upsert({
@@ -101,7 +95,7 @@ export async function GET(request: NextRequest) {
               path: '/',
             })
             
-            console.log('[Auth] Local session created for:', user.email)
+
             return response
           }
         }

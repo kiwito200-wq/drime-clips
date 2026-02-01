@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     // - Shared with the user (even if in a folder owned by the user)
     // We don't need additional parameters as the API handles permissions
 
-    console.log('[Drime Files] Fetching from:', apiUrl)
+
 
     const xsrfMatch = cookieHeader.match(/XSRF-TOKEN=([^;]+)/)
     const xsrfToken = xsrfMatch ? decodeURIComponent(xsrfMatch[1]) : ''
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       total: data.total || entries.length,
     }
     
-    console.log('[Drime Files] Got', entries.length, 'entries')
+
 
     // Separate folders and PDF files
     const folders = entries.filter((item: any) => item.type === 'folder')

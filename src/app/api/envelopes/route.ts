@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
       try {
         const thumbnailBuffer = Buffer.from(await thumbnailBlob.arrayBuffer())
         thumbnailUrl = await uploadThumbnail(thumbnailBuffer, file.name)
-        console.log('[Envelope] Used client-provided thumbnail')
+
       } catch (e) {
         console.error('[Envelope] Failed to upload client thumbnail:', e)
       }
@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     // 2. Try worker if no client thumbnail and worker is configured
     if (!thumbnailUrl && WORKER_URL) {
       try {
-        console.log('[Envelope] Generating thumbnail via worker...')
+
         const workerResponse = await fetch(`${WORKER_URL}/generate`, {
           method: 'POST',
           headers: { 
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
           const workerBlob = await workerResponse.blob()
           const workerBuffer = Buffer.from(await workerBlob.arrayBuffer())
           thumbnailUrl = await uploadThumbnail(workerBuffer, file.name)
-          console.log('[Envelope] Generated thumbnail via worker')
+
         } else {
           const error = await workerResponse.text()
           console.error('[Envelope] Worker error:', error)

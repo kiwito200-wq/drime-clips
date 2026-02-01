@@ -35,8 +35,6 @@ export async function GET(
     // Decode URL encoding
     key = decodeURIComponent(key)
     
-    console.log('[PDF Proxy] Fetching from S3:', key, 'Bucket:', BUCKET)
-    
     // Fetch directly from S3/R2 using credentials
     const command = new GetObjectCommand({
       Bucket: BUCKET,

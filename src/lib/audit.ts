@@ -53,7 +53,7 @@ export async function logAuditEvent(
       },
     })
     
-    console.log(`[Audit] ${action} logged for envelope ${envelopeId}`)
+
     return log
   } catch (error) {
     console.error('[Audit] Failed to log event:', error)
@@ -488,14 +488,14 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
       if (pdfKey.startsWith(bucketName + '/')) {
         pdfKey = pdfKey.slice(bucketName.length + 1)
       }
-      console.log('[PDF Gen] Extracted PDF key:', pdfKey)
+
     } catch (e) {
       console.error('[PDF Gen] Error extracting PDF key:', e)
       // Keep as-is
     }
     
     const signedUrl = await r2.getSignedUrl(pdfKey)
-    console.log('[PDF Gen] Fetching PDF from signed URL...')
+
     const pdfResponse = await fetch(signedUrl)
     
     if (!pdfResponse.ok) {
@@ -503,15 +503,15 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
     }
     
     const contentType = pdfResponse.headers.get('content-type')
-    console.log('[PDF Gen] Response content-type:', contentType)
+
     
     const originalPdfBytes = await pdfResponse.arrayBuffer()
-    console.log('[PDF Gen] PDF bytes received:', originalPdfBytes.byteLength)
+
     
     // Verify it's actually a PDF (starts with %PDF)
     const firstBytes = new Uint8Array(originalPdfBytes.slice(0, 5))
     const header = Array.from(firstBytes).map(b => String.fromCharCode(b)).join('')
-    console.log('[PDF Gen] PDF header:', header)
+
     
     if (!header.startsWith('%PDF')) {
       // Log what we actually received
@@ -646,11 +646,6 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
       location: 'France',
       contactInfo: 'https://sign.drime.cloud',
       signerName: mainSigner?.name || mainSigner?.email || 'Drime Sign',
-    })
-    
-    console.log('[PDF Gen] Document signed with Drime certificate:', {
-      signedAt: signatureInfo.signedAt,
-      subject: signatureInfo.certificateSubject,
     })
     
     return { pdfBuffer, pdfHash: signatureInfo.documentHash }
@@ -977,7 +972,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
         signerName: 'Drime Sign - Audit Trail',
       })
       
-      console.log('[Audit PDF] Audit trail signed with Drime certificate')
+
       return pdfBuffer
     } catch (signError) {
       console.error('[Audit PDF] Failed to sign audit trail, returning unsigned:', signError)

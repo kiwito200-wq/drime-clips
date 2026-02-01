@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     // Set session cookie
     await setSessionCookie(sessionToken)
 
-    console.log('[Create Session] Success for user:', email)
+
 
     return NextResponse.json({ 
       success: true,

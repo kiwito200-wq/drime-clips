@@ -42,7 +42,6 @@ export async function GET(
 
     // Use the Drime download endpoint
     const downloadUrl = `${DRIME_API_URL}/api/v1/file-entries/download/${hash}`
-    console.log('[Drime PDF Proxy] Downloading from:', downloadUrl)
     
     const downloadRes = await fetch(downloadUrl, {
       method: 'GET',
@@ -51,8 +50,6 @@ export async function GET(
     })
 
     if (!downloadRes.ok) {
-      const errorText = await downloadRes.text()
-      console.error('[Drime PDF Proxy] Download failed:', downloadRes.status, errorText.substring(0, 200))
       return NextResponse.json({ error: 'Failed to download file from Drime' }, { status: downloadRes.status })
     }
 

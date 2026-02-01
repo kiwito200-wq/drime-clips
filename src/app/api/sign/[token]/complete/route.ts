@@ -130,32 +130,24 @@ export async function POST(request: NextRequest, { params }: Params) {
       let auditTrailPdfBuffer: Buffer | undefined
       let finalPdfUrl: string | undefined
       
-      console.log('[Complete] All signers completed, generating PDFs...')
-      
       try {
         // Generate signed PDF
-        console.log('[Complete] Generating signed PDF...')
         const { pdfBuffer, pdfHash: finalHash } = await generateSignedPdf(signer.envelope.id)
         signedPdfBuffer = pdfBuffer
-        console.log('[Complete] Signed PDF generated, size:', pdfBuffer.length, 'bytes')
         
         // Upload signed PDF to R2
         const signedPdfKey = `signed-pdfs/${signer.envelope.slug}-signed.pdf`
         await r2.uploadFile(signedPdfKey, pdfBuffer, 'application/pdf')
-        console.log('[Complete] Signed PDF uploaded to R2')
         
         const bucket = process.env.R2_BUCKET_NAME || 'drimesign'
         finalPdfUrl = `${process.env.R2_PUBLIC_URL || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${bucket}`}/${signedPdfKey}`
         
         // Generate audit trail PDF
-        console.log('[Complete] Generating audit trail PDF...')
         auditTrailPdfBuffer = await generateAuditTrailPdf(signer.envelope.id)
-        console.log('[Complete] Audit trail PDF generated, size:', auditTrailPdfBuffer.length, 'bytes')
         
         // Upload audit trail to R2
         const auditKey = `audit-trails/${signer.envelope.slug}-audit.pdf`
         await r2.uploadFile(auditKey, auditTrailPdfBuffer, 'application/pdf')
-        console.log('[Complete] Audit trail uploaded to R2')
         
         // Update envelope with final PDF details
         await prisma.envelope.update({
@@ -173,8 +165,6 @@ export async function POST(request: NextRequest, { params }: Params) {
           totalSigners: allSigners.length,
           signedPdfUrl: finalPdfUrl,
         })
-        
-        console.log('[Complete] Envelope updated as completed')
         
         // Notify all signers and owner that document is complete
         const userIdsToNotify = new Set<string>()
@@ -195,10 +185,6 @@ export async function POST(request: NextRequest, { params }: Params) {
           signer.envelope.name
         )
       } catch (pdfError: any) {
-        console.error('[Complete] ===== PDF GENERATION FAILED =====')
-        console.error('[Complete] Error:', pdfError?.message || pdfError)
-        console.error('[Complete] Stack:', pdfError?.stack)
-        
         // Still mark as completed even if PDF generation fails
         await prisma.envelope.update({
           where: { id: signer.envelope.id },
@@ -214,8 +200,6 @@ export async function POST(request: NextRequest, { params }: Params) {
         })
         
         // STILL send emails even without attachments - with download link
-        console.log('[Complete] Sending completion emails WITHOUT attachments...')
-        
         try {
           await sendCompletedEmail({
             to: signer.envelope.user.email,
@@ -224,9 +208,8 @@ export async function POST(request: NextRequest, { params }: Params) {
             completedAt: signedAt,
             downloadLink: `${process.env.NEXT_PUBLIC_APP_URL}/view/${signer.envelope.slug}`,
           })
-          console.log('[Complete] Owner email sent (no attachments)')
-        } catch (e: any) {
-          console.error('[Complete] Failed to send owner email:', e?.message)
+        } catch {
+          // Silent fail for email
         }
         
         for (let i = 0; i < allSigners.length; i++) {
@@ -239,9 +222,8 @@ export async function POST(request: NextRequest, { params }: Params) {
               signerName: allSigners[i].name,
               completedAt: signedAt,
             })
-            console.log(`[Complete] Signer ${allSigners[i].email} email sent (no attachments)`)
-          } catch (e: any) {
-            console.error(`[Complete] Failed to send signer ${allSigners[i].email} email:`, e?.message)
+          } catch {
+            // Silent fail for email
           }
         }
       }
@@ -249,24 +231,15 @@ export async function POST(request: NextRequest, { params }: Params) {
       // Send completion emails to all signers and owner with attachments
       const completedAt = signedAt
       
-      console.log('[Complete] ===== SENDING COMPLETION EMAILS =====')
-      console.log('[Complete] signedPdfBuffer:', signedPdfBuffer ? `Buffer(${signedPdfBuffer.length} bytes)` : 'UNDEFINED')
-      console.log('[Complete] auditTrailPdfBuffer:', auditTrailPdfBuffer ? `Buffer(${auditTrailPdfBuffer.length} bytes)` : 'UNDEFINED')
-      console.log('[Complete] Owner email:', signer.envelope.user.email)
-      console.log('[Complete] Signers to notify:', allSigners.map(s => s.email).join(', '))
-      
       // Prepare attachments only if buffers exist
       const attachments = {
         signedPdf: signedPdfBuffer,
         auditTrailPdf: auditTrailPdfBuffer,
       }
-      const hasAttachments = !!signedPdfBuffer || !!auditTrailPdfBuffer
-      console.log('[Complete] Has attachments:', hasAttachments)
       
       // Send to owner FIRST
       try {
-        console.log('[Complete] [1/N] Sending to owner:', signer.envelope.user.email)
-        const ownerResult = await sendCompletedEmail({
+        await sendCompletedEmail({
           to: signer.envelope.user.email,
           documentName: signer.envelope.name,
           signerName: signer.envelope.user.name,
@@ -274,10 +247,8 @@ export async function POST(request: NextRequest, { params }: Params) {
           downloadLink: `${process.env.NEXT_PUBLIC_APP_URL}/view/${signer.envelope.slug}`,
           attachments,
         })
-        console.log('[Complete] Owner email result:', JSON.stringify(ownerResult))
-      } catch (e: any) {
-        console.error('[Complete] FAILED to send to owner:', e?.message || e)
-        console.error('[Complete] Owner error stack:', e?.stack)
+      } catch {
+        // Silent fail for email
       }
       
       // Send to all signers with delay to avoid rate limiting
@@ -289,21 +260,17 @@ export async function POST(request: NextRequest, { params }: Params) {
         await new Promise(resolve => setTimeout(resolve, 600))
         
         try {
-          console.log(`[Complete] [${i + 2}/${allSigners.length + 1}] Sending to signer:`, s.email)
-          const signerResult = await sendCompletedEmail({
+          await sendCompletedEmail({
             to: s.email,
             documentName: signer.envelope.name,
             signerName: s.name,
             completedAt,
             attachments,
           })
-          console.log(`[Complete] Signer ${s.email} result:`, JSON.stringify(signerResult))
-        } catch (e: any) {
-          console.error(`[Complete] FAILED to send to signer ${s.email}:`, e?.message || e)
+        } catch {
+          // Silent fail for email
         }
       }
-      
-      console.log('[Complete] ===== EMAILS SENT =====')
     }
     
     return NextResponse.json({ 

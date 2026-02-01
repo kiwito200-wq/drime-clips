@@ -81,7 +81,7 @@ export async function POST(request: Request) {
             userAgent,
           },
         })
-        console.log(`[Audit] Phone verified: ${maskedPhone} for envelope ${envelopeSlug}`)
+
       }
     }
     
