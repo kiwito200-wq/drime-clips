@@ -851,7 +851,7 @@ export default function DashboardHome() {
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <MailIcon />
-                  {locale === 'fr' ? 'Reçus' : 'Sent to me'}
+                  {t('agreements.received')}
                 </Link>
                 <Link
                   href="/templates"
@@ -859,42 +859,42 @@ export default function DashboardHome() {
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <img src="/icons/bookmark.svg" alt="" className="w-5 h-5" style={{ filter: 'brightness(0)' }} />
-                  {locale === 'fr' ? 'Templates' : 'Templates'}
+                  {t('agreements.templates')}
                 </Link>
               </div>
             </div>
 
             {/* Filtered by status */}
             <div data-onboarding="filters">
-              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{locale === 'fr' ? 'Filtrer par statut' : 'Filtered by status'}</p>
+              <p className="text-xs font-medium text-gray-500 px-3 mb-2">{t('agreements.filterStatus')}</p>
               <div className="space-y-1">
                 <Link
                   href="/dashboard/agreements?filter=need_to_sign"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <PenIcon />
-                  {locale === 'fr' ? 'À signer' : 'Need to sign'}
+                  {t('agreements.needToSign')}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=in_progress"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <ClockIcon />
-                  {locale === 'fr' ? 'En cours' : 'In progress'}
+                  {t('agreements.inProgress')}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=completed"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <CheckIcon />
-                  {locale === 'fr' ? 'Approuvés' : 'Approved'}
+                  {t('agreements.approved')}
                 </Link>
                 <Link
                   href="/dashboard/agreements?filter=rejected"
                   className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-900 hover:bg-[#ECEEF0] transition-colors"
                 >
                   <XIcon />
-                  {locale === 'fr' ? 'Refusés' : 'Rejected'}
+                  {t('agreements.rejected')}
                 </Link>
               </div>
             </div>
