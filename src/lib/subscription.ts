@@ -157,8 +157,9 @@ export async function syncSubscriptionFromDrime(
   try {
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
     
+    // Use /me endpoint with subscriptions included - this is accessible by the user
     const response = await fetch(
-      `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`,
+      `${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product,subscriptions.price`,
       {
         headers: {
           'Cookie': `drime_session=${drimeToken}`,
