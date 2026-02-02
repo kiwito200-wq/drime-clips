@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 // Country codes with flags and example phone formats
 const COUNTRIES = [
@@ -199,6 +200,7 @@ export default function StepSigners({
   onNext,
   isLoading,
 }: StepSignersProps) {
+  const { t } = useTranslation()
   const [newName, setNewName] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [errors, setErrors] = useState<{ name?: string; email?: string }>({})
@@ -240,8 +242,8 @@ export default function StepSigners({
     <div className="max-w-xl mx-auto py-10 px-4">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Qui doit signer ?</h1>
-        <p className="text-gray-500 mt-2">Ajoutez les personnes qui doivent signer ce document</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{t('signers.title')}</h1>
+        <p className="text-gray-500 mt-2">{t('signers.subtitle')}</p>
       </div>
 
       {/* Self-sign button */}
@@ -250,7 +252,7 @@ export default function StepSigners({
         disabled={isLoading}
         className="w-full mb-6 py-3 px-4 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl text-gray-700 font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
       >
-        Je suis le seul signataire
+        {t('signers.iAmOnlySigner')}
       </button>
 
       <div className="relative mb-6">
@@ -258,7 +260,7 @@ export default function StepSigners({
           <div className="w-full border-t border-gray-200" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-gray-50 px-3 text-sm text-gray-400">ou ajouter des signataires</span>
+          <span className="bg-gray-50 px-3 text-sm text-gray-400">{t('signers.orAddSigners')}</span>
         </div>
       </div>
 
@@ -296,14 +298,14 @@ export default function StepSigners({
                   type="text"
                   value={signer.name}
                   onChange={(e) => onUpdateSigner(signer.id, { name: e.target.value })}
-                  placeholder="Nom"
+                  placeholder={t('signers.name')}
                   className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
                 />
                 <input
                   type="email"
                   value={signer.email}
                   onChange={(e) => onUpdateSigner(signer.id, { email: e.target.value })}
-                  placeholder="email@exemple.com"
+                  placeholder={t('signers.email')}
                   className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
                 />
               </div>
@@ -372,7 +374,7 @@ export default function StepSigners({
               type="text"
               value={newName}
               onChange={(e) => { setNewName(e.target.value); setErrors({}) }}
-              placeholder="Nom"
+              placeholder={t('signers.name')}
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none ${
                 errors.name ? 'border-red-300 bg-red-50' : 'border-gray-200'
               }`}
@@ -385,7 +387,7 @@ export default function StepSigners({
               type="email"
               value={newEmail}
               onChange={(e) => { setNewEmail(e.target.value); setErrors({}) }}
-              placeholder="email@exemple.com"
+              placeholder={t('signers.email')}
               className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none ${
                 errors.email ? 'border-red-300 bg-red-50' : 'border-gray-200'
               }`}
@@ -401,7 +403,7 @@ export default function StepSigners({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Ajouter
+          {t('signers.add')}
         </button>
       </div>
 
@@ -411,14 +413,14 @@ export default function StepSigners({
           onClick={onBack}
           className="px-5 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
         >
-          Retour
+          {t('signers.back')}
         </button>
         <button
           onClick={onNext}
           disabled={!canContinue || isLoading}
           className="px-6 py-2.5 bg-[#08CF65] text-white font-medium rounded-xl hover:bg-[#07b858] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
         >
-          Continuer
+          {t('signers.continue')}
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

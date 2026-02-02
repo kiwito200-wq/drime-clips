@@ -176,10 +176,10 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
           }
         }
       } else {
-        setError('Impossible de charger les fichiers')
+        setError(t('drime.loadError'))
       }
     } catch {
-      setError('Erreur de connexion à Drime')
+      setError(t('drime.connectionError'))
     } finally {
       setLoading(false)
     }
@@ -418,7 +418,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                 onClick={() => fetchFiles(currentFolderId)}
                 className="text-[#08CF65] text-sm font-medium hover:underline"
               >
-                Réessayer
+                {t('drime.retry')}
               </button>
             </div>
           ) : folders.length === 0 && files.length === 0 ? (
@@ -482,12 +482,12 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                 <svg className="w-4 h-4 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
-                1 sélectionné
+                1 {t('drime.selected')}
                 <button 
                   onClick={() => setSelectedFile(null)}
                   className="text-gray-500 hover:text-gray-700 ml-1"
                 >
-                  Désélectionner
+                  {t('drime.deselect')}
                 </button>
               </span>
             ) : null}
@@ -497,7 +497,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              {t('common.cancel')}
             </button>
             <button
               onClick={handleConfirmSelection}
@@ -514,7 +514,7 @@ export default function DrimeFilePicker({ isOpen, onClose, onSelect }: DrimeFile
                   {t('common.loading')}
                 </span>
               ) : (
-                'Sélectionner'
+                t('drime.selectFile')
               )}
             </button>
           </div>

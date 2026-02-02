@@ -234,6 +234,27 @@ export const fr = {
     loadingFiles: 'Chargement des fichiers...',
     selectFile: 'Sélectionner',
     import: 'Importer',
+    selected: 'sélectionné',
+    deselect: 'Désélectionner',
+    retry: 'Réessayer',
+    connectionError: 'Erreur de connexion à Drime',
+    loadError: 'Impossible de charger les fichiers',
+    downloadFailed: 'Échec du téléchargement',
+  },
+
+  // Send flow - Signers step
+  signers: {
+    title: 'Qui doit signer ?',
+    subtitle: 'Ajoutez les personnes qui doivent signer ce document',
+    iAmOnlySigner: 'Je suis le seul signataire',
+    orAddSigners: 'ou ajouter des signataires',
+    name: 'Nom',
+    email: 'email@exemple.com',
+    add: 'Ajouter',
+    continue: 'Continuer',
+    back: 'Retour',
+    atLeastOneSigner: 'Veuillez ajouter au moins un signataire',
+    fillAllFields: 'Veuillez remplir tous les champs',
   },
 
   // Modals
