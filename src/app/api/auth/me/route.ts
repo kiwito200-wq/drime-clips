@@ -3,7 +3,7 @@ import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 import { encrypt } from '@/lib/encryption'
-import { syncSubscriptionFromDrime } from '@/lib/subscription'
+import { PLAN_LIMITS, PlanType } from '@/lib/subscription'
 
 const DRIME_API_URL = 'https://app.drime.cloud'
 
@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
         // Extract the drime_session token for storage
         const drimeToken = extractDrimeToken(cookieHeader)
         
-        // Forward cookies to Drime
-        const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
+        // Forward cookies to Drime - include subscriptions in the same request
+        const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product`, {
           method: 'GET',
           headers: {
             'Cookie': cookieHeader,
@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
         
         if (drimeRes.ok) {
           const drimeData = await drimeRes.json()
+          console.log('[Auth] Drime /me response:', JSON.stringify(drimeData).substring(0, 1000))
           
           if (drimeData.user) {
             // Extract avatar URL - same logic as Transfr
@@ -68,30 +69,44 @@ export async function GET(request: NextRequest) {
             // Encrypt the Drime token before storing
             const encryptedDrimeToken = drimeToken ? encrypt(drimeToken) : null
             
-            // Create local user and session (including drimeToken!)
+            // Extract subscription plan from response
+            let subscriptionPlan: PlanType = 'gratuit'
+            const subscriptions = drimeData.user.subscriptions || []
+            console.log('[Auth] Found subscriptions:', subscriptions.length)
+            
+            const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
+            if (activeSubscription?.product?.name) {
+              const productName = activeSubscription.product.name.toLowerCase()
+              console.log('[Auth] Active subscription product:', productName)
+              
+              if (productName.includes('advanced')) subscriptionPlan = 'advanced'
+              else if (productName.includes('professional') || productName.includes('pro')) subscriptionPlan = 'professional'
+              else if (productName.includes('essential')) subscriptionPlan = 'essentials'
+              else if (productName.includes('starter')) subscriptionPlan = 'starter'
+            }
+            console.log('[Auth] Mapped subscription plan:', subscriptionPlan)
+            
+            // Create local user and session (including drimeToken and subscription!)
             const user = await prisma.user.upsert({
               where: { email: drimeData.user.email },
               update: {
                 name: drimeData.user.name || drimeData.user.display_name,
                 avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
-                drimeToken: encryptedDrimeToken, // Store encrypted token!
+                drimeToken: encryptedDrimeToken,
+                subscriptionPlan: subscriptionPlan,
+                subscriptionUpdatedAt: new Date(),
               },
               create: {
                 email: drimeData.user.email,
                 name: drimeData.user.name || drimeData.user.display_name,
                 avatarUrl: avatarUrl,
                 drimeUserId: String(drimeData.user.id),
-                drimeToken: encryptedDrimeToken, // Store encrypted token!
+                drimeToken: encryptedDrimeToken,
+                subscriptionPlan: subscriptionPlan,
+                subscriptionUpdatedAt: new Date(),
               },
             })
-            
-            // Sync subscription from Drime (non-blocking)
-            if (drimeToken && drimeData.user.id) {
-              syncSubscriptionFromDrime(user.id, String(drimeData.user.id), drimeToken)
-                .then(plan => console.log('[Auth] Synced subscription plan:', plan))
-                .catch(err => console.error('[Auth] Failed to sync subscription:', err))
-            }
             
             // Create session
             const sessionToken = await createSession(user.id)
