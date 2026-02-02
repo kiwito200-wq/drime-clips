@@ -3,8 +3,18 @@ import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 import { encrypt } from '@/lib/encryption'
+import { PlanType } from '@/lib/subscription'
 
 const DRIME_API_URL = 'https://app.drime.cloud'
+
+// Plan priority (higher = better)
+const PLAN_PRIORITY: Record<PlanType, number> = {
+  'advanced': 4,
+  'professional': 3,
+  'essentials': 2,
+  'starter': 1,
+  'gratuit': 0,
+}
 
 /**
  * Extract drime_session token from cookie header
@@ -12,6 +22,62 @@ const DRIME_API_URL = 'https://app.drime.cloud'
 function extractDrimeToken(cookieHeader: string): string | null {
   const match = cookieHeader.match(/drime_session=([^;]+)/)
   return match ? match[1] : null
+}
+
+/**
+ * Map a product name to a plan type
+ */
+function mapProductToPlan(productName: string): PlanType {
+  const name = productName.toLowerCase()
+  
+  // Direct plan names first (most common)
+  if (name.includes('advanced')) return 'advanced'
+  if (name.includes('professional') || name.includes('pro')) return 'professional'
+  if (name.includes('essential')) return 'essentials'
+  if (name.includes('starter')) return 'starter'
+  
+  // Lifetime subscriptions based on storage (e.g. "Lifetime Subscription: 6TB")
+  const tbMatch = name.match(/(\d+)\s*tb/i)
+  if (tbMatch) {
+    const tb = parseInt(tbMatch[1])
+    if (tb >= 6) return 'advanced'
+    if (tb >= 3) return 'professional'
+    return 'essentials' // 2TB and below
+  }
+  
+  const gbMatch = name.match(/(\d+)\s*gb/i)
+  if (gbMatch) return 'starter'
+  
+  return 'gratuit'
+}
+
+/**
+ * Get the best plan from all subscriptions
+ */
+function getBestPlanFromSubscriptions(subscriptions: any[]): PlanType {
+  let bestPlan: PlanType = 'gratuit'
+  let bestPriority = 0
+  
+  for (const sub of subscriptions) {
+    // Only consider active and valid subscriptions
+    if (!sub.active || !sub.valid) continue
+    
+    const productName = sub.product?.name
+    if (!productName) continue
+    
+    const plan = mapProductToPlan(productName)
+    const priority = PLAN_PRIORITY[plan]
+    
+    console.log(`[Auth] Subscription "${productName}" -> plan "${plan}" (priority ${priority})`)
+    
+    if (priority > bestPriority) {
+      bestPriority = priority
+      bestPlan = plan
+    }
+  }
+  
+  console.log('[Auth] Best plan selected:', bestPlan)
+  return bestPlan
 }
 
 // GET /api/auth/me - Check local session OR forward cookies to Drime
@@ -38,8 +104,8 @@ export async function GET(request: NextRequest) {
     if (cookieHeader && hasDrimeSession) {
       const drimeToken = extractDrimeToken(cookieHeader)
       
-      // Get user info from Drime
-      const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
+      // Get user info with subscriptions from Drime
+      const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product`, {
         method: 'GET',
         headers: {
           'Cookie': cookieHeader,
@@ -60,8 +126,12 @@ export async function GET(request: NextRequest) {
           // Encrypt the Drime token before storing
           const encryptedDrimeToken = drimeToken ? encrypt(drimeToken) : null
           
+          // Get subscription plan from response
+          const subscriptions = drimeData.user.subscriptions || []
+          console.log('[Auth] Found', subscriptions.length, 'subscriptions in /me response')
+          const subscriptionPlan = getBestPlanFromSubscriptions(subscriptions)
+          
           // Create local user and session
-          // TODO: Subscription sync disabled for now - will fix later
           const user = await prisma.user.upsert({
             where: { email: drimeData.user.email },
             update: {
@@ -69,6 +139,8 @@ export async function GET(request: NextRequest) {
               avatarUrl: avatarUrl,
               drimeUserId: String(drimeData.user.id),
               drimeToken: encryptedDrimeToken,
+              subscriptionPlan: subscriptionPlan,
+              subscriptionUpdatedAt: new Date(),
             },
             create: {
               email: drimeData.user.email,
@@ -76,6 +148,8 @@ export async function GET(request: NextRequest) {
               avatarUrl: avatarUrl,
               drimeUserId: String(drimeData.user.id),
               drimeToken: encryptedDrimeToken,
+              subscriptionPlan: subscriptionPlan,
+              subscriptionUpdatedAt: new Date(),
             },
           })
           
