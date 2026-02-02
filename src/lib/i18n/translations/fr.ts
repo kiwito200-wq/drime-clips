@@ -273,6 +273,15 @@ export const fr = {
     warningSignatureChange: 'Attention : Modifier votre signature affectera les futures signatures uniquement.',
   },
 
+  // Validation
+  validation: {
+    nameRequired: 'Nom requis',
+    emailRequired: 'Email requis',
+    invalidEmail: 'Email invalide',
+    fieldRequired: 'Ce champ est requis',
+    smsVerification: 'Vérification SMS (2FA)',
+  },
+
   // Errors
   errors: {
     loadingFailed: 'Échec du chargement',
