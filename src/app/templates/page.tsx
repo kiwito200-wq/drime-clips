@@ -150,10 +150,21 @@ export default function TemplatesPage() {
   // Load subscription info
   useEffect(() => {
     if (user) {
+      // Get current subscription
       fetch('/api/subscription', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
           if (!data.error) {
+            setSubscription(data)
+          }
+        })
+        .catch(() => {})
+      
+      // Sync from Drime (background)
+      fetch('/api/subscription', { method: 'POST', credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error && data.synced) {
             setSubscription(data)
           }
         })
