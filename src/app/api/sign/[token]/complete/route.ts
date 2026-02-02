@@ -111,15 +111,18 @@ export async function POST(request: NextRequest, { params }: Params) {
       fieldsCount: Object.keys(fieldValues || {}).length,
     })
     
-    // Notify document owner that someone signed
-    await notifySigned(
-      signer.envelope.userId,
-      signer.envelope.id,
-      signer.envelope.slug,
-      signer.envelope.name,
-      signer.email,
-      signer.name || undefined
-    )
+    // Notify document owner that someone signed (but not if they signed their own document)
+    const isOwnerSigning = signer.email.toLowerCase() === signer.envelope.user.email.toLowerCase()
+    if (!isOwnerSigning) {
+      await notifySigned(
+        signer.envelope.userId,
+        signer.envelope.id,
+        signer.envelope.slug,
+        signer.envelope.name,
+        signer.email,
+        signer.name || undefined
+      )
+    }
     
     // Check if all signers have signed
     const allSigners = signer.envelope.signers
