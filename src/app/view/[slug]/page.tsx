@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import PDFViewer from '@/components/sign/PDFViewer'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface Signer {
   id: string
@@ -36,6 +37,7 @@ interface EnvelopeDetails {
 export default function ViewDocumentPage() {
   const params = useParams()
   const router = useRouter()
+  const { locale } = useTranslation()
   const slug = params.slug as string
   
   const [envelope, setEnvelope] = useState<EnvelopeDetails | null>(null)
@@ -71,7 +73,7 @@ export default function ViewDocumentPage() {
       
       setLoading(false)
     } catch (err) {
-      setError('Erreur lors du chargement')
+      setError(locale === 'fr' ? 'Erreur lors du chargement' : 'Loading error')
       setLoading(false)
     }
   }, [slug])
@@ -207,10 +209,10 @@ export default function ViewDocumentPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Erreur</h1>
+          <h1 className="text-xl font-semibold text-gray-900 mb-2">{locale === 'fr' ? 'Erreur' : 'Error'}</h1>
           <p className="text-gray-500 mb-4">{error}</p>
           <button onClick={() => router.back()} className="text-[#08CF65] hover:underline">
-            Retour au dashboard
+            {locale === 'fr' ? 'Retour au dashboard' : 'Back to dashboard'}
           </button>
         </div>
       </div>
