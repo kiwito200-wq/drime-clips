@@ -54,14 +54,17 @@ a[x-apple-data-detectors] {
 }
 `
 
-function getFallbackUrlHtml(url: string): string {
+function getFallbackUrlHtml(url: string, locale: 'fr' | 'en' = 'fr'): string {
+  const text = locale === 'fr' 
+    ? 'Si vous avez des difficultés à cliquer sur le bouton, copiez et collez cette URL dans votre navigateur :'
+    : 'If you have trouble clicking the button, copy and paste this URL into your browser:'
   return `
 <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
 <tbody>
 <tr>
 <td style="padding: 8px 0 0 0;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 11px; font-weight: 400; line-height: 150%; color: #999999; text-align: center;">
-Si vous avez des difficultés à cliquer sur le bouton, copiez et collez cette URL dans votre navigateur :
+${text}
 </p>
 <p style="margin: 4px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 11px; font-weight: 400; line-height: 150%; color: #666666; text-align: center; word-break: break-all;">
 <a href="${url}" style="color: #666666; text-decoration: underline;">${url}</a>
@@ -178,6 +181,7 @@ export interface SignatureRequestEmailData {
   signingLink: string
   message?: string
   expiresAt?: Date
+  locale?: 'fr' | 'en'
 }
 
 export interface CompletedEmailData {
@@ -191,6 +195,7 @@ export interface CompletedEmailData {
     signedPdf?: Buffer
     auditTrailPdf?: Buffer
   }
+  locale?: 'fr' | 'en'
 }
 
 export interface ReminderEmailData {
@@ -200,13 +205,14 @@ export interface ReminderEmailData {
   senderName: string
   signingLink: string
   daysRemaining: number
+  locale?: 'fr' | 'en'
 }
 
 // ==============================================
 // SIGNATURE REQUEST EMAIL
 // ==============================================
 export async function sendSignatureRequestEmail(data: SignatureRequestEmailData) {
-  const { to, signerName, documentName, senderName, senderEmail, signingLink, message, expiresAt } = data
+  const { to, signerName, documentName, senderName, senderEmail, signingLink, message, expiresAt, locale = 'fr' } = data
   
   // SECURITY: Escape all user-provided content to prevent XSS
   const safeSignerName = escapeHtml(signerName)
@@ -216,10 +222,29 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
   const safeMessage = escapeHtml(message)
   const safeSigningLink = sanitizeUrl(signingLink)
   
-  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
-  const expiresText = expiresAt 
-    ? `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.`
-    : ''
+  // Translated content
+  const i18n = {
+    fr: {
+      greeting: safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,',
+      body: `<strong>${safeSenderName}</strong> vous a envoyé le document <strong>"${safeDocumentName}"</strong> à signer.`,
+      button: 'Signer le document',
+      expires: expiresAt ? `Ce lien expire le ${expiresAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}.` : '',
+      regards: `Cordialement,<br>${COMPANY_NAME}`,
+      footer: `Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a invité à signer un document.`,
+      subject: `${safeSenderName} vous invite à signer "${safeDocumentName}"`,
+    },
+    en: {
+      greeting: safeSignerName ? `Hello ${safeSignerName},` : 'Hello,',
+      body: `<strong>${safeSenderName}</strong> has sent you the document <strong>"${safeDocumentName}"</strong> to sign.`,
+      button: 'Sign document',
+      expires: expiresAt ? `This link expires on ${expiresAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}.` : '',
+      regards: `Best regards,<br>${COMPANY_NAME}`,
+      footer: `This email was sent to ${escapeHtml(to)} because ${safeSenderEmail} invited you to sign a document.`,
+      subject: `${safeSenderName} invites you to sign "${safeDocumentName}"`,
+    }
+  }
+  
+  const t = i18n[locale]
 
   const htmlContent = `
 <!-- Greeting -->
@@ -228,14 +253,14 @@ export async function sendSignatureRequestEmail(data: SignatureRequestEmailData)
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
-${greeting}
+${t.greeting}
 </p>
 </td>
 </tr>
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-<strong>${safeSenderName}</strong> vous a envoyé le document <strong>"${safeDocumentName}"</strong> à signer.
+${t.body}
 </p>
 ${safeMessage ? `<p style="margin: 16px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 400; line-height: 150%; color: #666666; font-style: italic;">"${safeMessage}"</p>` : ''}
 </td>
@@ -249,7 +274,7 @@ ${safeMessage ? `<p style="margin: 16px 0 0 0; font-family: 'Schibsted Grotesk',
 <tr>
 <td align="center">
 <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
-Signer le document
+${t.button}
 </a>
 </td>
 </tr>
@@ -257,16 +282,16 @@ Signer le document
 </table>
 
 <!-- Fallback URL -->
-${getFallbackUrlHtml(safeSigningLink)}
+${getFallbackUrlHtml(safeSigningLink, locale)}
 
 <!-- Expires Text -->
-${expiresText ? `
+${t.expires ? `
 <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
 <tbody>
 <tr>
 <td style="padding: 8px 0;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 500; line-height: 150%; color: #f59e0b; text-align: center;">
-${expiresText}
+${t.expires}
 </p>
 </td>
 </tr>
@@ -280,7 +305,7 @@ ${expiresText}
 <tr>
 <td style="padding: 16px 0;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-Cordialement,<br>${COMPANY_NAME}
+${t.regards}
 </p>
 </td>
 </tr>
@@ -293,7 +318,7 @@ Cordialement,<br>${COMPANY_NAME}
 <tr>
 <td style="padding-top: 16px; text-align: center;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 12px; font-weight: 500; line-height: 150%; color: #474747;">
-Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a invité à signer un document.
+${t.footer}
 </p>
 </td>
 </tr>
@@ -306,7 +331,7 @@ Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a inv
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       reply_to: senderEmail,
-      subject: `${safeSenderName} vous invite à signer "${safeDocumentName}"`,
+      subject: t.subject,
       html: getEmailWrapper(htmlContent),
     })
 
@@ -328,7 +353,7 @@ Cet email a été envoyé à ${escapeHtml(to)} car ${safeSenderEmail} vous a inv
 // DOCUMENT COMPLETED EMAIL
 // ==============================================
 export async function sendCompletedEmail(data: CompletedEmailData) {
-  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments } = data
+  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments, locale = 'fr' } = data
   
   // SECURITY: Escape all user-provided content
   const safeDocumentName = escapeHtml(documentName)
@@ -336,23 +361,53 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
   const safeDownloadLink = downloadLink ? sanitizeUrl(downloadLink) : undefined
   const safeAuditTrailLink = auditTrailLink ? sanitizeUrl(auditTrailLink) : undefined
   
-  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
-  const completedDate = completedAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
-  const completedTime = completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const completedDateFr = completedAt.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+  const completedTimeFr = completedAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const completedDateEn = completedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const completedTimeEn = completedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+
+  const i18n = {
+    fr: {
+      greeting: safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,',
+      body: `Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé le ${completedDateFr} à ${completedTimeFr}.`,
+      verified: '✓ Signature vérifiée cryptographiquement',
+      validDoc: 'Ce document est juridiquement valide et inclut un certificat d\'audit complet.',
+      downloadBtn: 'Télécharger le document',
+      auditLink: 'Voir le certificat d\'audit',
+      regards: `Cordialement,<br>${COMPANY_NAME}`,
+      subject: `✅ "${safeDocumentName}" a été signé`,
+      signedSuffix: '_signe',
+      auditSuffix: '_certificat_audit',
+    },
+    en: {
+      greeting: safeSignerName ? `Hello ${safeSignerName},` : 'Hello,',
+      body: `The document <strong>"${safeDocumentName}"</strong> was fully signed on ${completedDateEn} at ${completedTimeEn}.`,
+      verified: '✓ Cryptographically verified signature',
+      validDoc: 'This document is legally valid and includes a complete audit certificate.',
+      downloadBtn: 'Download document',
+      auditLink: 'View audit certificate',
+      regards: `Best regards,<br>${COMPANY_NAME}`,
+      subject: `✅ "${safeDocumentName}" has been signed`,
+      signedSuffix: '_signed',
+      auditSuffix: '_audit_certificate',
+    }
+  }
+  
+  const t = i18n[locale]
 
   // Build attachments array for Resend
   const emailAttachments: { filename: string; content: Buffer }[] = []
   
   if (attachments?.signedPdf) {
     emailAttachments.push({
-      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}_signe.pdf`,
+      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}${t.signedSuffix}.pdf`,
       content: attachments.signedPdf,
     })
   }
   
   if (attachments?.auditTrailPdf) {
     emailAttachments.push({
-      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}_certificat_audit.pdf`,
+      filename: `${documentName.replace(/[^a-zA-Z0-9]/g, '_')}${t.auditSuffix}.pdf`,
       content: attachments.auditTrailPdf,
     })
   }
@@ -364,14 +419,14 @@ export async function sendCompletedEmail(data: CompletedEmailData) {
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
-${greeting}
+${t.greeting}
 </p>
 </td>
 </tr>
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé le ${completedDate} à ${completedTime}.
+${t.body}
 </p>
 </td>
 </tr>
@@ -388,10 +443,10 @@ Le document <strong>"${safeDocumentName}"</strong> a été entièrement signé l
 <tr>
 <td align="center" style="padding: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600; color: #166534; line-height: 150%;">
-✓ Signature vérifiée cryptographiquement
+${t.verified}
 </p>
 <p style="margin: 4px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 12px; font-weight: 400; color: #166534; line-height: 150%;">
-Ce document est juridiquement valide et inclut un certificat d'audit complet.
+${t.validDoc}
 </p>
 </td>
 </tr>
@@ -409,7 +464,7 @@ ${safeDownloadLink ? `
 <tr>
 <td align="center">
 <a href="${safeDownloadLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
-Télécharger le document
+${t.downloadBtn}
 </a>
 </td>
 </tr>
@@ -417,7 +472,7 @@ Télécharger le document
 </table>
 
 <!-- Fallback URL -->
-${getFallbackUrlHtml(safeDownloadLink)}
+${getFallbackUrlHtml(safeDownloadLink, locale)}
 ` : ''}
 
 ${safeAuditTrailLink ? `
@@ -426,7 +481,7 @@ ${safeAuditTrailLink ? `
 <tr>
 <td style="padding: 8px 0; text-align: center;">
 <a href="${safeAuditTrailLink}" style="font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 500; color: #666666; text-decoration: underline;">
-Voir le certificat d'audit
+${t.auditLink}
 </a>
 </td>
 </tr>
@@ -440,7 +495,7 @@ Voir le certificat d'audit
 <tr>
 <td style="padding: 16px 0;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-Cordialement,<br>${COMPANY_NAME}
+${t.regards}
 </p>
 </td>
 </tr>
@@ -452,7 +507,7 @@ Cordialement,<br>${COMPANY_NAME}
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      subject: `✅ "${safeDocumentName}" a été signé`,
+      subject: t.subject,
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       html: getEmailWrapper(htmlContent),
     })
@@ -469,7 +524,7 @@ Cordialement,<br>${COMPANY_NAME}
 // REMINDER EMAIL
 // ==============================================
 export async function sendReminderEmail(data: ReminderEmailData) {
-  const { to, signerName, documentName, senderName, signingLink, daysRemaining } = data
+  const { to, signerName, documentName, senderName, signingLink, daysRemaining, locale = 'fr' } = data
   
   // SECURITY: Escape all user-provided content
   const safeSignerName = escapeHtml(signerName)
@@ -477,10 +532,30 @@ export async function sendReminderEmail(data: ReminderEmailData) {
   const safeSenderName = escapeHtml(senderName)
   const safeSigningLink = sanitizeUrl(signingLink)
   
-  const greeting = safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,'
-  const urgencyText = daysRemaining <= 1 
-    ? '⚠️ Ce document expire demain !' 
-    : `📅 Il vous reste ${daysRemaining} jours pour signer.`
+  const i18n = {
+    fr: {
+      greeting: safeSignerName ? `Bonjour ${safeSignerName},` : 'Bonjour,',
+      body: `Vous n'avez pas encore signé le document <strong>"${safeDocumentName}"</strong> envoyé par ${safeSenderName}.`,
+      urgency: daysRemaining <= 1 
+        ? '⚠️ Ce document expire demain !' 
+        : `📅 Il vous reste ${daysRemaining} jours pour signer.`,
+      button: 'Signer maintenant',
+      regards: `Cordialement,<br>${COMPANY_NAME}`,
+      subject: `Rappel: "${safeDocumentName}" attend votre signature`,
+    },
+    en: {
+      greeting: safeSignerName ? `Hello ${safeSignerName},` : 'Hello,',
+      body: `You haven't signed the document <strong>"${safeDocumentName}"</strong> sent by ${safeSenderName} yet.`,
+      urgency: daysRemaining <= 1 
+        ? '⚠️ This document expires tomorrow!' 
+        : `📅 You have ${daysRemaining} days left to sign.`,
+      button: 'Sign now',
+      regards: `Best regards,<br>${COMPANY_NAME}`,
+      subject: `Reminder: "${safeDocumentName}" awaits your signature`,
+    }
+  }
+  
+  const t = i18n[locale]
 
   const htmlContent = `
 <!-- Greeting -->
@@ -489,17 +564,17 @@ export async function sendReminderEmail(data: ReminderEmailData) {
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 18px; font-weight: 700; line-height: 122%; color: #000000;">
-${greeting}
+${t.greeting}
 </p>
 </td>
 </tr>
 <tr>
 <td style="padding-bottom: 16px;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-Vous n'avez pas encore signé le document <strong>"${safeDocumentName}"</strong> envoyé par ${safeSenderName}.
+${t.body}
 </p>
 <p style="margin: 8px 0 0 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600; line-height: 150%; color: #f59e0b;">
-${urgencyText}
+${t.urgency}
 </p>
 </td>
 </tr>
@@ -512,7 +587,7 @@ ${urgencyText}
 <tr>
 <td align="center">
 <a href="${safeSigningLink}" style="display: inline-block; background-color: #08CF65; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 14px; font-weight: 600;">
-Signer maintenant
+${t.button}
 </a>
 </td>
 </tr>
@@ -520,7 +595,7 @@ Signer maintenant
 </table>
 
 <!-- Fallback URL -->
-${getFallbackUrlHtml(safeSigningLink)}
+${getFallbackUrlHtml(safeSigningLink, locale)}
 
 <!-- Signature -->
 <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width: 100%;">
@@ -528,7 +603,7 @@ ${getFallbackUrlHtml(safeSigningLink)}
 <tr>
 <td style="padding: 16px 0;">
 <p style="margin: 0; font-family: 'Schibsted Grotesk', Arial, sans-serif; font-size: 16px; font-weight: 500; line-height: 150%; color: #000000;">
-Cordialement,<br>${COMPANY_NAME}
+${t.regards}
 </p>
 </td>
 </tr>
@@ -540,7 +615,7 @@ Cordialement,<br>${COMPANY_NAME}
     const result = await resend.emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
-      subject: `Rappel: "${safeDocumentName}" attend votre signature`,
+      subject: t.subject,
       html: getEmailWrapper(htmlContent),
     })
 

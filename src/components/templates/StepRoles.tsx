@@ -206,7 +206,7 @@ export default function StepRoles({
         {/* Add new role */}
         <div className="border-t border-gray-200 pt-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Qui doit signer ? *
+            {locale === 'fr' ? 'Qui doit signer ?' : 'Who needs to sign?'} *
           </label>
           <div className="flex items-start gap-2">
             <div className="flex-1">

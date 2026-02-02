@@ -98,7 +98,7 @@ export default function StepTemplateSigners({
     <div className="max-w-xl mx-auto py-10 px-4">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Qui doit signer ce document ?</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">{locale === 'fr' ? 'Qui doit signer ce document ?' : 'Who needs to sign this document?'}</h1>
         <p className="text-gray-500 mt-2">Pour chaque rôle, indiquez le nom et l&apos;email de la personne qui signera</p>
       </div>
 
