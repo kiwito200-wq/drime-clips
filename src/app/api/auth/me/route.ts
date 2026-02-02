@@ -15,29 +15,129 @@ function extractDrimeToken(cookieHeader: string): string | null {
   return match ? match[1] : null
 }
 
+/**
+ * Sync subscription using full browser cookies
+ */
+async function syncSubscriptionWithBrowserCookies(
+  userId: string,
+  drimeUserId: string,
+  cookieHeader: string
+): Promise<void> {
+  try {
+    console.log('[Auth] Syncing subscription with browser cookies for user:', drimeUserId)
+    
+    const subRes = await fetch(
+      `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product`,
+      {
+        headers: {
+          'Cookie': cookieHeader,
+          'Accept': 'application/json',
+        },
+      }
+    )
+    
+    if (!subRes.ok) {
+      console.log('[Auth] Subscription fetch failed:', subRes.status)
+      return
+    }
+    
+    const subData = await subRes.json()
+    console.log('[Auth] Subscription response:', JSON.stringify(subData).substring(0, 1000))
+    
+    const userData = subData.user || subData
+    const subscriptions = userData.subscriptions || []
+    console.log('[Auth] Found subscriptions:', subscriptions.length)
+    
+    if (subscriptions.length === 0) return
+    
+    const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
+    if (!activeSubscription?.product?.name) return
+    
+    const productName = activeSubscription.product.name.toLowerCase()
+    console.log('[Auth] Active subscription product:', productName)
+    
+    let subscriptionPlan: PlanType = 'gratuit'
+    
+    // Map product names to plans
+    if (productName.includes('advanced')) {
+      subscriptionPlan = 'advanced'
+    } else if (productName.includes('professional') || productName.includes('pro')) {
+      subscriptionPlan = 'professional'
+    } else if (productName.includes('essential')) {
+      subscriptionPlan = 'essentials'
+    } else if (productName.includes('starter')) {
+      subscriptionPlan = 'starter'
+    }
+    // Lifetime subscriptions based on storage
+    else if (productName.includes('lifetime')) {
+      const tbMatch = productName.match(/(\d+)\s*tb/i)
+      const gbMatch = productName.match(/(\d+)\s*gb/i)
+      
+      if (tbMatch) {
+        const tb = parseInt(tbMatch[1])
+        console.log('[Auth] Lifetime TB:', tb)
+        if (tb >= 6) subscriptionPlan = 'advanced'
+        else if (tb >= 3) subscriptionPlan = 'professional'
+        else subscriptionPlan = 'essentials'
+      } else if (gbMatch) {
+        subscriptionPlan = 'starter'
+      }
+    }
+    
+    console.log('[Auth] Mapped subscription plan:', subscriptionPlan)
+    
+    // Update user subscription
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        subscriptionPlan: subscriptionPlan,
+        subscriptionUpdatedAt: new Date(),
+      },
+    })
+    
+    console.log('[Auth] Updated subscription to:', subscriptionPlan)
+  } catch (error) {
+    console.error('[Auth] Subscription sync error:', error)
+  }
+}
+
 // GET /api/auth/me - Check local session OR forward cookies to Drime
 export async function GET(request: NextRequest) {
   try {
+    const cookieHeader = request.headers.get('cookie')
+    const hasDrimeSession = cookieHeader?.includes('drime_session')
+    
     // 1. Check local session first
     const localUser = await getCurrentUser()
     
     if (localUser) {
+      // If we have Drime cookies, sync subscription in background
+      if (hasDrimeSession && localUser.drimeUserId) {
+        // Sync subscription using browser cookies (non-blocking)
+        syncSubscriptionWithBrowserCookies(localUser.id, localUser.drimeUserId, cookieHeader!)
+          .catch(err => console.error('[Auth] Background subscription sync error:', err))
+      }
+      
+      // Get fresh subscription info
+      const dbUser = await prisma.user.findUnique({
+        where: { id: localUser.id },
+        select: { subscriptionPlan: true }
+      })
+      
       return NextResponse.json({ 
         user: {
           id: localUser.id,
           email: localUser.email,
           name: localUser.name,
           avatarUrl: localUser.avatarUrl,
+          subscriptionPlan: dbUser?.subscriptionPlan || 'gratuit',
         }
       })
     }
     
     // 2. No local session - forward ALL cookies to Drime
-    const cookieHeader = request.headers.get('cookie')
-    
     if (cookieHeader) {
       // Check if we have drime_session cookie
-      const hasDrimeSession = cookieHeader.includes('drime_session')
 
       
       if (hasDrimeSession) {
