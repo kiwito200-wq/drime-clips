@@ -9,7 +9,7 @@ export const translations = {
   en,
 } as const
 
-export const defaultLocale: Locale = 'fr'
+export const defaultLocale: Locale = 'en'
 
 // Get browser locale
 export function getBrowserLocale(): Locale {
@@ -20,7 +20,7 @@ export function getBrowserLocale(): Locale {
   if (browserLang === 'fr') return 'fr'
   if (browserLang === 'en') return 'en'
   
-  // Default to French for unsupported languages
+  // Fallback to English for unsupported languages
   return defaultLocale
 }
 
