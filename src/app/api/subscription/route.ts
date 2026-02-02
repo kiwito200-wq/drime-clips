@@ -1,8 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getSubscriptionInfo, syncSubscriptionFromDrime } from '@/lib/subscription'
 import { prisma } from '@/lib/prisma'
-import { decrypt } from '@/lib/encryption'
 
 /**
  * GET /api/subscription
@@ -38,8 +37,9 @@ export async function GET() {
 /**
  * POST /api/subscription/sync
  * Force sync subscription from Drime API
+ * Uses current browser cookies to authenticate with Drime
  */
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser()
     if (!user) {
@@ -51,7 +51,6 @@ export async function POST() {
       where: { id: user.id },
       select: {
         drimeUserId: true,
-        drimeToken: true,
       }
     })
 
@@ -62,18 +61,23 @@ export async function POST() {
       }, { status: 200 })
     }
 
-    // Decrypt token if encrypted
-    let token = dbUser.drimeToken || ''
-    if (token && token.includes(':')) {
-      try {
-        token = decrypt(token)
-      } catch {
-        // Token might not be encrypted
-      }
+    // Get current cookies from the request (fresh session, not stored old token)
+    const cookieHeader = request.headers.get('cookie') || ''
+    
+    // Extract drime_session from cookies
+    const drimeSessionMatch = cookieHeader.match(/drime_session=([^;]+)/)
+    const drimeSessionToken = drimeSessionMatch ? drimeSessionMatch[1] : ''
+    
+    if (!drimeSessionToken) {
+      console.log('[Subscription] No drime_session cookie found')
+      return NextResponse.json({ 
+        error: 'No Drime session',
+        plan: 'gratuit',
+      }, { status: 200 })
     }
 
-    // Sync from Drime
-    const plan = await syncSubscriptionFromDrime(user.id, dbUser.drimeUserId, token)
+    // Sync from Drime using current session
+    const plan = await syncSubscriptionFromDrime(user.id, dbUser.drimeUserId, drimeSessionToken)
     
     // Get updated info
     const info = await getSubscriptionInfo(user.id)
