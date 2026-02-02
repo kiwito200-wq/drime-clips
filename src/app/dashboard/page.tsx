@@ -135,6 +135,8 @@ export default function DashboardHome() {
       const onboardingKey = `drime_sign_onboarding_complete_${user.id}`
       const hasSeenOnboarding = localStorage.getItem(onboardingKey)
       if (!hasSeenOnboarding) {
+        // Mark as seen immediately (so it doesn't show again on nav change)
+        localStorage.setItem(onboardingKey, 'true')
         // Small delay to let the UI render first
         const timer = setTimeout(() => setShowOnboarding(true), 500)
         return () => clearTimeout(timer)
@@ -143,11 +145,8 @@ export default function DashboardHome() {
   }, [loading, user])
 
   const completeOnboarding = useCallback(() => {
-    if (user) {
-      localStorage.setItem(`drime_sign_onboarding_complete_${user.id}`, 'true')
-    }
     setShowOnboarding(false)
-  }, [user])
+  }, [])
 
   // Handle keyboard for onboarding
   useEffect(() => {
