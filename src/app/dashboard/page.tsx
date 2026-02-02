@@ -129,10 +129,11 @@ export default function DashboardHome() {
     resetDate: string | null
   } | null>(null)
   
-  // Check if onboarding should be shown (first visit)
+  // Check if onboarding should be shown (first visit per account)
   useEffect(() => {
     if (typeof window !== 'undefined' && !loading && user) {
-      const hasSeenOnboarding = localStorage.getItem('drime_sign_onboarding_complete')
+      const onboardingKey = `drime_sign_onboarding_complete_${user.id}`
+      const hasSeenOnboarding = localStorage.getItem(onboardingKey)
       if (!hasSeenOnboarding) {
         // Small delay to let the UI render first
         const timer = setTimeout(() => setShowOnboarding(true), 500)
@@ -142,9 +143,11 @@ export default function DashboardHome() {
   }, [loading, user])
 
   const completeOnboarding = useCallback(() => {
-    localStorage.setItem('drime_sign_onboarding_complete', 'true')
+    if (user) {
+      localStorage.setItem(`drime_sign_onboarding_complete_${user.id}`, 'true')
+    }
     setShowOnboarding(false)
-  }, [])
+  }, [user])
 
   // Handle keyboard for onboarding
   useEffect(() => {
@@ -227,7 +230,6 @@ export default function DashboardHome() {
   // Load subscription info
   useEffect(() => {
     if (user) {
-      // Get current subscription
       fetch('/api/subscription', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
@@ -236,16 +238,7 @@ export default function DashboardHome() {
           }
         })
         .catch(() => {})
-      
-      // Sync from Drime (background)
-      fetch('/api/subscription', { method: 'POST', credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error && data.synced) {
-            setSubscription(data)
-          }
-        })
-        .catch(() => {})
+      // Note: Drime sync disabled - API doesn't support external calls
     }
   }, [user])
 
