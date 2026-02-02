@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getSubscriptionInfo, syncSubscriptionFromDrime } from '@/lib/subscription'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/encryption'
 
 /**
  * GET /api/subscription
@@ -37,7 +38,7 @@ export async function GET() {
 /**
  * POST /api/subscription/sync
  * Force sync subscription from Drime API
- * Uses current browser cookies to authenticate with Drime
+ * Uses stored token OR current browser cookies
  */
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +52,7 @@ export async function POST(request: NextRequest) {
       where: { id: user.id },
       select: {
         drimeUserId: true,
+        drimeToken: true,
       }
     })
 
@@ -61,23 +63,40 @@ export async function POST(request: NextRequest) {
       }, { status: 200 })
     }
 
-    // Get current cookies from the request (fresh session, not stored old token)
-    const cookieHeader = request.headers.get('cookie') || ''
+    // Try to get token: first from stored token, then from current cookies
+    let token = ''
     
-    // Extract drime_session from cookies
-    const drimeSessionMatch = cookieHeader.match(/drime_session=([^;]+)/)
-    const drimeSessionToken = drimeSessionMatch ? drimeSessionMatch[1] : ''
+    // 1. Try stored token (decrypt if needed)
+    if (dbUser.drimeToken) {
+      token = dbUser.drimeToken
+      if (token.includes(':')) {
+        try {
+          token = decrypt(token)
+        } catch {
+          // Token might not be encrypted
+        }
+      }
+    }
     
-    if (!drimeSessionToken) {
-      console.log('[Subscription] No drime_session cookie found')
+    // 2. Fallback: try current cookies
+    if (!token) {
+      const cookieHeader = request.headers.get('cookie') || ''
+      const drimeSessionMatch = cookieHeader.match(/drime_session=([^;]+)/)
+      token = drimeSessionMatch ? drimeSessionMatch[1] : ''
+    }
+    
+    if (!token) {
+      console.log('[Subscription] No Drime token available')
       return NextResponse.json({ 
-        error: 'No Drime session',
+        error: 'No Drime token',
         plan: 'gratuit',
       }, { status: 200 })
     }
 
-    // Sync from Drime using current session
-    const plan = await syncSubscriptionFromDrime(user.id, dbUser.drimeUserId, drimeSessionToken)
+    console.log('[Subscription] Using token (prefix):', token.substring(0, 15) + '...')
+
+    // Sync from Drime
+    const plan = await syncSubscriptionFromDrime(user.id, dbUser.drimeUserId, token)
     
     // Get updated info
     const info = await getSubscriptionInfo(user.id)

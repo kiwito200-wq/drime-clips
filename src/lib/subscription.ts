@@ -159,30 +159,31 @@ export async function consumeSignatureRequest(userId: string): Promise<{ success
 
 /**
  * Sync subscription from Drime API
- * Uses the user's own Drime session cookie to fetch their subscription data
+ * Uses the preprod API with Bearer token (as in original implementation)
  */
 export async function syncSubscriptionFromDrime(
   userId: string, 
   drimeUserId: string,
-  drimeSessionToken: string // User's drime_session cookie value
+  drimeToken: string // User's Drime auth token
 ): Promise<PlanType> {
-  const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+  // Use preprod API as in original implementation
+  const DRIME_API_URL = process.env.DRIME_API_URL || 'https://api.preprod.drime.cloud'
   
-  if (!drimeSessionToken) {
-    console.error('[Subscription] No Drime session token available for user:', drimeUserId)
+  if (!drimeToken) {
+    console.error('[Subscription] No Drime token available for user:', drimeUserId)
     return 'gratuit'
   }
   
   try {
-    // Use the authenticated /me endpoint with user's session cookie
-    const apiUrl = `${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product,subscriptions.price`
+    // Use /users/{id} endpoint with Bearer token (original method)
+    const apiUrl = `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
     console.log('[Subscription] API URL:', apiUrl)
     
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Cookie': `drime_session=${drimeSessionToken}`,
+        'Authorization': `Bearer ${drimeToken}`,
         'Accept': 'application/json',
       },
     })
