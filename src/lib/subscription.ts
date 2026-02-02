@@ -166,7 +166,7 @@ export async function syncSubscriptionFromDrime(
   _drimeToken: string // Not used - we use the master API token
 ): Promise<PlanType> {
   const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
-  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC\\BGP_Ha\\cE-KY3lDWRHzx'
+  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC/BGP_Ha/cE-KY3lDWRHzx'
   
   try {
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
