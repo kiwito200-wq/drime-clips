@@ -104,8 +104,8 @@ export async function GET(request: NextRequest) {
     if (cookieHeader && hasDrimeSession) {
       const drimeToken = extractDrimeToken(cookieHeader)
       
-      // Get user info with subscriptions from Drime
-      const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product`, {
+      // Get user info from Drime
+      const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
         method: 'GET',
         headers: {
           'Cookie': cookieHeader,
@@ -126,10 +126,31 @@ export async function GET(request: NextRequest) {
           // Encrypt the Drime token before storing
           const encryptedDrimeToken = drimeToken ? encrypt(drimeToken) : null
           
-          // Get subscription plan from response
-          const subscriptions = drimeData.user.subscriptions || []
-          console.log('[Auth] Found', subscriptions.length, 'subscriptions in /me response')
-          const subscriptionPlan = getBestPlanFromSubscriptions(subscriptions)
+          // Get subscription from separate API call
+          let subscriptionPlan: PlanType = 'gratuit'
+          try {
+            const subRes = await fetch(
+              `${DRIME_API_URL}/api/v1/users/${drimeData.user.id}?with=subscriptions.product,subscriptions.price`,
+              {
+                headers: {
+                  'Cookie': cookieHeader,
+                  'Accept': 'application/json',
+                },
+              }
+            )
+            
+            if (subRes.ok) {
+              const subData = await subRes.json()
+              const userData = subData.user || subData
+              const subscriptions = userData.subscriptions || []
+              console.log('[Auth] Found', subscriptions.length, 'subscriptions from /users endpoint')
+              subscriptionPlan = getBestPlanFromSubscriptions(subscriptions)
+            } else {
+              console.log('[Auth] Subscription fetch failed:', subRes.status)
+            }
+          } catch (subError) {
+            console.error('[Auth] Error fetching subscription:', subError)
+          }
           
           // Create local user and session
           const user = await prisma.user.upsert({
