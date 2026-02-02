@@ -129,24 +129,57 @@ export default function DashboardHome() {
     resetDate: string | null
   } | null>(null)
   
-  // Check if onboarding should be shown (first visit per account)
+  // Check if onboarding should be shown (stored in database for cross-browser persistence)
   useEffect(() => {
-    if (typeof window !== 'undefined' && !loading && user) {
+    if (!loading && user?.id) {
       const onboardingKey = `drime_sign_onboarding_complete_${user.id}`
-      const hasSeenOnboarding = localStorage.getItem(onboardingKey)
-      if (!hasSeenOnboarding) {
-        // Mark as seen immediately (so it doesn't show again on nav change)
-        localStorage.setItem(onboardingKey, 'true')
-        // Small delay to let the UI render first
-        const timer = setTimeout(() => setShowOnboarding(true), 500)
-        return () => clearTimeout(timer)
+      
+      // Quick check localStorage first (cache)
+      const localCache = localStorage.getItem(onboardingKey)
+      if (localCache) {
+        console.log('[Onboarding] Already completed (localStorage cache)')
+        return
+      }
+      
+      // Check database for definitive answer
+      fetch('/api/user/onboarding', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          console.log('[Onboarding] DB check:', data)
+          if (data.completed) {
+            // Sync localStorage cache
+            localStorage.setItem(onboardingKey, 'true')
+          } else {
+            // Show onboarding after small delay
+            setTimeout(() => setShowOnboarding(true), 500)
+          }
+        })
+        .catch(err => {
+          console.error('[Onboarding] Error checking status:', err)
+        })
+    }
+  }, [loading, user?.id])
+
+  const completeOnboarding = useCallback(async () => {
+    setShowOnboarding(false)
+    
+    if (user?.id) {
+      const onboardingKey = `drime_sign_onboarding_complete_${user.id}`
+      // Save to localStorage (cache) immediately
+      localStorage.setItem(onboardingKey, 'true')
+      
+      // Save to database (persistent across browsers)
+      try {
+        await fetch('/api/user/onboarding', { 
+          method: 'POST',
+          credentials: 'include' 
+        })
+        console.log('[Onboarding] Saved to database for user:', user.id)
+      } catch (err) {
+        console.error('[Onboarding] Error saving to database:', err)
       }
     }
-  }, [loading, user])
-
-  const completeOnboarding = useCallback(() => {
-    setShowOnboarding(false)
-  }, [])
+  }, [user?.id])
 
   // Handle keyboard for onboarding
   useEffect(() => {
