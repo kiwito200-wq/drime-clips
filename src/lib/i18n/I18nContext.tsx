@@ -31,15 +31,39 @@ export function I18nProvider({ children, initialLocale }: I18nProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(initialLocale || defaultLocale)
   const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize locale from storage or browser
+  // Initialize locale from browser language (priority) or storage
   useEffect(() => {
+    const browserLocale = getBrowserLocale()
     const storedLocale = getStoredLocale()
-    if (storedLocale) {
-      setLocaleState(storedLocale)
+    
+    // If browser is FR, use French
+    // If browser is EN, use English  
+    // Otherwise (DE, ES, IT, etc.), use English as fallback
+    // Only respect stored locale if user explicitly changed it AND browser matches
+    const browserLang = typeof window !== 'undefined' 
+      ? navigator.language.split('-')[0].toLowerCase() 
+      : 'en'
+    
+    let finalLocale: Locale
+    
+    if (browserLang === 'fr') {
+      // French browser -> use French (or stored if user changed)
+      finalLocale = storedLocale || 'fr'
+    } else if (browserLang === 'en') {
+      // English browser -> use English (or stored if user changed)
+      finalLocale = storedLocale || 'en'
     } else {
-      const browserLocale = getBrowserLocale()
-      setLocaleState(browserLocale)
-      setStoredLocale(browserLocale)
+      // Other languages -> ALWAYS English, ignore stored locale
+      finalLocale = 'en'
+      // Clear any old stored French locale for non-FR/EN users
+      if (storedLocale === 'fr') {
+        setStoredLocale('en')
+      }
+    }
+    
+    setLocaleState(finalLocale)
+    if (!storedLocale) {
+      setStoredLocale(finalLocale)
     }
     setIsInitialized(true)
   }, [])
