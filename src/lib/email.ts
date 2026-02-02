@@ -54,7 +54,7 @@ a[x-apple-data-detectors] {
 }
 `
 
-function getFallbackUrlHtml(url: string, locale: 'fr' | 'en' = 'fr'): string {
+function getFallbackUrlHtml(url: string, locale: 'fr' | 'en' = 'en'): string {
   const text = locale === 'fr' 
     ? 'Si vous avez des difficultés à cliquer sur le bouton, copiez et collez cette URL dans votre navigateur :'
     : 'If you have trouble clicking the button, copy and paste this URL into your browser:'
@@ -212,7 +212,7 @@ export interface ReminderEmailData {
 // SIGNATURE REQUEST EMAIL
 // ==============================================
 export async function sendSignatureRequestEmail(data: SignatureRequestEmailData) {
-  const { to, signerName, documentName, senderName, senderEmail, signingLink, message, expiresAt, locale = 'fr' } = data
+  const { to, signerName, documentName, senderName, senderEmail, signingLink, message, expiresAt, locale = 'en' } = data
   
   // SECURITY: Escape all user-provided content to prevent XSS
   const safeSignerName = escapeHtml(signerName)
@@ -353,7 +353,7 @@ ${t.footer}
 // DOCUMENT COMPLETED EMAIL
 // ==============================================
 export async function sendCompletedEmail(data: CompletedEmailData) {
-  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments, locale = 'fr' } = data
+  const { to, documentName, signerName, completedAt, downloadLink, auditTrailLink, attachments, locale = 'en' } = data
   
   // SECURITY: Escape all user-provided content
   const safeDocumentName = escapeHtml(documentName)
@@ -524,7 +524,7 @@ ${t.regards}
 // REMINDER EMAIL
 // ==============================================
 export async function sendReminderEmail(data: ReminderEmailData) {
-  const { to, signerName, documentName, senderName, signingLink, daysRemaining, locale = 'fr' } = data
+  const { to, signerName, documentName, senderName, signingLink, daysRemaining, locale = 'en' } = data
   
   // SECURITY: Escape all user-provided content
   const safeSignerName = escapeHtml(signerName)
