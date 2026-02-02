@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
         // Extract the drime_session token for storage
         const drimeToken = extractDrimeToken(cookieHeader)
         
-        // Forward cookies to Drime - include subscriptions in the same request
-        const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product`, {
+        // Forward cookies to Drime
+        const drimeRes = await fetch(`${DRIME_API_URL}/api/v1/auth/external/me`, {
           method: 'GET',
           headers: {
             'Cookie': cookieHeader,
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         
         if (drimeRes.ok) {
           const drimeData = await drimeRes.json()
-          console.log('[Auth] Drime /me response:', JSON.stringify(drimeData).substring(0, 1000))
+          console.log('[Auth] Drime /me response:', JSON.stringify(drimeData).substring(0, 500))
           
           if (drimeData.user) {
             // Extract avatar URL - same logic as Transfr
@@ -69,22 +69,72 @@ export async function GET(request: NextRequest) {
             // Encrypt the Drime token before storing
             const encryptedDrimeToken = drimeToken ? encrypt(drimeToken) : null
             
-            // Extract subscription plan from response
+            // Fetch subscription separately using full browser cookies
             let subscriptionPlan: PlanType = 'gratuit'
-            const subscriptions = drimeData.user.subscriptions || []
-            console.log('[Auth] Found subscriptions:', subscriptions.length)
-            
-            const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
-            if (activeSubscription?.product?.name) {
-              const productName = activeSubscription.product.name.toLowerCase()
-              console.log('[Auth] Active subscription product:', productName)
+            try {
+              const subRes = await fetch(
+                `${DRIME_API_URL}/api/v1/users/${drimeData.user.id}?with=subscriptions.product`,
+                {
+                  headers: {
+                    'Cookie': cookieHeader, // Use full browser cookies!
+                    'Accept': 'application/json',
+                  },
+                }
+              )
               
-              if (productName.includes('advanced')) subscriptionPlan = 'advanced'
-              else if (productName.includes('professional') || productName.includes('pro')) subscriptionPlan = 'professional'
-              else if (productName.includes('essential')) subscriptionPlan = 'essentials'
-              else if (productName.includes('starter')) subscriptionPlan = 'starter'
+              if (subRes.ok) {
+                const subData = await subRes.json()
+                console.log('[Auth] Subscription response:', JSON.stringify(subData).substring(0, 1000))
+                
+                const userData = subData.user || subData
+                const subscriptions = userData.subscriptions || []
+                console.log('[Auth] Found subscriptions:', subscriptions.length)
+                
+                const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
+                if (activeSubscription?.product?.name) {
+                  const productName = activeSubscription.product.name.toLowerCase()
+                  console.log('[Auth] Active subscription product:', productName)
+                  
+                  // Map product names to plans
+                  // Direct plan names
+                  if (productName.includes('advanced')) {
+                    subscriptionPlan = 'advanced'
+                  } else if (productName.includes('professional') || productName.includes('pro')) {
+                    subscriptionPlan = 'professional'
+                  } else if (productName.includes('essential')) {
+                    subscriptionPlan = 'essentials'
+                  } else if (productName.includes('starter')) {
+                    subscriptionPlan = 'starter'
+                  }
+                  // Lifetime subscriptions based on storage (2TB=Essentials, 3TB=Pro, 6TB+=Advanced)
+                  else if (productName.includes('lifetime')) {
+                    // Extract TB value from name like "Lifetime Subscription: 6TB"
+                    const tbMatch = productName.match(/(\d+)\s*tb/i)
+                    const gbMatch = productName.match(/(\d+)\s*gb/i)
+                    
+                    if (tbMatch) {
+                      const tb = parseInt(tbMatch[1])
+                      console.log('[Auth] Lifetime TB:', tb)
+                      if (tb >= 6) {
+                        subscriptionPlan = 'advanced'
+                      } else if (tb >= 3) {
+                        subscriptionPlan = 'professional'
+                      } else {
+                        subscriptionPlan = 'essentials' // 2TB and below
+                      }
+                    } else if (gbMatch) {
+                      // 500GB = starter level
+                      subscriptionPlan = 'starter'
+                    }
+                  }
+                  console.log('[Auth] Mapped subscription plan:', subscriptionPlan)
+                }
+              } else {
+                console.log('[Auth] Failed to fetch subscription:', subRes.status)
+              }
+            } catch (subError) {
+              console.error('[Auth] Error fetching subscription:', subError)
             }
-            console.log('[Auth] Mapped subscription plan:', subscriptionPlan)
             
             // Create local user and session (including drimeToken and subscription!)
             const user = await prisma.user.upsert({
