@@ -1016,7 +1016,7 @@ function AgreementsContent() {
                         {notifications.filter(n => n.type === 'general').length === 0 && (
                           <div className="py-6 text-center">
                             <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
-                            <p className="text-sm text-gray-500">Aucune notification</p>
+                            <p className="text-sm text-gray-500">{t('notifications.noNotifications')}</p>
                           </div>
                         )}
                         <p className="px-4 py-3 text-sm text-gray-400 text-center border-t border-gray-100">
@@ -1064,7 +1064,7 @@ function AgreementsContent() {
                         {notifications.filter(n => n.type === 'invitation').length === 0 && (
                           <div className="py-6 text-center">
                             <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
-                            <p className="text-sm text-gray-500">Aucune invitation</p>
+                            <p className="text-sm text-gray-500">{t('notifications.noNotifications')}</p>
                           </div>
                         )}
                       </>
@@ -1072,7 +1072,7 @@ function AgreementsContent() {
                     {notificationTab === 'requests' && (
                       <div className="py-6 text-center">
                         <img src="/empty-notifications.png" alt="" className="w-20 h-20 mx-auto mb-2 object-contain" />
-                        <p className="text-sm text-gray-500">Aucune demande</p>
+                        <p className="text-sm text-gray-500">{t('notifications.noNotifications')}</p>
                       </div>
                     )}
                   </div>
@@ -2129,7 +2129,7 @@ export default function Agreements() {
       <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Chargement...</p>
+          <p className="text-gray-500 text-sm">{t('common.loading')}</p>
         </div>
       </div>
     }>

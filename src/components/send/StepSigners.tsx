@@ -83,11 +83,13 @@ interface StepSignersProps {
 function CountryCodeDropdown({ 
   value, 
   onChange,
-  signerId 
+  signerId,
+  t
 }: { 
   value: string
   onChange: (dial: string) => void
   signerId: string
+  t: (key: string) => string
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -152,7 +154,7 @@ function CountryCodeDropdown({
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Rechercher un pays..."
+                  placeholder={t('common.search')}
                   className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none"
                 />
               </div>
@@ -160,7 +162,7 @@ function CountryCodeDropdown({
             <div className="max-h-48 overflow-y-auto">
               {filteredCountries.length === 0 ? (
                 <div className="px-3 py-4 text-sm text-gray-500 text-center">
-                  Aucun pays trouvé
+                  {t('common.noResults')}
                 </div>
               ) : (
                 filteredCountries.map((country) => (
@@ -343,6 +345,7 @@ export default function StepSigners({
                         value={signer.phoneCountry || '+33'}
                         onChange={(dial) => onUpdateSigner(signer.id, { phoneCountry: dial })}
                         signerId={signer.id}
+                        t={t}
                       />
                       <input
                         type="tel"

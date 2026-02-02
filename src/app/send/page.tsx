@@ -236,11 +236,11 @@ function SendPageContent() {
           setCurrentTemplateId(templateId)
         }
       } else {
-        alert('Erreur lors du chargement du template')
+        alert(locale === 'fr' ? 'Erreur lors du chargement du template' : 'Error loading template')
       }
     } catch (error) {
       console.error('Failed to load template:', error)
-      alert('Erreur lors du chargement du template')
+      alert(locale === 'fr' ? 'Erreur lors du chargement du template' : 'Error loading template')
     } finally {
       setIsLoading(false)
     }
@@ -321,13 +321,13 @@ function SendPageContent() {
       // Récupérer l'utilisateur connecté
       const res = await fetch('/api/auth/me', { credentials: 'include' })
       let email = 'moi@drime.cloud'
-      let name = 'Moi'
+      let name = locale === 'fr' ? 'Moi' : 'Me'
       
       if (res.ok) {
         const data = await res.json()
         if (data.user) {
           email = data.user.email
-          name = data.user.name || 'Moi'
+          name = data.user.name || (locale === 'fr' ? 'Moi' : 'Me')
         }
       }
 
@@ -366,7 +366,7 @@ function SendPageContent() {
       setCurrentStep(3)
     } catch (error) {
       console.error('Self-sign error:', error)
-      alert('Erreur lors de la création du signataire')
+        alert(locale === 'fr' ? 'Erreur lors de la création du signataire' : 'Error creating signer')
       return
     } finally {
       setIsLoading(false)
@@ -580,11 +580,11 @@ function SendPageContent() {
         }
       } else {
         const error = await res.json()
-        alert(error.error || 'Échec de l\'envoi')
+        alert(error.error || (locale === 'fr' ? 'Échec de l\'envoi' : 'Failed to send'))
       }
     } catch (error) {
       console.error('Send error:', error)
-      alert('Échec de l\'envoi')
+      alert(locale === 'fr' ? 'Échec de l\'envoi' : 'Failed to send')
     } finally {
       setIsLoading(false)
     }
@@ -697,7 +697,7 @@ function SendPageContent() {
                       }))
                     
                     if (newSigners.length === 0) {
-                      alert('Veuillez remplir au moins un signataire')
+                      alert(locale === 'fr' ? 'Veuillez remplir au moins un signataire' : 'Please fill in at least one signer')
                       return
                     }
                     
@@ -773,7 +773,7 @@ function SendPageContent() {
                       }
                     } catch (error) {
                       console.error('Failed to save signers:', error)
-                      alert('Erreur lors de la sauvegarde des signataires')
+                      alert(locale === 'fr' ? 'Erreur lors de la sauvegarde des signataires' : 'Error saving signers')
                     } finally {
                       setIsLoading(false)
                     }
@@ -866,7 +866,7 @@ function SendPageContent() {
         <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
           <div className="flex flex-col items-center">
             <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
-            <p className="text-gray-500 mt-3 text-sm">Chargement...</p>
+            <p className="text-gray-500 mt-3 text-sm">{locale === 'fr' ? 'Chargement...' : 'Loading...'}</p>
           </div>
         </div>
       )}
