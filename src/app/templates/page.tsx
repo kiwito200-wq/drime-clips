@@ -470,13 +470,15 @@ export default function TemplatesPage() {
         <div className="flex items-center gap-4">
           {/* Logo area */}
           <div className="w-52 flex-shrink-0 px-3">
-            <a href="https://app.drime.cloud/drive" className="block">
-              <img 
-                src="/drime-logo.png" 
-                alt="Drime" 
-                className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity"
-              />
-            </a>
+            <Tooltip content={t('nav.backToDrime')} position="right">
+              <a href="https://app.drime.cloud/drive" className="block">
+                <img 
+                  src="/drime-logo.png" 
+                  alt="Drime" 
+                  className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+                />
+              </a>
+            </Tooltip>
           </div>
 
           {/* Spacer */}

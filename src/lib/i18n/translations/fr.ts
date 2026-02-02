@@ -29,6 +29,7 @@ export const fr = {
     agreements: 'Accords',
     sentDocs: 'Documents envoyés',
     newAgreement: 'Nouvel accord',
+    backToDrime: 'Revenir à Drime',
   },
 
   // Dashboard
