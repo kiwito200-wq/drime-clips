@@ -79,55 +79,19 @@ export interface SubscriptionInfo {
 
 /**
  * Get the current subscription info for a user
+ * NOTE: All users have unlimited signatures (Drime API sync disabled)
  */
 export async function getSubscriptionInfo(userId: string): Promise<SubscriptionInfo> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      subscriptionPlan: true,
-      signatureRequestsThisMonth: true,
-      signatureRequestsResetAt: true,
-    }
-  })
-
-  if (!user) {
-    throw new Error('User not found')
-  }
-
-  // Check if we need to reset monthly counter
-  const now = new Date()
-  const resetAt = user.signatureRequestsResetAt
-  let requestsUsed = user.signatureRequestsThisMonth
-
-  if (!resetAt || now >= resetAt) {
-    // Reset counter - it's a new month
-    requestsUsed = 0
-    const nextReset = getNextMonthReset()
-    
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        signatureRequestsThisMonth: 0,
-        signatureRequestsResetAt: nextReset,
-      }
-    })
-  }
-
-  const plan = (user.subscriptionPlan as PlanType) || 'gratuit'
-  const planConfig = PLAN_LIMITS[plan] || PLAN_LIMITS.gratuit
-  const isUnlimited = planConfig.unlimited
-  const limit = planConfig.signatureRequestsPerMonth
-  const remaining = isUnlimited ? -1 : Math.max(0, limit - requestsUsed)
-
+  // Everyone gets unlimited signatures - no need to check Drime API
   return {
-    plan,
-    planName: planConfig.name,
-    signatureRequestsUsed: requestsUsed,
-    signatureRequestsLimit: limit,
-    signatureRequestsRemaining: remaining,
-    isUnlimited,
-    canCreateSignatureRequest: isUnlimited || remaining > 0,
-    resetDate: user.signatureRequestsResetAt,
+    plan: 'advanced',
+    planName: 'Advanced',
+    signatureRequestsUsed: 0,
+    signatureRequestsLimit: -1,
+    signatureRequestsRemaining: -1,
+    isUnlimited: true,
+    canCreateSignatureRequest: true,
+    resetDate: null,
   }
 }
 
@@ -159,96 +123,15 @@ export async function consumeSignatureRequest(userId: string): Promise<{ success
 
 /**
  * Sync subscription from Drime API
- * Uses the preprod API with Bearer token (as in original implementation)
+ * NOTE: Disabled - all users have unlimited signatures
  */
 export async function syncSubscriptionFromDrime(
-  userId: string, 
-  drimeUserId: string,
-  drimeToken: string // User's Drime auth token
+  _userId: string, 
+  _drimeUserId: string,
+  _drimeToken: string
 ): Promise<PlanType> {
-  // Use preprod API as in original implementation
-  const DRIME_API_URL = process.env.DRIME_API_URL || 'https://api.preprod.drime.cloud'
-  
-  if (!drimeToken) {
-    console.error('[Subscription] No Drime token available for user:', drimeUserId)
-    return 'gratuit'
-  }
-  
-  try {
-    // Use /users/{id} endpoint with Bearer token (original method)
-    const apiUrl = `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`
-    console.log('[Subscription] Syncing subscription for user:', drimeUserId)
-    console.log('[Subscription] API URL:', apiUrl)
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${drimeToken}`,
-        'Accept': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[Subscription] Failed to fetch from Drime:', response.status, errorText.substring(0, 500))
-      return 'gratuit'
-    }
-
-    const data = await response.json()
-    console.log('[Subscription] Drime response:', JSON.stringify(data).substring(0, 500))
-    
-    const user = data.user || data
-
-    // Find ALL active subscriptions and get the best plan
-    const subscriptions = user.subscriptions || []
-    console.log('[Subscription] Found subscriptions:', subscriptions.length)
-    
-    // Plan priority (higher = better)
-    const planPriority: Record<PlanType, number> = {
-      'advanced': 4,
-      'professional': 3,
-      'essentials': 2,
-      'starter': 1,
-      'gratuit': 0,
-    }
-    
-    let plan: PlanType = 'gratuit'
-    let bestPriority = 0
-    
-    for (const sub of subscriptions) {
-      if (!sub.active || !sub.valid) continue
-      
-      const productName = sub.product?.name
-      if (!productName) continue
-      
-      const mappedPlan = mapDrimeProductToPlan(productName)
-      const priority = planPriority[mappedPlan]
-      
-      console.log(`[Subscription] "${productName}" -> ${mappedPlan} (priority ${priority})`)
-      
-      if (priority > bestPriority) {
-        bestPriority = priority
-        plan = mappedPlan
-      }
-    }
-    
-    console.log('[Subscription] Best plan:', plan)
-
-    // Update user's cached subscription
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        subscriptionPlan: plan,
-        subscriptionUpdatedAt: new Date(),
-      }
-    })
-
-    console.log('[Subscription] Updated user subscription to:', plan)
-    return plan
-  } catch (error) {
-    console.error('[Subscription] Error syncing from Drime:', error)
-    return 'gratuit'
-  }
+  // Everyone gets advanced plan with unlimited signatures
+  return 'advanced'
 }
 
 /**
