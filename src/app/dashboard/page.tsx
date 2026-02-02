@@ -33,7 +33,7 @@ interface Envelope {
   createdBy?: string
 }
 
-const DRIME_LOGIN_URL = 'https://front.preprod.drime.cloud/login'
+const DRIME_LOGIN_URL = 'https://app.drime.cloud/login'
 
 // Dropdown icons - using new Iconly icons
 const DeviceIcon = () => (

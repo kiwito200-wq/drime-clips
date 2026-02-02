@@ -152,7 +152,7 @@ export async function syncSubscriptionFromDrime(
   drimeUserId: string,
   drimeToken: string
 ): Promise<PlanType> {
-  const DRIME_API_URL = process.env.DRIME_API_URL || 'https://api.preprod.drime.cloud'
+  const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
   
   try {
     const response = await fetch(

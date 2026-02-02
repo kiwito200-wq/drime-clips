@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-const DRIME_LOGIN_URL = 'https://front.preprod.drime.cloud/login'
+const DRIME_LOGIN_URL = 'https://app.drime.cloud/login'
 
 function HomeContent() {
   const router = useRouter()

@@ -448,7 +448,7 @@ export default function TemplatesPage() {
   const clearSessionAndRedirect = useCallback(() => {
     fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
       .finally(() => {
-        window.location.href = 'https://front.preprod.drime.cloud/login'
+        window.location.href = 'https://app.drime.cloud/login'
       })
   }, [])
 

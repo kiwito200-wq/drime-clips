@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 import { encrypt } from '@/lib/encryption'
 
-const DRIME_API_URL = 'https://front.preprod.drime.cloud'
+const DRIME_API_URL = 'https://app.drime.cloud'
 
 /**
  * Extract drime_session token from cookie header

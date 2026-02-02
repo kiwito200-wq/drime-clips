@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DRIME_API_URL = 'https://front.preprod.drime.cloud'
+const DRIME_API_URL = 'https://app.drime.cloud'
 
 /**
  * Proxy endpoint to serve PDF files from Drime

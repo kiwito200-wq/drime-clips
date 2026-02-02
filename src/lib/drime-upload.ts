@@ -7,7 +7,7 @@
 import { prisma } from './prisma'
 import { safeDecrypt } from './encryption'
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://front.preprod.drime.cloud'
+const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
 const SIGNED_DOCS_FOLDER_NAME = 'Documents signés'
 
 // Enable debug logging
