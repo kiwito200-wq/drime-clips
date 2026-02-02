@@ -294,6 +294,7 @@ function AgreementsContent() {
   // Load subscription info
   useEffect(() => {
     if (user) {
+      // First get local subscription
       fetch('/api/subscription', { credentials: 'include' })
         .then(res => res.json())
         .then(data => {
@@ -303,15 +304,44 @@ function AgreementsContent() {
         })
         .catch(() => {})
       
-      // Sync subscription from Drime (background)
-      fetch('/api/subscription', { method: 'POST', credentials: 'include' })
-        .then(res => res.json())
-        .then(data => {
-          if (!data.error) {
-            setSubscription(data)
+      // Sync subscription from Drime directly (browser has access to Drime cookies)
+      const syncFromDrime = async () => {
+        try {
+          // Get user data with subscriptions from Drime (browser makes request directly)
+          const drimeRes = await fetch('https://app.drime.cloud/api/v1/auth/external/me?with=subscriptions.product', {
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' },
+          })
+          
+          if (drimeRes.ok) {
+            const drimeData = await drimeRes.json()
+            const subscriptions = drimeData.user?.subscriptions || []
+            
+            if (subscriptions.length > 0) {
+              // Send subscriptions to our backend to sync
+              const syncRes = await fetch('/api/subscription/sync', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subscriptions }),
+              })
+              
+              if (syncRes.ok) {
+                // Refresh subscription data
+                const refreshRes = await fetch('/api/subscription', { credentials: 'include' })
+                const refreshData = await refreshRes.json()
+                if (!refreshData.error) {
+                  setSubscription(refreshData)
+                }
+              }
+            }
           }
-        })
-        .catch(() => {})
+        } catch (e) {
+          console.log('Drime subscription sync failed:', e)
+        }
+      }
+      
+      syncFromDrime()
     }
   }, [user])
 
