@@ -43,11 +43,24 @@ function mapDrimeProductToPlan(productName: string | null): PlanType {
   
   const normalized = productName.toLowerCase().trim()
   
+  // Direct plan names
   if (normalized.includes('advanced')) return 'advanced'
   if (normalized.includes('professional') || normalized.includes('pro')) return 'professional'
   if (normalized.includes('essential')) return 'essentials'
   if (normalized.includes('starter')) return 'starter'
   if (normalized.includes('gratuit') || normalized.includes('free')) return 'gratuit'
+  
+  // Lifetime subscriptions based on storage (e.g. "Lifetime Subscription: 6TB")
+  const tbMatch = normalized.match(/(\d+)\s*tb/i)
+  if (tbMatch) {
+    const tb = parseInt(tbMatch[1])
+    if (tb >= 6) return 'advanced'
+    if (tb >= 3) return 'professional'
+    return 'essentials' // 2TB and below
+  }
+  
+  const gbMatch = normalized.match(/(\d+)\s*gb/i)
+  if (gbMatch) return 'starter'
   
   // Default to gratuit if unknown
   return 'gratuit'
@@ -157,48 +170,14 @@ export async function syncSubscriptionFromDrime(
   try {
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
     
-    // Step 1: Get XSRF token from Drime
-    let xsrfToken: string | null = null
-    try {
-      const csrfRes = await fetch(`${DRIME_API_URL}/sanctum/csrf-cookie`, {
-        method: 'GET',
-        headers: {
-          'Cookie': `drime_session=${drimeToken}`,
-          'Accept': 'application/json',
-        },
-      })
-      
-      if (csrfRes.ok) {
-        const setCookieHeader = csrfRes.headers.get('set-cookie')
-        if (setCookieHeader) {
-          const xsrfMatch = setCookieHeader.match(/XSRF-TOKEN=([^;]+)/)
-          if (xsrfMatch && xsrfMatch[1]) {
-            xsrfToken = decodeURIComponent(xsrfMatch[1])
-            console.log('[Subscription] Got XSRF token')
-          }
-        }
-      }
-    } catch (e) {
-      console.log('[Subscription] Failed to get XSRF token:', e)
-    }
-    
-    // Step 2: Fetch user with subscriptions
-    const headers: Record<string, string> = {
-      'Accept': 'application/json',
-      'Origin': DRIME_API_URL,
-      'Referer': `${DRIME_API_URL}/`,
-    }
-    
-    if (xsrfToken) {
-      headers['Cookie'] = `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
-      headers['X-XSRF-TOKEN'] = xsrfToken
-    } else {
-      headers['Cookie'] = `drime_session=${drimeToken}`
-    }
-    
     const response = await fetch(
       `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`,
-      { headers }
+      {
+        headers: {
+          'Authorization': `Bearer ${drimeToken}`,
+          'Accept': 'application/json',
+        },
+      }
     )
 
     if (!response.ok) {
@@ -212,19 +191,40 @@ export async function syncSubscriptionFromDrime(
     
     const user = data.user || data
 
-    // Find active subscription
+    // Find ALL active subscriptions and get the best plan
     const subscriptions = user.subscriptions || []
     console.log('[Subscription] Found subscriptions:', subscriptions.length)
     
-    const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
-    console.log('[Subscription] Active subscription:', activeSubscription?.product?.name)
-
-    let plan: PlanType = 'gratuit'
-    
-    if (activeSubscription?.product?.name) {
-      plan = mapDrimeProductToPlan(activeSubscription.product.name)
-      console.log('[Subscription] Mapped to plan:', plan)
+    // Plan priority (higher = better)
+    const planPriority: Record<PlanType, number> = {
+      'advanced': 4,
+      'professional': 3,
+      'essentials': 2,
+      'starter': 1,
+      'gratuit': 0,
     }
+    
+    let plan: PlanType = 'gratuit'
+    let bestPriority = 0
+    
+    for (const sub of subscriptions) {
+      if (!sub.active || !sub.valid) continue
+      
+      const productName = sub.product?.name
+      if (!productName) continue
+      
+      const mappedPlan = mapDrimeProductToPlan(productName)
+      const priority = planPriority[mappedPlan]
+      
+      console.log(`[Subscription] "${productName}" -> ${mappedPlan} (priority ${priority})`)
+      
+      if (priority > bestPriority) {
+        bestPriority = priority
+        plan = mappedPlan
+      }
+    }
+    
+    console.log('[Subscription] Best plan:', plan)
 
     // Update user's cached subscription
     await prisma.user.update({
