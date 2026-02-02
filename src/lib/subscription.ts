@@ -159,36 +159,37 @@ export async function consumeSignatureRequest(userId: string): Promise<{ success
 
 /**
  * Sync subscription from Drime API
+ * Uses the user's own Drime session cookie to fetch their subscription data
  */
 export async function syncSubscriptionFromDrime(
   userId: string, 
   drimeUserId: string,
-  _drimeToken: string // Not used - we use the master API token
+  drimeSessionToken: string // User's drime_session cookie value
 ): Promise<PlanType> {
   const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
-  // Master API token for Drime - bypasses user-level auth
-  // Token provided by Lucas for Drime Sign bypass
-  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC/BGP_Ha/cE-KY3lDWRHzx'
+  
+  if (!drimeSessionToken) {
+    console.error('[Subscription] No Drime session token available for user:', drimeUserId)
+    return 'gratuit'
+  }
   
   try {
-    const apiUrl = `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`
+    // Use the authenticated /me endpoint with user's session cookie
+    const apiUrl = `${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product,subscriptions.price`
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
     console.log('[Subscription] API URL:', apiUrl)
-    console.log('[Subscription] Token prefix:', DRIME_API_TOKEN.substring(0, 10) + '...')
     
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${DRIME_API_TOKEN}`,
+        'Cookie': `drime_session=${drimeSessionToken}`,
         'Accept': 'application/json',
-        'Content-Type': 'application/json',
       },
     })
 
     if (!response.ok) {
       const errorText = await response.text()
       console.error('[Subscription] Failed to fetch from Drime:', response.status, errorText.substring(0, 500))
-      console.error('[Subscription] Response headers:', Object.fromEntries(response.headers.entries()))
       return 'gratuit'
     }
 
