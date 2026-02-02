@@ -221,6 +221,10 @@ export async function POST(request: NextRequest, { params }: Params) {
         }
         
         for (let i = 0; i < allSigners.length; i++) {
+          // Skip if signer email is same as owner (they already got the owner email)
+          if (allSigners[i].email.toLowerCase() === signer.envelope.user.email.toLowerCase()) {
+            continue
+          }
           // Add delay BEFORE EACH email (including first) to avoid rate limiting
           await new Promise(r => setTimeout(r, 600))
           try {
@@ -262,6 +266,11 @@ export async function POST(request: NextRequest, { params }: Params) {
       // Send to all signers with delay to avoid rate limiting
       for (let i = 0; i < allSigners.length; i++) {
         const s = allSigners[i]
+        
+        // Skip if signer email is same as owner (they already got the owner email)
+        if (s.email.toLowerCase() === signer.envelope.user.email.toLowerCase()) {
+          continue
+        }
         
         // Add delay BEFORE EACH email (including first after owner) to avoid rate limiting
         // Resend limit: 2 requests/sec, so 600ms delay is safe
