@@ -143,7 +143,7 @@ export interface AuditTrailDocument {
 // GET FULL AUDIT TRAIL
 // ==============================================
 
-export async function getAuditTrail(envelopeId: string): Promise<AuditTrailDocument | null> {
+export async function getAuditTrail(envelopeId: string, locale: 'fr' | 'en' = 'en'): Promise<AuditTrailDocument | null> {
   try {
     const envelope = await prisma.envelope.findUnique({
       where: { id: envelopeId },
@@ -174,7 +174,7 @@ export async function getAuditTrail(envelopeId: string): Promise<AuditTrailDocum
       
       return {
         timestamp: log.createdAt,
-        action: formatActionLabel(log.action),
+        action: formatActionLabel(log.action, locale),
         actor: {
           type: signer ? 'signer' : (log.action === 'created' || log.action === 'sent' ? 'owner' : 'system'),
           email: signer?.email || envelope.user.email,
@@ -224,28 +224,30 @@ export async function getAuditTrail(envelopeId: string): Promise<AuditTrailDocum
 }
 
 // ==============================================
-// FORMAT ACTION LABELS
+// FORMAT ACTION LABELS (i18n)
 // ==============================================
 
-function formatActionLabel(action: string): string {
-  const labels: Record<string, string> = {
-    created: 'Document créé',
-    sent: 'Document envoyé pour signature',
-    viewed: 'Document consulté',
-    opened_email: 'Email d\'invitation ouvert',
-    started_signing: 'Signature commencée',
-    signed: 'Document signé',
-    declined: 'Signature refusée',
-    completed: 'Toutes les signatures complétées',
-    downloaded: 'Document téléchargé',
-    reminder_sent: 'Rappel envoyé',
-    expired: 'Document expiré',
-    phone_verified: 'Téléphone vérifié (champ)',
-    phone_2fa_verified: 'Téléphone vérifié (2FA document)',
-    renamed: 'Document renommé',
-    due_date_changed: 'Date d\'échéance modifiée',
-  }
-  return labels[action] || action
+const actionLabels: Record<string, { fr: string; en: string }> = {
+  created: { fr: 'Document créé', en: 'Document created' },
+  sent: { fr: 'Document envoyé pour signature', en: 'Document sent for signature' },
+  viewed: { fr: 'Document consulté', en: 'Document viewed' },
+  opened_email: { fr: 'Email d\'invitation ouvert', en: 'Invitation email opened' },
+  started_signing: { fr: 'Signature commencée', en: 'Signing started' },
+  signed: { fr: 'Document signé', en: 'Document signed' },
+  declined: { fr: 'Signature refusée', en: 'Signature declined' },
+  completed: { fr: 'Toutes les signatures complétées', en: 'All signatures completed' },
+  downloaded: { fr: 'Document téléchargé', en: 'Document downloaded' },
+  reminder_sent: { fr: 'Rappel envoyé', en: 'Reminder sent' },
+  expired: { fr: 'Document expiré', en: 'Document expired' },
+  phone_verified: { fr: 'Téléphone vérifié (champ)', en: 'Phone verified (field)' },
+  phone_2fa_verified: { fr: 'Téléphone vérifié (2FA document)', en: 'Phone verified (2FA document)' },
+  renamed: { fr: 'Document renommé', en: 'Document renamed' },
+  due_date_changed: { fr: 'Date d\'échéance modifiée', en: 'Due date changed' },
+}
+
+function formatActionLabel(action: string, locale: 'fr' | 'en' = 'en'): string {
+  const label = actionLabels[action]
+  return label ? label[locale] : action
 }
 
 // ==============================================
@@ -656,12 +658,90 @@ export async function generateSignedPdf(envelopeId: string): Promise<{ pdfBuffer
 }
 
 // ==============================================
+// AUDIT TRAIL PDF i18n
+// ==============================================
+
+const auditPdfI18n = {
+  fr: {
+    title: 'CERTIFICAT D\'AUDIT',
+    subtitle: 'Drime Sign - Signature électronique sécurisée',
+    documentInfo: 'INFORMATIONS DU DOCUMENT',
+    name: 'Nom',
+    certificateId: 'ID du certificat',
+    creationDate: 'Date de création',
+    completionDate: 'Date de complétion',
+    inProgress: 'En cours',
+    sha256Hash: 'Hash SHA-256',
+    owner: 'PROPRIÉTAIRE',
+    email: 'Email',
+    signers: 'SIGNATAIRES',
+    status: 'Statut',
+    signed: 'Signé',
+    declined: 'Refusé',
+    pending: 'En attente',
+    signatureDate: 'Date de signature',
+    ipAddress: 'Adresse IP',
+    signatures: 'SIGNATURES',
+    signatureOf: 'Signature de',
+    initialsOf: 'Initiales de',
+    eventLog: 'JOURNAL DES ÉVÉNEMENTS',
+    by: 'par',
+    verification: 'VERIFICATION DE L\'INTEGRITE',
+    verifyDoc: 'Document original non modifie (hash SHA-256 verifie)',
+    verifySignatures: 'Toutes les signatures sont valides',
+    verifyPending: 'Signatures en attente',
+    verifyTimestamp: 'Horodatage cryptographique applique',
+    footer: 'Ce certificat a été généré automatiquement par Drime Sign le',
+    auditReason: 'Certificat d\'audit pour',
+    phone: 'Tél',
+    docAccess: '(Acces doc)',
+    formField: '(Champ form)',
+  },
+  en: {
+    title: 'AUDIT CERTIFICATE',
+    subtitle: 'Drime Sign - Secure electronic signature',
+    documentInfo: 'DOCUMENT INFORMATION',
+    name: 'Name',
+    certificateId: 'Certificate ID',
+    creationDate: 'Creation date',
+    completionDate: 'Completion date',
+    inProgress: 'In progress',
+    sha256Hash: 'SHA-256 Hash',
+    owner: 'OWNER',
+    email: 'Email',
+    signers: 'SIGNERS',
+    status: 'Status',
+    signed: 'Signed',
+    declined: 'Declined',
+    pending: 'Pending',
+    signatureDate: 'Signature date',
+    ipAddress: 'IP Address',
+    signatures: 'SIGNATURES',
+    signatureOf: 'Signature of',
+    initialsOf: 'Initials of',
+    eventLog: 'EVENT LOG',
+    by: 'by',
+    verification: 'INTEGRITY VERIFICATION',
+    verifyDoc: 'Original document unmodified (SHA-256 hash verified)',
+    verifySignatures: 'All signatures are valid',
+    verifyPending: 'Signatures pending',
+    verifyTimestamp: 'Cryptographic timestamp applied',
+    footer: 'This certificate was automatically generated by Drime Sign on',
+    auditReason: 'Audit certificate for',
+    phone: 'Phone',
+    docAccess: '(Doc access)',
+    formField: '(Form field)',
+  },
+}
+
+// ==============================================
 // GENERATE AUDIT TRAIL PDF
 // ==============================================
 
-export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer> {
+export async function generateAuditTrailPdf(envelopeId: string, locale: 'fr' | 'en' = 'en'): Promise<Buffer> {
   try {
-    const audit = await getAuditTrail(envelopeId)
+    const t = auditPdfI18n[locale]
+    const audit = await getAuditTrail(envelopeId, locale)
     if (!audit) {
       throw new Error('Audit trail not found')
     }
@@ -689,7 +769,8 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     const margin = 50
     const lineHeight = 16
     
-    const formatDate = (date: Date) => new Date(date).toLocaleString('fr-FR', {
+    const dateLocale = locale === 'fr' ? 'fr-FR' : 'en-US'
+    const formatDate = (date: Date) => new Date(date).toLocaleString(dateLocale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -727,7 +808,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       color: rgb(0.03, 0.81, 0.4), // #08CF65
     })
     
-    page.drawText('CERTIFICAT D\'AUDIT', {
+    page.drawText(t.title, {
       x: margin,
       y: 810,
       size: 18,
@@ -735,7 +816,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       color: rgb(1, 1, 1),
     })
     
-    page.drawText('Drime Sign - Signature électronique sécurisée', {
+    page.drawText(t.subtitle, {
       x: margin,
       y: 795,
       size: 10,
@@ -746,43 +827,43 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     y = 760
     
     // Document info
-    addText('INFORMATIONS DU DOCUMENT', { bold: true, size: 12 })
+    addText(t.documentInfo, { bold: true, size: 12 })
     y -= 8
-    addText(`Nom: ${audit.documentName}`)
-    addText(`ID du certificat: ${audit.verification.certificateId}`)
-    addText(`Date de création: ${formatDate(audit.createdAt)}`)
+    addText(`${t.name}: ${audit.documentName}`)
+    addText(`${t.certificateId}: ${audit.verification.certificateId}`)
+    addText(`${t.creationDate}: ${formatDate(audit.createdAt)}`)
     if (audit.completedAt) {
-      addText(`Date de complétion: ${formatDate(audit.completedAt)}`)
+      addText(`${t.completionDate}: ${formatDate(audit.completedAt)}`)
     }
-    addText(`Hash SHA-256: ${audit.documentHash}`)
+    addText(`${t.sha256Hash}: ${audit.documentHash}`)
     
     y -= 16
     
     // Owner
-    addText('PROPRIÉTAIRE', { bold: true, size: 12 })
+    addText(t.owner, { bold: true, size: 12 })
     y -= 8
-    addText(`Email: ${audit.owner.email}`)
+    addText(`${t.email}: ${audit.owner.email}`)
     if (audit.owner.name) {
-      addText(`Nom: ${audit.owner.name}`)
+      addText(`${t.name}: ${audit.owner.name}`)
     }
     
     y -= 16
     
     // Signers
-    addText('SIGNATAIRES', { bold: true, size: 12 })
+    addText(t.signers, { bold: true, size: 12 })
     y -= 8
     
     for (const signer of audit.signers) {
       addText(`• ${signer.name || signer.email}`, { bold: true })
-      addText(`  Email: ${signer.email}`)
-      addText(`  Statut: ${signer.status === 'signed' ? 'Signé' : signer.status === 'declined' ? 'Refusé' : 'En attente'}`, {
+      addText(`  ${t.email}: ${signer.email}`)
+      addText(`  ${t.status}: ${signer.status === 'signed' ? t.signed : signer.status === 'declined' ? t.declined : t.pending}`, {
         color: signer.status === 'signed' ? [0.09, 0.4, 0.2] : signer.status === 'declined' ? [0.6, 0.1, 0.1] : [0.57, 0.25, 0.05]
       })
       if (signer.signedAt) {
-        addText(`  Date de signature: ${formatDate(signer.signedAt)}`)
+        addText(`  ${t.signatureDate}: ${formatDate(signer.signedAt)}`)
       }
       if (signer.ipAddress) {
-        addText(`  Adresse IP: ${signer.ipAddress}`)
+        addText(`  ${t.ipAddress}: ${signer.ipAddress}`)
       }
       y -= 8
     }
@@ -795,7 +876,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       
       if (signatureFields.length > 0) {
         y -= 16
-        addText('SIGNATURES', { bold: true, size: 12 })
+        addText(t.signatures, { bold: true, size: 12 })
         y -= 8
         
         for (const field of signatureFields) {
@@ -804,8 +885,8 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
             const imageBytes = Buffer.from(base64Data, 'base64')
             const image = await pdfDoc.embedPng(imageBytes)
             
-            const signerName = field.signer?.name || field.signer?.email || 'Signataire'
-            addText(`${field.type === 'signature' ? 'Signature' : 'Initiales'} de ${signerName}:`)
+            const signerName = field.signer?.name || field.signer?.email || (locale === 'fr' ? 'Signataire' : 'Signer')
+            addText(`${field.type === 'signature' ? t.signatureOf : t.initialsOf} ${signerName}:`)
             
             if (y < 150) {
               page = pdfDoc.addPage([595, 842])
@@ -833,7 +914,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     y -= 16
     
     // Event log
-    addText('JOURNAL DES ÉVÉNEMENTS', { bold: true, size: 12 })
+    addText(t.eventLog, { bold: true, size: 12 })
     y -= 8
     
     for (const event of audit.events) {
@@ -843,17 +924,17 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       }
       
       const eventDate = formatDate(event.timestamp)
-      const actorName = event.actor.name || event.actor.email || 'Système'
+      const actorName = event.actor.name || event.actor.email || (locale === 'fr' ? 'Système' : 'System')
       
       // Build extra details string for phone verification
       let extraInfo = ''
       if (event.details.phone) {
-        extraInfo += ` | Tel: ${event.details.phone}`
+        extraInfo += ` | ${t.phone}: ${event.details.phone}`
       }
       if (event.details.verificationType) {
         extraInfo += event.details.verificationType === 'document_access_2fa' 
-          ? ' (Acces doc)' 
-          : ' (Champ form)'
+          ? ` ${t.docAccess}` 
+          : ` ${t.formField}`
       }
       
       page.drawText(eventDate, {
@@ -874,7 +955,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       
       y -= lineHeight * 0.8
       
-      page.drawText(`par ${actorName}${event.details.ip ? ` (IP: ${event.details.ip})` : ''}${extraInfo}`, {
+      page.drawText(`${t.by} ${actorName}${event.details.ip ? ` (IP: ${event.details.ip})` : ''}${extraInfo}`, {
         x: margin + 120,
         y,
         size: 8,
@@ -904,7 +985,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 20
-    page.drawText('VERIFICATION DE L\'INTEGRITE', {
+    page.drawText(t.verification, {
       x: margin + 10,
       y,
       size: 11,
@@ -913,7 +994,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 18
-    page.drawText('[OK] Document original non modifie (hash SHA-256 verifie)', {
+    page.drawText(`[OK] ${t.verifyDoc}`, {
       x: margin + 10,
       y,
       size: 9,
@@ -922,7 +1003,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 14
-    page.drawText(`[OK] ${audit.verification.allSignaturesValid ? 'Toutes les signatures sont valides' : 'Signatures en attente'}`, {
+    page.drawText(`[OK] ${audit.verification.allSignaturesValid ? t.verifySignatures : t.verifyPending}`, {
       x: margin + 10,
       y,
       size: 9,
@@ -931,7 +1012,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     })
     
     y -= 14
-    page.drawText('[OK] Horodatage cryptographique applique', {
+    page.drawText(`[OK] ${t.verifyTimestamp}`, {
       x: margin + 10,
       y,
       size: 9,
@@ -942,7 +1023,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
     // Footer
     const lastPageObj = pdfDoc.getPages()[pdfDoc.getPageCount() - 1]
     lastPageObj.drawText(
-      `Ce certificat a été généré automatiquement par Drime Sign le ${formatDate(new Date())}`,
+      `${t.footer} ${formatDate(new Date())}`,
       {
         x: margin,
         y: 30,
@@ -966,7 +1047,7 @@ export async function generateAuditTrailPdf(envelopeId: string): Promise<Buffer>
       
       const { pdfBuffer } = await signPdfWithCertificate({
         pdfBuffer: visualPdfBuffer,
-        reason: `Certificat d'audit pour "${audit.documentName}"`,
+        reason: `${t.auditReason} "${audit.documentName}"`,
         location: 'France',
         contactInfo: 'https://sign.drime.cloud',
         signerName: 'Drime Sign - Audit Trail',
