@@ -154,7 +154,7 @@ export default function SelectModal({
                   disabled={required && !selectedOption}
                   className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Suivant
+                  {locale === 'fr' ? 'Suivant' : 'Next'}
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -165,7 +165,7 @@ export default function SelectModal({
                   disabled={required && !selectedOption}
                   className="flex-1 px-4 py-3 text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirmer
+                  {locale === 'fr' ? 'Confirmer' : 'Confirm'}
                 </button>
               )}
             </div>

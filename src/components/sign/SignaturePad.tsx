@@ -442,7 +442,7 @@ export default function SignaturePad({
                   disabled={!hasSignature}
                   className="px-5 py-2.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Suivant
+                  {locale === 'fr' ? 'Suivant' : 'Next'}
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -453,7 +453,7 @@ export default function SignaturePad({
                   disabled={!hasSignature}
                   className="px-5 py-2.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Appliquer
+                  {locale === 'fr' ? 'Appliquer' : 'Apply'}
                 </button>
               )}
             </div>
