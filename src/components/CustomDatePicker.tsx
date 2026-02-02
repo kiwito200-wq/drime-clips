@@ -210,7 +210,7 @@ export default function CustomDatePicker({
                 onClick={handleClear}
                 className="w-full px-4 py-2 text-sm font-medium text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                Supprimer la date
+                {language === 'fr' ? 'Supprimer la date' : 'Clear date'}
               </button>
             </div>
           )}

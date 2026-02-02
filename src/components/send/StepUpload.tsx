@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface StepUploadProps {
   onUpload: (file: File, name: string) => void
@@ -9,6 +10,7 @@ interface StepUploadProps {
 }
 
 export default function StepUpload({ onUpload, isLoading }: StepUploadProps) {
+  const { locale } = useTranslation()
   const [file, setFile] = useState<File | null>(null)
   const [name, setName] = useState('')
   const [dragActive, setDragActive] = useState(false)
@@ -156,11 +158,11 @@ export default function StepUpload({ onUpload, isLoading }: StepUploadProps) {
             {isLoading ? (
               <>
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Upload en cours...
+                {locale === 'fr' ? 'Upload en cours...' : 'Uploading...'}
               </>
             ) : (
               <>
-                Continuer
+                {locale === 'fr' ? 'Continuer' : 'Continue'}
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

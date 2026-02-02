@@ -9,6 +9,7 @@ import FieldPalette from '@/components/sign/FieldPalette'
 import PageThumbnails from '@/components/sign/PageThumbnails'
 import SignaturePad from '@/components/sign/SignaturePad'
 import { Field, FieldType, Recipient } from '@/components/sign/types'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface StepFieldsProps {
   documentData: DocumentData
@@ -41,6 +42,7 @@ export default function StepFields({
   onNext,
   isLoading,
 }: StepFieldsProps) {
+  const { locale } = useTranslation()
   // State
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loadingPdf, setLoadingPdf] = useState(true)
@@ -345,7 +347,7 @@ export default function StepFields({
       <div className="h-[calc(100vh-120px)] flex items-center justify-center bg-gray-100">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-[#08CF65] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500">Chargement du document...</p>
+          <p className="text-gray-500">{locale === 'fr' ? 'Chargement du document...' : 'Loading document...'}</p>
         </div>
       </div>
     )
@@ -398,14 +400,14 @@ export default function StepFields({
             onClick={onBack}
             className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            Retour
+            {locale === 'fr' ? 'Retour' : 'Back'}
           </button>
           <button
             onClick={onNext}
             disabled={fields.length === 0 || isLoading}
             className="px-4 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            Continuer
+            {locale === 'fr' ? 'Continuer' : 'Continue'}
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>

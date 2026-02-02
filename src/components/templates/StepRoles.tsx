@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface Role {
   id: string
@@ -37,6 +38,7 @@ export default function StepRoles({
   onNext,
   isLoading,
 }: StepRolesProps) {
+  const { locale } = useTranslation()
   const [newRoleName, setNewRoleName] = useState('')
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState('')
@@ -45,12 +47,12 @@ export default function StepRoles({
   const handleAddRole = () => {
     const trimmed = newRoleName.trim()
     if (!trimmed) {
-      setErrors({ newRole: 'Ce champ est requis' })
+      setErrors({ newRole: locale === 'fr' ? 'Ce champ est requis' : 'This field is required' })
       return
     }
     
     if (roles.some(r => r.name.toLowerCase() === trimmed.toLowerCase())) {
-      setErrors({ newRole: 'Ce rôle existe déjà' })
+      setErrors({ newRole: locale === 'fr' ? 'Ce rôle existe déjà' : 'This role already exists' })
       return
     }
 
@@ -74,7 +76,7 @@ export default function StepRoles({
 
     const role = roles.find(r => r.id === roleId)
     if (role && roles.some(r => r.id !== roleId && r.name.toLowerCase() === trimmed.toLowerCase())) {
-      setErrors({ [roleId]: 'Ce rôle existe déjà' })
+      setErrors({ [roleId]: locale === 'fr' ? 'Ce rôle existe déjà' : 'This role already exists' })
       return
     }
 
@@ -103,8 +105,8 @@ export default function StepRoles({
     <div className="max-w-xl mx-auto py-10 px-4">
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-semibold text-gray-900">Ajouter des rôles de signataires</h1>
-        <p className="text-gray-500 mt-2">Définissez les rôles qui devront signer ce template (ex: &quot;Client&quot;, &quot;Vendeur&quot;)</p>
+        <h1 className="text-2xl font-semibold text-gray-900">{locale === 'fr' ? 'Ajouter des rôles de signataires' : 'Add signer roles'}</h1>
+        <p className="text-gray-500 mt-2">{locale === 'fr' ? 'Définissez les rôles qui devront signer ce template (ex: "Client", "Vendeur")' : 'Define the roles that will need to sign this template (e.g., "Client", "Vendor")'}</p>
       </div>
 
       <motion.div
@@ -172,7 +174,7 @@ export default function StepRoles({
                 <>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{role.name}</p>
-                    <p className="text-xs text-gray-500">Rôle de signataire</p>
+                    <p className="text-xs text-gray-500">{locale === 'fr' ? 'Rôle de signataire' : 'Signer role'}</p>
                   </div>
                   <button
                     onClick={() => handleStartEdit(role)}
@@ -186,7 +188,7 @@ export default function StepRoles({
                   <button
                     onClick={() => onRemoveRole(role.id)}
                     className="p-2 text-gray-400 hover:text-red-600 rounded-lg transition-colors"
-                    title="Supprimer"
+                    title={locale === 'fr' ? 'Supprimer' : 'Delete'}
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -226,7 +228,7 @@ export default function StepRoles({
                       handleAddRole()
                     }
                   }}
-                  placeholder='Nom du rôle (ex: &quot;Client&quot; ou &quot;Vendeur&quot;)'
+                  placeholder={locale === 'fr' ? 'Nom du rôle (ex: "Client" ou "Vendeur")' : 'Role name (e.g., "Client" or "Vendor")'}
                   className={`w-full pl-10 pr-10 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-[#08CF65] focus:border-transparent outline-none ${
                     errors.newRole ? 'border-red-300 bg-red-50' : 'border-gray-200'
                   }`}
@@ -256,7 +258,7 @@ export default function StepRoles({
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Ajouter un rôle
+              {locale === 'fr' ? 'Ajouter un rôle' : 'Add a role'}
             </button>
           </div>
         </div>
@@ -268,7 +270,7 @@ export default function StepRoles({
           onClick={onBack}
           className="px-5 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
         >
-          Retour
+          {locale === 'fr' ? 'Retour' : 'Back'}
         </button>
         <button
           onClick={onNext}
@@ -278,11 +280,11 @@ export default function StepRoles({
           {isLoading ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Chargement...
+              {locale === 'fr' ? 'Chargement...' : 'Loading...'}
             </>
           ) : (
             <>
-              Continuer
+              {locale === 'fr' ? 'Continuer' : 'Continue'}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>

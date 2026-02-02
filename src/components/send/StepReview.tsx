@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import CustomDatePicker from '@/components/CustomDatePicker'
 import { SecureThumbnail } from '@/components/SecureThumbnail'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface Signer {
   id: string
@@ -109,7 +110,8 @@ export default function StepReview({
   isTemplateMode = false,
   onSaveTemplate,
 }: StepReviewProps) {
-  const [emailSubject, setEmailSubject] = useState(`Vous avez été invité à signer ${document.name}`)
+  const { locale } = useTranslation()
+  const [emailSubject, setEmailSubject] = useState('')
   const [emailMessage, setEmailMessage] = useState('')
   const [isEmailExpanded, setIsEmailExpanded] = useState(false)
   
@@ -123,6 +125,15 @@ export default function StepReview({
   const [mounted, setMounted] = useState(false)
   const reminderDropdownRef = useRef<HTMLDivElement>(null)
   const reminderButtonRef = useRef<HTMLButtonElement>(null)
+  
+  // Initialize email subject based on locale and document name
+  useEffect(() => {
+    if (!emailSubject) {
+      setEmailSubject(locale === 'fr' 
+        ? `Vous avez été invité à signer ${document.name}`
+        : `You have been invited to sign ${document.name}`)
+    }
+  }, [locale, document.name, emailSubject])
   
   // Wait for client-side mount for portal
   useEffect(() => {
@@ -519,7 +530,7 @@ export default function StepReview({
           onClick={onBack}
           className="px-8 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors min-w-[140px]"
         >
-          Retour
+          {locale === 'fr' ? 'Retour' : 'Back'}
         </button>
         <button
           onClick={handleSend}

@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Field, FieldType, Recipient } from './types'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface FieldPaletteProps {
   recipients: Recipient[]
@@ -22,13 +23,22 @@ interface FieldPaletteProps {
   isPreviewMode: boolean
 }
 
-const FIELD_TYPES: { type: FieldType; label: string; description: string }[] = [
+const FIELD_TYPES_FR: { type: FieldType; label: string; description: string }[] = [
+  { type: 'signature', label: 'Signature', description: 'Signature complète' },
+  { type: 'initials', label: 'Initiales', description: 'Initiales courtes' },
+  { type: 'date', label: 'Date', description: 'Sélecteur de date' },
+  { type: 'text', label: 'Texte', description: 'Champ texte libre' },
+  { type: 'checkbox', label: 'Case', description: 'Case à cocher' },
+  { type: 'phone', label: 'Téléphone', description: 'Téléphone avec vérification OTP' },
+]
+
+const FIELD_TYPES_EN: { type: FieldType; label: string; description: string }[] = [
   { type: 'signature', label: 'Signature', description: 'Full signature' },
-  { type: 'initials', label: 'Initiales', description: 'Short initials' },
+  { type: 'initials', label: 'Initials', description: 'Short initials' },
   { type: 'date', label: 'Date', description: 'Date picker' },
-  { type: 'text', label: 'Texte', description: 'Free text input' },
-  { type: 'checkbox', label: 'Case', description: 'Yes/No checkbox' },
-  { type: 'phone', label: 'Téléphone', description: 'Phone with OTP verification' },
+  { type: 'text', label: 'Text', description: 'Free text input' },
+  { type: 'checkbox', label: 'Checkbox', description: 'Yes/No checkbox' },
+  { type: 'phone', label: 'Phone', description: 'Phone with OTP verification' },
 ]
 
 export default function FieldPalette({
@@ -48,10 +58,12 @@ export default function FieldPalette({
   onDragEnd,
   isPreviewMode,
 }: FieldPaletteProps) {
+  const { locale } = useTranslation()
   const [editingRecipientId, setEditingRecipientId] = useState<string | null>(null)
   const [showRecipients, setShowRecipients] = useState(true)
 
   const selectedRecipient = recipients.find(r => r.id === selectedRecipientId)
+  const FIELD_TYPES = locale === 'fr' ? FIELD_TYPES_FR : FIELD_TYPES_EN
 
   // Get field icon
   const getFieldIcon = (type: FieldType) => {
@@ -123,8 +135,8 @@ export default function FieldPalette({
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
-        <h2 className="font-semibold text-gray-900">Champs</h2>
-        <p className="text-xs text-gray-500 mt-1">Glissez les champs sur le document ou cliquez pour placer</p>
+        <h2 className="font-semibold text-gray-900">{locale === 'fr' ? 'Champs' : 'Fields'}</h2>
+        <p className="text-xs text-gray-500 mt-1">{locale === 'fr' ? 'Glissez les champs sur le document ou cliquez pour placer' : 'Drag fields onto the document or click to place'}</p>
       </div>
 
       {/* Scrollable Content */}
@@ -135,7 +147,7 @@ export default function FieldPalette({
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
             onClick={() => setShowRecipients(!showRecipients)}
           >
-            <span className="font-medium text-gray-700 text-sm">Signataires</span>
+            <span className="font-medium text-gray-700 text-sm">{locale === 'fr' ? 'Signataires' : 'Signers'}</span>
             <svg 
               className={`w-5 h-5 text-gray-400 transition-transform ${showRecipients ? 'rotate-180' : ''}`}
               fill="none" 
@@ -224,7 +236,7 @@ export default function FieldPalette({
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Ajouter un signataire
+                    {locale === 'fr' ? 'Ajouter un signataire' : 'Add a signer'}
                   </button>
                 </div>
               </motion.div>
@@ -234,9 +246,9 @@ export default function FieldPalette({
 
         {/* Fields Section */}
         <div className="p-4">
-          <h3 className="font-medium text-gray-700 text-sm mb-3">Champs</h3>
+          <h3 className="font-medium text-gray-700 text-sm mb-3">{locale === 'fr' ? 'Champs' : 'Fields'}</h3>
           <p className="text-xs text-gray-400 mb-3">
-            Ajouter des champs pour: <span className="font-medium" style={{ color: selectedRecipient?.color }}>{selectedRecipient?.name}</span>
+            {locale === 'fr' ? 'Ajouter des champs pour:' : 'Add fields for:'} <span className="font-medium" style={{ color: selectedRecipient?.color }}>{selectedRecipient?.name}</span>
           </p>
           
           <div className="grid grid-cols-3 gap-2">
@@ -293,7 +305,7 @@ export default function FieldPalette({
                     <button
                       onClick={() => onDeleteField(selectedField.id)}
                       className="p-1.5 text-gray-900 hover:text-red-500 transition-colors rounded"
-                      title="Supprimer"
+                      title={locale === 'fr' ? 'Supprimer' : 'Delete'}
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M14.9624 3.87898L15.7806 5.66377H18.42C19.2315 5.66377 19.8894 6.32166 19.8894 7.1332V8.2214C19.8894 8.77625 19.4396 9.22605 18.8848 9.22605H5.11501C4.56015 9.22605 4.11035 8.77625 4.11035 8.2214V7.1332C4.11035 6.32166 4.76823 5.66377 5.57978 5.66377H8.2192L9.0374 3.87898C9.28294 3.34338 9.8181 3 10.4073 3H13.5925C14.1817 3 14.7168 3.34338 14.9624 3.87898Z" />
@@ -358,7 +370,7 @@ export default function FieldPalette({
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 bg-gray-50">
         <p className="text-xs text-gray-400 text-center">
-          Tip: Appuyez sur <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">Suppr</kbd> pour supprimer
+          {locale === 'fr' ? 'Tip: Appuyez sur' : 'Tip: Press'} <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">{locale === 'fr' ? 'Suppr' : 'Del'}</kbd> {locale === 'fr' ? 'pour supprimer' : 'to delete'}
         </p>
       </div>
     </div>

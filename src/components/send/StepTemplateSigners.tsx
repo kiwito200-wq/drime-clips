@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface Role {
   id: string
@@ -41,6 +42,7 @@ export default function StepTemplateSigners({
   onNext,
   isLoading,
 }: StepTemplateSignersProps) {
+  const { locale } = useTranslation()
   const [errors, setErrors] = useState<Record<string, { name?: string; email?: string }>>({})
 
   const validateAndNext = () => {
@@ -50,14 +52,14 @@ export default function StepTemplateSigners({
     roles.forEach(role => {
       const signer = signers.find(s => s.roleId === role.id)
       if (!signer || !signer.name?.trim()) {
-        newErrors[role.id] = { ...newErrors[role.id], name: 'Ce champ est requis' }
+        newErrors[role.id] = { ...newErrors[role.id], name: locale === 'fr' ? 'Ce champ est requis' : 'This field is required' }
         hasErrors = true
       }
       if (!signer || !signer.email?.trim()) {
-        newErrors[role.id] = { ...newErrors[role.id], email: 'Ce champ est requis' }
+        newErrors[role.id] = { ...newErrors[role.id], email: locale === 'fr' ? 'Ce champ est requis' : 'This field is required' }
         hasErrors = true
       } else if (signer.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signer.email)) {
-        newErrors[role.id] = { ...newErrors[role.id], email: 'Email invalide' }
+        newErrors[role.id] = { ...newErrors[role.id], email: locale === 'fr' ? 'Email invalide' : 'Invalid email' }
         hasErrors = true
       }
     })
@@ -82,8 +84,8 @@ export default function StepTemplateSigners({
     return (
       <div className="max-w-xl mx-auto py-10 px-4">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Qui doit signer ce document ?</h1>
-          <p className="text-gray-500 mt-2">Chargement des rôles du template...</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{locale === 'fr' ? 'Qui doit signer ce document ?' : 'Who needs to sign this document?'}</h1>
+          <p className="text-gray-500 mt-2">{locale === 'fr' ? 'Chargement des rôles du template...' : 'Loading template roles...'}</p>
         </div>
         <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 flex items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
@@ -213,7 +215,7 @@ export default function StepTemplateSigners({
           onClick={onBack}
           className="px-5 py-2 text-gray-600 hover:text-gray-900 font-medium transition-colors"
         >
-          Retour
+          {locale === 'fr' ? 'Retour' : 'Back'}
         </button>
         <button
           onClick={validateAndNext}
@@ -223,11 +225,11 @@ export default function StepTemplateSigners({
           {isLoading ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Chargement...
+              {locale === 'fr' ? 'Chargement...' : 'Loading...'}
             </>
           ) : (
             <>
-              Continuer
+              {locale === 'fr' ? 'Continuer' : 'Continue'}
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
