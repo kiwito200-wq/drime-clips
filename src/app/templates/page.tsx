@@ -470,11 +470,13 @@ export default function TemplatesPage() {
         <div className="flex items-center gap-4">
           {/* Logo area */}
           <div className="w-52 flex-shrink-0 px-3">
-            <img 
-              src="/drime-logo.png" 
-              alt="Drime" 
-              className="h-8 w-auto"
-            />
+            <a href="https://app.drime.cloud/drive" className="block">
+              <img 
+                src="/drime-logo.png" 
+                alt="Drime" 
+                className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </a>
           </div>
 
           {/* Spacer */}

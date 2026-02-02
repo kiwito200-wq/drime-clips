@@ -854,11 +854,13 @@ function AgreementsContent() {
       <div className="flex-shrink-0 px-4 pt-4 pb-3">
         <div className="flex items-center gap-4">
           <div className="w-52 flex-shrink-0 px-3">
-            <img 
-              src="/drime-logo.png" 
-              alt="Drime" 
-              className="h-8 w-auto"
-            />
+            <a href="https://app.drime.cloud/drive" className="block">
+              <img 
+                src="/drime-logo.png" 
+                alt="Drime" 
+                className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              />
+            </a>
           </div>
           
           <div className="flex-1 max-w-xl">
