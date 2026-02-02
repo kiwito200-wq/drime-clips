@@ -168,7 +168,7 @@ export async function syncSubscriptionFromDrime(
   const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
   // Master API token for Drime - bypasses user-level auth
   // Token provided by Lucas for Drime Sign bypass
-  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBCBGP_HacE-KY3lDWRHzx'
+  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC/BGP_Ha/cE-KY3lDWRHzx'
   
   try {
     const apiUrl = `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`
