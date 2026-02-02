@@ -157,15 +157,48 @@ export async function syncSubscriptionFromDrime(
   try {
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
     
-    // Use /me endpoint with subscriptions included - this is accessible by the user
-    const response = await fetch(
-      `${DRIME_API_URL}/api/v1/auth/external/me?with=subscriptions.product,subscriptions.price`,
-      {
+    // Step 1: Get XSRF token from Drime
+    let xsrfToken: string | null = null
+    try {
+      const csrfRes = await fetch(`${DRIME_API_URL}/sanctum/csrf-cookie`, {
+        method: 'GET',
         headers: {
           'Cookie': `drime_session=${drimeToken}`,
           'Accept': 'application/json',
         },
+      })
+      
+      if (csrfRes.ok) {
+        const setCookieHeader = csrfRes.headers.get('set-cookie')
+        if (setCookieHeader) {
+          const xsrfMatch = setCookieHeader.match(/XSRF-TOKEN=([^;]+)/)
+          if (xsrfMatch && xsrfMatch[1]) {
+            xsrfToken = decodeURIComponent(xsrfMatch[1])
+            console.log('[Subscription] Got XSRF token')
+          }
+        }
       }
+    } catch (e) {
+      console.log('[Subscription] Failed to get XSRF token:', e)
+    }
+    
+    // Step 2: Fetch user with subscriptions
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Origin': DRIME_API_URL,
+      'Referer': `${DRIME_API_URL}/`,
+    }
+    
+    if (xsrfToken) {
+      headers['Cookie'] = `drime_session=${drimeToken}; XSRF-TOKEN=${encodeURIComponent(xsrfToken)}`
+      headers['X-XSRF-TOKEN'] = xsrfToken
+    } else {
+      headers['Cookie'] = `drime_session=${drimeToken}`
+    }
+    
+    const response = await fetch(
+      `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`,
+      { headers }
     )
 
     if (!response.ok) {
