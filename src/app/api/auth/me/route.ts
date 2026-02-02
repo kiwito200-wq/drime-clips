@@ -3,6 +3,7 @@ import { getCurrentUser, DRIME_LOGIN_URL } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { createSession } from '@/lib/auth'
 import { encrypt } from '@/lib/encryption'
+import { syncSubscriptionFromDrime } from '@/lib/subscription'
 
 const DRIME_API_URL = 'https://app.drime.cloud'
 
@@ -84,6 +85,13 @@ export async function GET(request: NextRequest) {
                 drimeToken: encryptedDrimeToken, // Store encrypted token!
               },
             })
+            
+            // Sync subscription from Drime (non-blocking)
+            if (drimeToken && drimeData.user.id) {
+              syncSubscriptionFromDrime(user.id, String(drimeData.user.id), drimeToken)
+                .then(plan => console.log('[Auth] Synced subscription plan:', plan))
+                .catch(err => console.error('[Auth] Failed to sync subscription:', err))
+            }
             
             // Create session
             const sessionToken = await createSession(user.id)

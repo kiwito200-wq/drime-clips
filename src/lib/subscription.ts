@@ -155,32 +155,41 @@ export async function syncSubscriptionFromDrime(
   const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
   
   try {
+    console.log('[Subscription] Syncing subscription for user:', drimeUserId)
+    
     const response = await fetch(
       `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`,
       {
         headers: {
-          'Authorization': `Bearer ${drimeToken}`,
+          'Cookie': `drime_session=${drimeToken}`,
           'Accept': 'application/json',
         },
       }
     )
 
     if (!response.ok) {
-      console.error('[Subscription] Failed to fetch from Drime:', response.status)
+      const errorText = await response.text()
+      console.error('[Subscription] Failed to fetch from Drime:', response.status, errorText.substring(0, 200))
       return 'gratuit'
     }
 
     const data = await response.json()
+    console.log('[Subscription] Drime response:', JSON.stringify(data).substring(0, 500))
+    
     const user = data.user || data
 
     // Find active subscription
     const subscriptions = user.subscriptions || []
+    console.log('[Subscription] Found subscriptions:', subscriptions.length)
+    
     const activeSubscription = subscriptions.find((sub: any) => sub.active && sub.valid)
+    console.log('[Subscription] Active subscription:', activeSubscription?.product?.name)
 
     let plan: PlanType = 'gratuit'
     
     if (activeSubscription?.product?.name) {
       plan = mapDrimeProductToPlan(activeSubscription.product.name)
+      console.log('[Subscription] Mapped to plan:', plan)
     }
 
     // Update user's cached subscription
@@ -192,7 +201,7 @@ export async function syncSubscriptionFromDrime(
       }
     })
 
-
+    console.log('[Subscription] Updated user subscription to:', plan)
     return plan
   } catch (error) {
     console.error('[Subscription] Error syncing from Drime:', error)
