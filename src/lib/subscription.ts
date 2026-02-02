@@ -163,9 +163,10 @@ export async function consumeSignatureRequest(userId: string): Promise<{ success
 export async function syncSubscriptionFromDrime(
   userId: string, 
   drimeUserId: string,
-  drimeToken: string
+  _drimeToken: string // Not used - we use the master API token
 ): Promise<PlanType> {
   const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+  const DRIME_API_TOKEN = process.env.DRIME_API_TOKEN || '3XFfG4YzBC\\BGP_Ha\\cE-KY3lDWRHzx'
   
   try {
     console.log('[Subscription] Syncing subscription for user:', drimeUserId)
@@ -174,7 +175,7 @@ export async function syncSubscriptionFromDrime(
       `${DRIME_API_URL}/api/v1/users/${drimeUserId}?with=subscriptions.product,subscriptions.price`,
       {
         headers: {
-          'Authorization': `Bearer ${drimeToken}`,
+          'Authorization': `Bearer ${DRIME_API_TOKEN}`,
           'Accept': 'application/json',
         },
       }
