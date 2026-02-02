@@ -547,11 +547,17 @@ export default function SigningBanner({
   }, [currentField, signatureMode, hasDrawn, uploadedImage, typedSignature, dateValue, textValue, phoneValue, phoneVerified, fieldValues])
   
   const getFieldLabel = (type: FieldType) => {
-    const labels: Record<string, string> = {
+    const labelsFr: Record<string, string> = {
       signature: 'Signature', initials: 'Initiales', date: 'Date',
       text: 'Texte', checkbox: 'Case à cocher', name: 'Nom', email: 'Email',
       phone: 'Téléphone',
     }
+    const labelsEn: Record<string, string> = {
+      signature: 'Signature', initials: 'Initials', date: 'Date',
+      text: 'Text', checkbox: 'Checkbox', name: 'Name', email: 'Email',
+      phone: 'Phone',
+    }
+    const labels = locale === 'fr' ? labelsFr : labelsEn
     return labels[type] || type
   }
   
@@ -567,8 +573,8 @@ export default function SigningBanner({
         {/* Welcome state */}
         {!hasStarted ? (
           <div className="p-4 sm:p-5 text-center">
-            <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">Prêt à signer ?</h3>
-            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">{totalFields} champ{totalFields > 1 ? 's' : ''} à remplir</p>
+            <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base">{locale === 'fr' ? 'Prêt à signer ?' : 'Ready to sign?'}</h3>
+            <p className="text-gray-500 text-xs sm:text-sm mb-3 sm:mb-4">{totalFields} {locale === 'fr' ? (totalFields > 1 ? 'champs à remplir' : 'champ à remplir') : (totalFields > 1 ? 'fields to fill' : 'field to fill')}</p>
             <button
               onClick={() => setHasStarted(true)}
               className="w-full py-2 sm:py-2.5 bg-[#08CF65] hover:bg-[#06B557] text-white font-medium rounded-xl transition-colors text-sm sm:text-base"
@@ -675,7 +681,7 @@ export default function SigningBanner({
                         type="text"
                         value={typedSignature}
                         onChange={(e) => setTypedSignature(e.target.value)}
-                        placeholder="Tapez ici..."
+                        placeholder={locale === 'fr' ? 'Tapez ici...' : 'Type here...'}
                         className="absolute inset-0 w-full h-full text-center text-3xl bg-transparent border-none outline-none italic text-gray-900 placeholder-gray-400"
                         style={{ fontFamily: `"${SIGNATURE_FONTS[selectedFont].name}", cursive` }}
                         autoFocus
@@ -738,7 +744,7 @@ export default function SigningBanner({
                   <div className="flex items-center justify-between gap-2">
                     {signatureMode === 'type' && (
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500 text-xs">Police:</span>
+                        <span className="text-gray-500 text-xs">{locale === 'fr' ? 'Police:' : 'Font:'}</span>
                         <div className="relative">
                           <button
                             onClick={(e) => { e.stopPropagation(); setShowFontDropdown(!showFontDropdown) }}
@@ -867,8 +873,8 @@ export default function SigningBanner({
                   value={textValue}
                   onChange={(e) => setTextValue(e.target.value)}
                   placeholder={
-                    currentField.type === 'name' ? 'Votre nom complet' :
-                    currentField.type === 'email' ? 'votre@email.com' : 'Tapez ici...'
+                    currentField.type === 'name' ? (locale === 'fr' ? 'Votre nom complet' : 'Your full name') :
+                    currentField.type === 'email' ? (locale === 'fr' ? 'votre@email.com' : 'your@email.com') : (locale === 'fr' ? 'Tapez ici...' : 'Type here...')
                   }
                   className="w-full px-3 py-2 rounded-xl bg-gray-50 border-2 border-[#08CF65] text-gray-900 focus:outline-none"
                   autoFocus
@@ -964,7 +970,7 @@ export default function SigningBanner({
                       )}
                       {phoneValue.length >= 6 && (
                         <p className="text-xs text-gray-500">
-                          Cliquez sur Vérifier pour recevoir un code SMS
+                          {locale === 'fr' ? 'Cliquez sur Vérifier pour recevoir un code SMS' : 'Click Verify to receive an SMS code'}
                         </p>
                       )}
                     </>
@@ -973,7 +979,7 @@ export default function SigningBanner({
                       {/* OTP code input inline */}
                       <div className="text-center">
                         <p className="text-sm text-gray-600 mb-3">
-                          Code envoyé au <span className="font-medium">{phoneCountry}***{phoneValue.slice(-4)}</span>
+                          {locale === 'fr' ? 'Code envoyé au' : 'Code sent to'} <span className="font-medium">{phoneCountry}***{phoneValue.slice(-4)}</span>
                         </p>
                         <div className="flex justify-center gap-1.5 sm:gap-2">
                           {otpCode.map((digit, index) => (
@@ -1059,7 +1065,7 @@ export default function SigningBanner({
                 disabled={currentFieldIndex === 0}
                 className="px-3 sm:px-4 py-2 sm:py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-200 transition-colors"
               >
-                <span className="hidden sm:inline">← Précédent</span>
+                <span className="hidden sm:inline">{locale === 'fr' ? '← Précédent' : '← Previous'}</span>
                 <span className="sm:hidden">←</span>
               </button>
               
@@ -1096,7 +1102,7 @@ export default function SigningBanner({
                   disabled={!isValid() || isCompleting}
                   className="px-4 py-2 rounded-xl bg-[#08CF65] text-white text-sm font-medium disabled:opacity-50 hover:bg-[#06B557] transition-colors"
                 >
-                  {isCompleting ? '...' : 'Finaliser →'}
+                  {isCompleting ? '...' : (locale === 'fr' ? 'Finaliser →' : 'Finalize →')}
                 </button>
               ) : (
                 <button

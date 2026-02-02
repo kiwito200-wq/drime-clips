@@ -281,7 +281,7 @@ export default function SignaturePad({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
-              Dessiner
+              {locale === 'fr' ? 'Dessiner' : 'Draw'}
             </button>
             <button
               onClick={() => setMode('type')}
@@ -294,7 +294,7 @@ export default function SignaturePad({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
               </svg>
-              Taper
+              {locale === 'fr' ? 'Taper' : 'Type'}
             </button>
             <button
               onClick={() => setMode('upload')}
@@ -307,7 +307,7 @@ export default function SignaturePad({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
-              Uploader
+              {locale === 'fr' ? 'Uploader' : 'Upload'}
             </button>
           </div>
 
@@ -329,7 +329,7 @@ export default function SignaturePad({
                   />
                   {!hasDrawnSignature && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <p className="text-gray-400 text-sm">Dessinez votre signature ici</p>
+                      <p className="text-gray-400 text-sm">{locale === 'fr' ? 'Dessinez votre signature ici' : 'Draw your signature here'}</p>
                     </div>
                   )}
                 </div>
@@ -411,8 +411,8 @@ export default function SignaturePad({
                       </svg>
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-medium text-gray-700">Cliquez pour uploader une image</p>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, GIF jusqu&apos;à 5MB</p>
+                      <p className="text-sm font-medium text-gray-700">{locale === 'fr' ? 'Cliquez pour uploader une image' : 'Click to upload an image'}</p>
+                      <p className="text-xs text-gray-500 mt-1">{locale === 'fr' ? 'PNG, JPG, GIF jusqu\'à 5MB' : 'PNG, JPG, GIF up to 5MB'}</p>
                     </div>
                   </button>
                 )}
@@ -427,7 +427,7 @@ export default function SignaturePad({
               disabled={!hasSignature}
               className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-200 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Effacer
+              {locale === 'fr' ? 'Effacer' : 'Clear'}
             </button>
             <div className="flex items-center gap-2">
               <button

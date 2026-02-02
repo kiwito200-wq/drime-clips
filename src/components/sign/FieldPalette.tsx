@@ -330,7 +330,7 @@ export default function FieldPalette({
 
                   {/* Required Toggle */}
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-gray-600">Requis</label>
+                    <label className="text-xs font-medium text-gray-600">{locale === 'fr' ? 'Requis' : 'Required'}</label>
                     <button
                       onClick={() => onUpdateField(selectedField.id, { required: !selectedField.required })}
                       className={`
