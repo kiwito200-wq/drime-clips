@@ -240,12 +240,12 @@ function NewTemplatePageContent() {
         return true
       } else {
         const error = await templateRes.json()
-        alert(error.error || 'Erreur lors de la sauvegarde du template')
+        alert(error.error || (locale === 'fr' ? 'Erreur lors de la sauvegarde du template' : 'Failed to save template'))
         return false
       }
     } catch (error) {
       console.error('Failed to save template:', error)
-      alert('Erreur lors de la sauvegarde du template')
+      alert(locale === 'fr' ? 'Erreur lors de la sauvegarde du template' : 'Failed to save template')
       return false
     } finally {
       setIsLoading(false)
@@ -478,13 +478,14 @@ function TemplateReviewStep({
   onSave,
   isLoading,
 }: TemplateReviewStepProps) {
+  const { locale } = useTranslation()
   const [templateName, setTemplateName] = useState(document.name || '')
   const [templateDescription, setTemplateDescription] = useState('')
   const [isSaving, setIsSaving] = useState(false)
 
   const handleSave = async () => {
     if (!templateName.trim()) {
-      alert('Veuillez entrer un nom pour le template')
+      alert(locale === 'fr' ? 'Veuillez entrer un nom pour le template' : 'Please enter a template name')
       return
     }
 

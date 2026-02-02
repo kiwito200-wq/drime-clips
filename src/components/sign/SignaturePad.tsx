@@ -149,7 +149,7 @@ export default function SignaturePad({
     if (!file) return
 
     if (!file.type.startsWith('image/')) {
-      alert('Veuillez uploader une image')
+      alert(locale === 'fr' ? 'Veuillez uploader une image' : 'Please upload an image')
       return
     }
 

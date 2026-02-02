@@ -44,7 +44,7 @@ export default function FileUploadModal({
 
   const processFile = useCallback((file: File) => {
     if (type === 'image' && !file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner une image')
+      alert(locale === 'fr' ? 'Veuillez sélectionner une image' : 'Please select an image')
       return
     }
 

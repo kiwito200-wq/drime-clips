@@ -15,6 +15,7 @@ import FileUploadModal from './FileUploadModal'
 import DateModal from './DateModal'
 import { FieldType, Field, Recipient } from './types'
 import { getPdfProxyUrl } from '@/lib/pdf-utils'
+import { useTranslation } from '@/lib/i18n/I18nContext'
 
 interface DocumentBuilderProps {
   envelopeSlug: string
@@ -25,6 +26,7 @@ interface DocumentBuilderProps {
 
 export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: initialName, onBack }: DocumentBuilderProps) {
   const router = useRouter()
+  const { locale } = useTranslation()
   
   // Document state
   const [documentName, setDocumentName] = useState(initialName)
@@ -162,7 +164,7 @@ export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: in
   // Add field at position
   const addFieldAtPosition = useCallback((type: FieldType, page: number, x: number, y: number) => {
     if (!selectedRecipientId) {
-      alert('Please select a signer first')
+      alert(locale === 'fr' ? 'Veuillez d\'abord sélectionner un signataire' : 'Please select a signer first')
       return
     }
 
@@ -203,7 +205,7 @@ export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: in
     setSelectedFieldId(newField.id)
     setDrawMode(null)
     setDragFieldType(null)
-  }, [selectedRecipientId])
+  }, [selectedRecipientId, locale])
 
   // Handle drop on page
   const handleDropOnPage = useCallback((page: number, x: number, y: number) => {
@@ -406,11 +408,11 @@ export default function DocumentBuilder({ envelopeSlug, pdfUrl, documentName: in
       router.push('/dashboard')
     } catch (error) {
       console.error('Failed to save:', error)
-      alert('Failed to save')
+      alert(locale === 'fr' ? 'Échec de la sauvegarde' : 'Failed to save')
     } finally {
       setIsSaving(false)
     }
-  }, [fields, recipients, envelopeSlug, router])
+  }, [fields, recipients, envelopeSlug, router, locale])
 
   // Keyboard shortcuts
   useEffect(() => {
