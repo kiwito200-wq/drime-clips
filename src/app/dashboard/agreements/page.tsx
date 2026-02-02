@@ -1448,21 +1448,21 @@ function AgreementsContent() {
             {selectedDocs.length > 0 ? (
               <div className="flex-1 flex items-center gap-4">
                 <span className="text-sm font-medium text-gray-700 normal-case tracking-normal">
-                  {selectedDocs.length} sélectionné{selectedDocs.length > 1 ? 's' : ''}
+                  {selectedDocs.length} {locale === 'fr' ? (selectedDocs.length > 1 ? 'sélectionnés' : 'sélectionné') : 'selected'}
                 </span>
                 <button
                   onClick={handleBulkDownload}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors normal-case tracking-normal"
                 >
                   <DownloadIcon />
-                  Télécharger
+                  {t('common.download')}
                 </button>
                 <button
                   onClick={handleBulkDelete}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors normal-case tracking-normal"
                 >
                   <DeleteIcon />
-                  Supprimer
+                  {t('common.delete')}
                 </button>
               </div>
             ) : (

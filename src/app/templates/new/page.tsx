@@ -553,7 +553,7 @@ function TemplateReviewStep({
           onClick={onBack}
           className="px-8 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors min-w-[140px]"
         >
-          Retour
+          {locale === 'fr' ? 'Retour' : 'Back'}
         </button>
         <button
           onClick={handleSave}
@@ -563,11 +563,11 @@ function TemplateReviewStep({
           {isSaving || isLoading ? (
             <>
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Sauvegarde...
+              {locale === 'fr' ? 'Sauvegarde...' : 'Saving...'}
             </>
           ) : (
             <>
-              Sauvegarder le template
+              {locale === 'fr' ? 'Sauvegarder le template' : 'Save template'}
             </>
           )}
         </button>
