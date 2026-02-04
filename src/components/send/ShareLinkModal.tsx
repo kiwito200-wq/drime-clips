@@ -65,7 +65,7 @@ export default function ShareLinkModal({
     try {
       await navigator.clipboard.writeText(url)
       setCopiedId(signerId)
-      setTimeout(() => setCopiedId(null), 2000)
+      setTimeout(() => setCopiedId(null), 3000)
     } catch {
       // Fallback for older browsers
       const textarea = document.createElement('textarea')
@@ -75,7 +75,7 @@ export default function ShareLinkModal({
       document.execCommand('copy')
       document.body.removeChild(textarea)
       setCopiedId(signerId)
-      setTimeout(() => setCopiedId(null), 2000)
+      setTimeout(() => setCopiedId(null), 3000)
     }
   }
 
@@ -260,7 +260,7 @@ export default function ShareLinkModal({
 
               {/* Footer */}
               {linksGenerated && (
-                <div className="p-5 border-t border-gray-100 bg-gray-50">
+                <div className="p-5 border-t border-gray-100 bg-white">
                   <div className="flex justify-end">
                     <button
                       onClick={onClose}
