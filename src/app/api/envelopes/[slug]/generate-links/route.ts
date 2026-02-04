@@ -85,11 +85,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Increment signature request counter (this counts as 1 request regardless of signers)
     await consumeSignatureRequest(user.id)
 
-    // Log audit event
-    await logAuditEvent(envelope.id, 'links_generated', null, {
+    // Log audit event (using 'sent' action as it's semantically similar - document is now active)
+    await logAuditEvent(envelope.id, 'sent', null, {
       signerCount: envelope.signers.length,
       fieldCount: envelope.fields.length,
-      method: 'share_link',
+      method: 'share_link', // Indicates links were generated without email
       ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || undefined,
       userAgent: request.headers.get('user-agent') || undefined,
     })
