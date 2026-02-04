@@ -28,6 +28,7 @@ interface StepFieldsProps {
   onNext: () => void
   isLoading: boolean
   isTemplateMode?: boolean
+  isSelfSignMode?: boolean
 }
 
 // Interface for signer links from API
@@ -54,6 +55,7 @@ export default function StepFields({
   onNext,
   isLoading,
   isTemplateMode = false,
+  isSelfSignMode = false,
 }: StepFieldsProps) {
   const { locale } = useTranslation()
   const router = useRouter()
@@ -498,6 +500,15 @@ export default function StepFields({
               className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {locale === 'fr' ? 'Enregistrer' : 'Save'}
+            </button>
+          ) : isSelfSignMode ? (
+            /* Self-sign mode: Simple sign button */
+            <button
+              onClick={onNext}
+              disabled={fields.length === 0 || isLoading}
+              className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {locale === 'fr' ? 'Signer' : 'Sign'}
             </button>
           ) : (
             /* Normal mode: Split button with email + share link dropdown */

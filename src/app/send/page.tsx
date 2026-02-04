@@ -832,6 +832,7 @@ function SendPageContent() {
                 }}
                 isLoading={isLoading}
                 isTemplateMode={isTemplateMode}
+                isSelfSignMode={isSelfSignMode}
               />
             </motion.div>
           )}
