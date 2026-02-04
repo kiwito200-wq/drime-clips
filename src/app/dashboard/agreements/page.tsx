@@ -184,6 +184,7 @@ function AgreementsContent() {
   }, [readNotifications])
   const menuRef = useRef<HTMLDivElement>(null)
   const signDropdownRef = useRef<HTMLDivElement>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
   const emptySignDropdownRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const profileMenuRef = useRef<HTMLDivElement>(null)
@@ -217,8 +218,10 @@ function AgreementsContent() {
       if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
         setShowNotifications(false)
       }
-      // Close context menu on click outside
-      setContextMenu(null)
+      // Close context menu on click outside (but not if clicking inside it)
+      if (contextMenuRef.current && !contextMenuRef.current.contains(event.target as Node)) {
+        setContextMenu(null)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -1727,6 +1730,7 @@ function AgreementsContent() {
         
         return (
           <div
+            ref={contextMenuRef}
             className="fixed z-[9999] bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[220px]"
             style={{
               left: contextMenu.x,
