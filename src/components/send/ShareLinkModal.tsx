@@ -1,8 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTranslation } from '@/lib/i18n/I18nContext'
+
+// Dynamic import of Lottie to avoid SSR issues
+const Lottie = dynamic(() => import('lottie-react'), { ssr: false })
 
 interface SignerLink {
   id: string
@@ -33,6 +38,15 @@ export default function ShareLinkModal({
 }: ShareLinkModalProps) {
   const { locale } = useTranslation()
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [checkAnimationData, setCheckAnimationData] = useState<any>(null)
+
+  // Load check animation
+  useEffect(() => {
+    fetch('/check-animation.json')
+      .then(res => res.json())
+      .then(data => setCheckAnimationData(data))
+      .catch(() => {})
+  }, [])
 
   // Get initials from name/email
   const getInitials = (name: string | null, email: string) => {
@@ -149,60 +163,97 @@ export default function ShareLinkModal({
                   </p>
 
                   <div className="space-y-3">
-                    {signerLinks.map((signer, index) => (
-                      <div
-                        key={signer.id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
-                      >
-                        {/* Avatar */}
+                    {signerLinks.map((signer) => {
+                      const isCopied = copiedId === signer.id
+                      
+                      return (
                         <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
-                          style={{ backgroundColor: signer.color }}
+                          key={signer.id}
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
                         >
-                          {getInitials(signer.name, signer.email)}
-                        </div>
-
-                        {/* Signer info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-gray-900 text-sm truncate">
-                              {signer.name || signer.email}
-                            </p>
-                            <span className="text-xs px-2 py-0.5 bg-[#08CF65]/10 text-[#08CF65] rounded-full font-medium">
-                              {locale === 'fr' ? 'Signataire' : 'Signer'}
-                            </span>
-                          </div>
-                          {signer.name && (
-                            <p className="text-xs text-gray-500 truncate">{signer.email}</p>
-                          )}
-                        </div>
-
-                        {/* Link input + Copy button */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <input
-                            type="text"
-                            value={linksGenerated ? signer.signUrl : `https://sign.drime.cloud/...`}
-                            readOnly
-                            className="w-48 px-3 py-2 text-xs bg-white border border-gray-200 rounded-lg text-gray-500 truncate"
-                          />
-                          <button
-                            onClick={() => copyLink(signer.id, signer.signUrl)}
-                            disabled={!linksGenerated}
-                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
-                              copiedId === signer.id
-                                ? 'bg-[#08CF65] text-white'
-                                : linksGenerated
-                                  ? 'text-[#08CF65] border border-[#08CF65] hover:bg-[#08CF65]/10'
-                                  : 'text-gray-300 border border-gray-200 cursor-not-allowed'
-                            }`}
+                          {/* Avatar */}
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+                            style={{ backgroundColor: signer.color }}
                           >
-                            {copiedId === signer.id 
-                              ? (locale === 'fr' ? 'Copié !' : 'Copied!')
-                              : (locale === 'fr' ? 'Copier' : 'Copy')}
-                          </button>
+                            {getInitials(signer.name, signer.email)}
+                          </div>
+
+                          {/* Signer info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-gray-900 text-sm truncate">
+                                {signer.name || signer.email}
+                              </p>
+                              <span className="text-xs px-2 py-0.5 bg-[#08CF65]/10 text-[#08CF65] rounded-full font-medium">
+                                {locale === 'fr' ? 'Signataire' : 'Signer'}
+                              </span>
+                            </div>
+                            {signer.name && (
+                              <p className="text-xs text-gray-500 truncate">{signer.email}</p>
+                            )}
+                          </div>
+
+                          {/* Link + Copy button container (Transfr style) */}
+                          <div className={`flex items-center rounded-[10px] overflow-hidden transition-all duration-300 border ${
+                            isCopied 
+                              ? 'border-[#08CF65] bg-[#08CF65]/5' 
+                              : 'border-gray-200 bg-white'
+                          }`}>
+                            {isCopied ? (
+                              /* Copied state - centered with animation */
+                              <div className="flex items-center justify-center gap-2 px-4 py-2">
+                                {checkAnimationData ? (
+                                  <div style={{ width: '20px', height: '20px', filter: 'brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(123deg) brightness(102%) contrast(101%)' }}>
+                                    <Lottie 
+                                      key={`copied-${signer.id}`}
+                                      animationData={checkAnimationData} 
+                                      loop={false}
+                                      autoplay={true}
+                                      style={{ width: '20px', height: '20px' }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <svg className="w-5 h-5 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                                <span className="text-sm font-medium text-[#08CF65]">
+                                  {locale === 'fr' ? 'Lien copié !' : 'Link copied!'}
+                                </span>
+                              </div>
+                            ) : (
+                              /* Normal state - link + separator + copy button */
+                              <>
+                                <span className="px-3 py-2 text-xs text-gray-500 truncate max-w-[140px]">
+                                  {linksGenerated ? signer.signUrl : 'https://sign.drime.cloud/...'}
+                                </span>
+                                {/* Vertical separator */}
+                                <div className="self-stretch w-px bg-gray-200"></div>
+                                {/* Copy button */}
+                                <button
+                                  onClick={() => copyLink(signer.id, signer.signUrl)}
+                                  disabled={!linksGenerated}
+                                  className="px-3 py-2 flex items-center gap-2 hover:bg-gray-50 transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Image 
+                                    src="/icons/copy-icon.svg" 
+                                    alt="Copy" 
+                                    width={20} 
+                                    height={20} 
+                                    className="w-5 h-5" 
+                                    style={{ filter: 'brightness(0) saturate(100%) invert(48%) sepia(79%) saturate(2476%) hue-rotate(123deg) brightness(102%) contrast(101%)' }} 
+                                  />
+                                  <span className="text-sm font-medium text-[#08CF65]">
+                                    {locale === 'fr' ? 'Copier' : 'Copy'}
+                                  </span>
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               </div>
