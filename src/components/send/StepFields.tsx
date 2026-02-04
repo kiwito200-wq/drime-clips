@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DocumentData, Signer, SignField } from '@/app/send/page'
 import PDFViewer from '@/components/sign/PDFViewer'
@@ -8,6 +9,7 @@ import FieldOverlay from '@/components/sign/FieldOverlay'
 import FieldPalette from '@/components/sign/FieldPalette'
 import PageThumbnails from '@/components/sign/PageThumbnails'
 import SignaturePad from '@/components/sign/SignaturePad'
+import ShareLinkModal from '@/components/send/ShareLinkModal'
 import { Field, FieldType, Recipient } from '@/components/sign/types'
 import { useTranslation } from '@/lib/i18n/I18nContext'
 
@@ -27,6 +29,15 @@ interface StepFieldsProps {
   isLoading: boolean
 }
 
+// Interface for signer links from API
+interface SignerLink {
+  id: string
+  email: string
+  name: string | null
+  color: string
+  signUrl: string
+}
+
 export default function StepFields({
   documentData,
   signers,
@@ -43,6 +54,8 @@ export default function StepFields({
   isLoading,
 }: StepFieldsProps) {
   const { locale } = useTranslation()
+  const router = useRouter()
+  
   // State
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
   const [loadingPdf, setLoadingPdf] = useState(true)
@@ -55,6 +68,14 @@ export default function StepFields({
   const [editedName, setEditedName] = useState(documentData.name)
   const [isSavingName, setIsSavingName] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  
+  // Share link state
+  const [showActionDropdown, setShowActionDropdown] = useState(false)
+  const [showShareLinkModal, setShowShareLinkModal] = useState(false)
+  const [signerLinks, setSignerLinks] = useState<SignerLink[]>([])
+  const [isGeneratingLinks, setIsGeneratingLinks] = useState(false)
+  const [linksGenerated, setLinksGenerated] = useState(false)
+  const actionDropdownRef = useRef<HTMLDivElement>(null)
 
   // Update selectedRecipientId when signers change (e.g., after saving to DB)
   useEffect(() => {
@@ -328,6 +349,7 @@ export default function StepFields({
         setSelectedFieldId(null)
         setDrawMode(null)
         setDragFieldType(null)
+        setShowActionDropdown(false)
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selectedFieldId && (window.document.activeElement as HTMLElement)?.tagName !== 'INPUT') {
@@ -341,6 +363,69 @@ export default function StepFields({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedFieldId, onRemoveField])
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionDropdownRef.current && !actionDropdownRef.current.contains(e.target as Node)) {
+        setShowActionDropdown(false)
+      }
+    }
+    window.document.addEventListener('mousedown', handleClickOutside)
+    return () => window.document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Open Share Link modal (prepares signer links from current signers)
+  const openShareLinkModal = useCallback(() => {
+    // Prepare initial signer links (without URLs until generated)
+    const initialLinks: SignerLink[] = signers.map(s => ({
+      id: s.id,
+      email: s.email,
+      name: s.name || null,
+      color: s.color,
+      signUrl: '',
+    }))
+    setSignerLinks(initialLinks)
+    setLinksGenerated(false)
+    setShowShareLinkModal(true)
+    setShowActionDropdown(false)
+  }, [signers])
+
+  // Generate links API call
+  const handleGenerateLinks = useCallback(async () => {
+    if (!documentData.slug) return
+    
+    setIsGeneratingLinks(true)
+    try {
+      const res = await fetch(`/api/envelopes/${documentData.slug}/generate-links`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        setSignerLinks(data.signerLinks)
+        setLinksGenerated(true)
+      } else {
+        const error = await res.json()
+        alert(error.error || (locale === 'fr' ? 'Échec de la génération des liens' : 'Failed to generate links'))
+      }
+    } catch (error) {
+      console.error('Generate links error:', error)
+      alert(locale === 'fr' ? 'Échec de la génération des liens' : 'Failed to generate links')
+    } finally {
+      setIsGeneratingLinks(false)
+    }
+  }, [documentData.slug, locale])
+
+  // Close modal and redirect on success
+  const handleCloseShareLinkModal = useCallback(() => {
+    setShowShareLinkModal(false)
+    if (linksGenerated) {
+      // Redirect to success or dashboard
+      router.push('/dashboard/agreements')
+    }
+  }, [linksGenerated, router])
 
   if (loadingPdf || !pdfUrl) {
     return (
@@ -402,16 +487,54 @@ export default function StepFields({
           >
             {locale === 'fr' ? 'Retour' : 'Back'}
           </button>
-          <button
-            onClick={onNext}
-            disabled={fields.length === 0 || isLoading}
-            className="px-4 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            {locale === 'fr' ? 'Continuer' : 'Continue'}
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-            </svg>
-          </button>
+          
+          {/* Split button: Review and send + dropdown */}
+          <div className="relative" ref={actionDropdownRef}>
+            <div className="flex items-center">
+              {/* Main action button */}
+              <button
+                onClick={onNext}
+                disabled={fields.length === 0 || isLoading}
+                className="px-4 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {locale === 'fr' ? 'Envoyer par email' : 'Review and send'}
+              </button>
+              
+              {/* Dropdown trigger */}
+              <button
+                onClick={() => setShowActionDropdown(!showActionDropdown)}
+                disabled={fields.length === 0 || isLoading}
+                className="px-2 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-r-lg border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className={`w-4 h-4 transition-transform ${showActionDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Dropdown menu */}
+            <AnimatePresence>
+              {showActionDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50"
+                >
+                  <button
+                    onClick={openShareLinkModal}
+                    className="w-full px-4 py-3 text-sm text-left text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    {locale === 'fr' ? 'Partager le lien' : 'Share link'}
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </header>
 
@@ -559,6 +682,17 @@ export default function StepFields({
             ? 'Dessinez vos initiales'
             : 'Dessinez votre signature'
         }
+      />
+
+      {/* Share Link Modal */}
+      <ShareLinkModal
+        isOpen={showShareLinkModal}
+        onClose={handleCloseShareLinkModal}
+        signerLinks={signerLinks}
+        documentName={documentData.name}
+        isGenerating={isGeneratingLinks}
+        onGenerateLinks={handleGenerateLinks}
+        linksGenerated={linksGenerated}
       />
 
     </div>
