@@ -27,6 +27,7 @@ interface StepFieldsProps {
   onBack: () => void
   onNext: () => void
   isLoading: boolean
+  isTemplateMode?: boolean
 }
 
 // Interface for signer links from API
@@ -52,6 +53,7 @@ export default function StepFields({
   onBack,
   onNext,
   isLoading,
+  isTemplateMode = false,
 }: StepFieldsProps) {
   const { locale } = useTranslation()
   const router = useRouter()
@@ -488,53 +490,64 @@ export default function StepFields({
             {locale === 'fr' ? 'Retour' : 'Back'}
           </button>
           
-          {/* Split button: Envoyer par email + dropdown */}
-          <div className="relative" ref={actionDropdownRef}>
-            <div className="flex items-stretch">
-              {/* Main action button */}
-              <button
-                onClick={onNext}
-                disabled={fields.length === 0 || isLoading}
-                className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                {locale === 'fr' ? 'Envoyer par email' : 'Send by email'}
-              </button>
-              
-              {/* Dropdown trigger */}
-              <button
-                onClick={() => setShowActionDropdown(!showActionDropdown)}
-                disabled={fields.length === 0 || isLoading}
-                className="px-2 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-r-lg border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                <svg className={`w-4 h-4 transition-transform ${showActionDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Dropdown menu */}
-            <AnimatePresence>
-              {showActionDropdown && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50"
+          {isTemplateMode ? (
+            /* Template mode: Simple save button */
+            <button
+              onClick={onNext}
+              disabled={fields.length === 0 || isLoading}
+              className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {locale === 'fr' ? 'Enregistrer' : 'Save'}
+            </button>
+          ) : (
+            /* Normal mode: Split button with email + share link dropdown */
+            <div className="relative" ref={actionDropdownRef}>
+              <div className="flex items-stretch">
+                {/* Main action button */}
+                <button
+                  onClick={onNext}
+                  disabled={fields.length === 0 || isLoading}
+                  className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <button
-                    onClick={openShareLinkModal}
-                    className="w-full px-4 py-3 text-sm text-left text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                  {locale === 'fr' ? 'Envoyer par email' : 'Send by email'}
+                </button>
+                
+                {/* Dropdown trigger */}
+                <button
+                  onClick={() => setShowActionDropdown(!showActionDropdown)}
+                  disabled={fields.length === 0 || isLoading}
+                  className="px-2 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-r-lg border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  <svg className={`w-4 h-4 transition-transform ${showActionDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Dropdown menu */}
+              <AnimatePresence>
+                {showActionDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden z-50"
                   >
-                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                    </svg>
-                    {locale === 'fr' ? 'Partager le lien' : 'Share link'}
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    <button
+                      onClick={openShareLinkModal}
+                      className="w-full px-4 py-3 text-sm text-left text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                    >
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      {locale === 'fr' ? 'Partager le lien' : 'Share link'}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </header>
 

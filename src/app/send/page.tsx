@@ -831,6 +831,7 @@ function SendPageContent() {
                   }
                 }}
                 isLoading={isLoading}
+                isTemplateMode={isTemplateMode}
               />
             </motion.div>
           )}
