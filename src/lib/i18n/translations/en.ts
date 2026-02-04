@@ -94,6 +94,7 @@ export const en = {
     activity: 'Activity',
     delete: 'Delete',
     signers: 'Signers',
+    sender: 'Sender',
     deleteDocuments: 'Delete documents',
     visibleOnlyToYou: 'Visible only to you',
     signSecurely: 'Sign securely',

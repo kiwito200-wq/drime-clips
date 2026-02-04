@@ -94,6 +94,7 @@ export const fr = {
     activity: 'Historique',
     delete: 'Supprimer',
     signers: 'Signataires',
+    sender: 'Expéditeur',
     deleteDocuments: 'Supprimer les documents',
     visibleOnlyToYou: 'Visible uniquement par vous',
     signSecurely: 'Signer',
