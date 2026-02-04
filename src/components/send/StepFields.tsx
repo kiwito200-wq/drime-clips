@@ -488,23 +488,23 @@ export default function StepFields({
             {locale === 'fr' ? 'Retour' : 'Back'}
           </button>
           
-          {/* Split button: Review and send + dropdown */}
+          {/* Split button: Envoyer par email + dropdown */}
           <div className="relative" ref={actionDropdownRef}>
-            <div className="flex items-center">
+            <div className="flex items-stretch">
               {/* Main action button */}
               <button
                 onClick={onNext}
                 disabled={fields.length === 0 || isLoading}
-                className="px-4 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                {locale === 'fr' ? 'Envoyer par email' : 'Review and send'}
+                {locale === 'fr' ? 'Envoyer par email' : 'Send by email'}
               </button>
               
               {/* Dropdown trigger */}
               <button
                 onClick={() => setShowActionDropdown(!showActionDropdown)}
                 disabled={fields.length === 0 || isLoading}
-                className="px-2 py-1.5 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-r-lg border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 h-8 text-sm font-medium text-white bg-[#08CF65] hover:bg-[#08CF65]/90 rounded-r-lg border-l border-white/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 <svg className={`w-4 h-4 transition-transform ${showActionDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

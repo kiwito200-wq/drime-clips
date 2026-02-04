@@ -22,14 +22,6 @@ interface ShareLinkModalProps {
   linksGenerated: boolean
 }
 
-// Link Icon
-const LinkIcon = () => (
-  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#08CF65]">
-    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-  </svg>
-)
-
 export default function ShareLinkModal({
   isOpen,
   onClose,
@@ -116,37 +108,30 @@ export default function ShareLinkModal({
                 {/* Generate links section (shown before links are generated) */}
                 {!linksGenerated && (
                   <div className="bg-gray-50 rounded-xl p-5 mb-6">
-                    <div className="flex items-start gap-4">
-                      <div className="p-3 bg-white rounded-xl shadow-sm">
-                        <LinkIcon />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-gray-900 mb-1">
-                          {locale === 'fr' 
-                            ? 'Générer les liens pour partager le document' 
-                            : 'Generate links to share the document'}
-                        </h3>
-                        <p className="text-sm text-gray-500 mb-4">
-                          {locale === 'fr'
-                            ? <>Une fois les liens générés, le document sera en statut <span className="font-semibold text-gray-700">Envoyé</span>.</>
-                            : <>Once links are generated, the document will be in <span className="font-semibold text-gray-700">Sent</span> status.</>}
-                        </p>
-                        <button
-                          onClick={onGenerateLinks}
-                          disabled={isGenerating}
-                          className="px-5 py-2.5 bg-[#08CF65] text-white rounded-lg font-medium hover:bg-[#07b858] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                          {isGenerating ? (
-                            <>
-                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              {locale === 'fr' ? 'Génération...' : 'Generating...'}
-                            </>
-                          ) : (
-                            locale === 'fr' ? 'Générer les liens' : 'Generate links'
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">
+                      {locale === 'fr' 
+                        ? 'Générer les liens pour partager le document' 
+                        : 'Generate links to share the document'}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-4">
+                      {locale === 'fr'
+                        ? <>Une fois les liens générés, le document sera en statut <span className="font-semibold text-gray-700">Envoyé</span>.</>
+                        : <>Once links are generated, the document will be in <span className="font-semibold text-gray-700">Sent</span> status.</>}
+                    </p>
+                    <button
+                      onClick={onGenerateLinks}
+                      disabled={isGenerating}
+                      className="px-5 py-2.5 bg-[#08CF65] text-white rounded-lg font-medium hover:bg-[#07b858] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          {locale === 'fr' ? 'Génération...' : 'Generating...'}
+                        </>
+                      ) : (
+                        locale === 'fr' ? 'Générer les liens' : 'Generate links'
+                      )}
+                    </button>
                   </div>
                 )}
 
