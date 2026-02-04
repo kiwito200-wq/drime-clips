@@ -432,6 +432,7 @@ function NewTemplatePageContent() {
                 onBack={() => setCurrentStep(1)}
                 onNext={() => setCurrentStep(3)}
                 isLoading={isLoading}
+                isTemplateMode={true}
               />
             </motion.div>
           )}
