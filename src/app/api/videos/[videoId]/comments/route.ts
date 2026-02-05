@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUser } from '@/lib/auth';
 
 // GET /api/videos/[videoId]/comments - Get all comments for a video
 export async function GET(
@@ -156,6 +157,14 @@ export async function POST(
       return NextResponse.json({ error: 'Comments are disabled for this video' }, { status: 403 });
     }
 
+    // Try to get logged-in user
+    let currentUser: { id: string; name: string | null; email: string; avatarUrl: string | null } | null = null;
+    try {
+      currentUser = await getCurrentUser();
+    } catch {
+      // Not logged in, continue as anonymous
+    }
+
     // Get visitorId from body (for anonymous dedup)
     const visitorId = body.visitorId || null;
 
@@ -186,15 +195,16 @@ export async function POST(
       }
     }
 
-    // Create comment (anonymous - no auth required)
+    // Create comment — use logged-in user info if available
     const comment = await prisma.videoComment.create({
       data: {
         videoId,
         type,
         content,
         timestamp: timestamp ? parseFloat(timestamp) : null,
-        authorName: authorName || 'Anonymous',
-        authorEmail,
+        authorId: currentUser?.id || undefined,
+        authorName: currentUser?.name || authorName || 'Anonymous',
+        authorEmail: currentUser?.email || authorEmail,
         visitorId,
         parentCommentId,
       },

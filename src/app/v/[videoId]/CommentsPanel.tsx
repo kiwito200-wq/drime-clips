@@ -146,7 +146,7 @@ function CommentActions({
   deleting: boolean;
 }) {
   return (
-    <div className="absolute -top-3 right-2 flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg shadow-sm px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+    <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg shadow-sm px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
       {/* Reply */}
       {onReply && (
         <button
@@ -389,7 +389,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
     const isEditing = editingId === comment.id;
 
     return (
-      <div key={comment.id} className={`relative group ${isReply ? '' : 'px-4 py-3'}`}>
+      <div key={comment.id} className={`relative group transition-colors duration-100 ${isReply ? 'hover:bg-gray-50/80 rounded-lg py-1.5 px-2 -mx-2' : 'px-4 py-3 hover:bg-gray-50'}`}>
         {/* Hover action bar */}
         <CommentActions
           comment={comment}
