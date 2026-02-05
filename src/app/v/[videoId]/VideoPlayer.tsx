@@ -15,7 +15,7 @@ export interface VideoPlayerRef {
   getCurrentTime: () => number
 }
 
-const LOOM_SPEEDS = [0.5, 1, 1.5, 2, 2.5]
+const SPEED_OPTIONS = [0.8, 1, 1.2, 1.5, 1.7, 2, 2.5]
 
 // Tooltip with smart edge-aware positioning
 function PlayerTooltip({ label, visible, align = 'center' }: { label: string; visible: boolean; align?: 'left' | 'center' | 'right' }) {
@@ -61,6 +61,91 @@ function PlayerButton({
   )
 }
 
+// ─── Floating Speed Control (Loom-style micro-interaction) ───
+function SpeedControl({
+  speed,
+  onChangeSpeed,
+}: {
+  speed: number
+  onChangeSpeed: (s: number) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on click outside
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Floating speed menu — anchored above the pill */}
+      <div
+        className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 transition-all z-50 ${
+          open
+            ? 'opacity-100 scale-100 pointer-events-auto'
+            : 'opacity-0 scale-[0.97] pointer-events-none'
+        }`}
+        style={{ transitionDuration: '120ms', transitionTimingFunction: 'ease-out' }}
+      >
+        <div className="bg-black/70 backdrop-blur-xl rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] py-1 min-w-[72px]">
+          {SPEED_OPTIONS.map((s) => {
+            const isActive = speed === s
+            return (
+              <button
+                key={s}
+                onClick={() => { onChangeSpeed(s); setOpen(false) }}
+                className={`w-full flex items-center gap-2 px-3 py-[6px] text-[13px] tabular-nums transition-all duration-100 ${
+                  isActive
+                    ? 'text-white font-semibold'
+                    : 'text-white/50 font-normal hover:text-white/80'
+                }`}
+              >
+                {isActive && (
+                  <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                  </svg>
+                )}
+                {!isActive && <span className="w-3 flex-shrink-0" />}
+                <span>{s}x</span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Speed pill — the always-visible label */}
+      <div
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full cursor-pointer transition-all duration-150 select-none ${
+          open ? 'bg-white/[0.08]' : 'hover:bg-white/[0.06]'
+        }`}
+      >
+        <span
+          className={`text-[13px] tabular-nums tracking-wide transition-all duration-150 ${
+            speed !== 1 ? 'text-white font-semibold' : 'text-white/90 font-medium'
+          } ${open ? 'brightness-110' : ''}`}
+        >
+          {speed}x
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // Format seconds to human-readable short duration
 function formatDuration(seconds: number): string {
   if (!seconds || !isFinite(seconds)) return '0 sec'
@@ -92,17 +177,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [isLoading, setIsLoading] = useState(true)
   const [hasStarted, setHasStarted] = useState(false)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
-  const [hoveredSpeed, setHoveredSpeed] = useState<number | null>(null)
   const [isHoveringProgress, setIsHoveringProgress] = useState(false)
   const [hoverProgressX, setHoverProgressX] = useState(0)
   const [hoverTime, setHoverTime] = useState(0)
   const [isDraggingProgress, setIsDraggingProgress] = useState(false)
-  const [isHoveringCenter, setIsHoveringCenter] = useState(false)
   const controlsTimeout = useRef<NodeJS.Timeout>()
 
-  // The preview speed is the hovered one (for live preview), otherwise the selected one
-  const previewSpeed = hoveredSpeed ?? playbackSpeed
-  const previewDuration = duration > 0 ? duration / previewSpeed : 0
+  const effectiveDuration = duration > 0 ? duration / playbackSpeed : 0
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
@@ -188,10 +269,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
 
-  const changeSpeed = (speed: number) => {
+  const changeSpeed = useCallback((speed: number) => {
     setPlaybackSpeed(speed)
     if (videoRef.current) videoRef.current.playbackRate = speed
-  }
+  }, [])
 
   const handleMouseMove = () => {
     setShowControls(true)
@@ -225,9 +306,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Controls visibility logic:
-  // - Before first play: only progress bar visible (no full controls row)
-  // - After first play: full controls visible on hover / pause
   const controlsVisible = showControls || !isPlaying || isDraggingProgress
 
   return (
@@ -273,87 +351,34 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
         </div>
       )}
 
-      {/* ─── Center overlay: Play + Speed (Loom style) ─── */}
+      {/* ─── Center overlay: Play button + Speed pill + Duration ─── */}
       {!isPlaying && !isLoading && (
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center"
-          onMouseEnter={() => setIsHoveringCenter(true)}
-          onMouseLeave={() => { setIsHoveringCenter(false); setHoveredSpeed(null) }}
-        >
-          {/* Play button — clean, no circle animation */}
-          <button onClick={togglePlay} className="group/play mb-4 relative">
-            <div className="relative w-[72px] h-[72px] rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-2xl group-hover/play:scale-110 group-active/play:scale-95 transition-all duration-300 ease-out">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {/* Play button — clean, no ring */}
+          <button onClick={togglePlay} className="group/play mb-5">
+            <div className="w-[72px] h-[72px] rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-2xl group-hover/play:scale-110 group-active/play:scale-95 transition-all duration-300 ease-out">
               <svg className="w-7 h-7 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
           </button>
 
-          {/* Speed selector + Duration — only visible on hover */}
-          <div
-            className={`flex flex-col items-center transition-all duration-300 ease-out ${
-              isHoveringCenter ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'
-            }`}
-          >
-            {/* Speed pills */}
-            <div className="flex items-center bg-black/50 backdrop-blur-md rounded-full px-1.5 py-1">
-              {LOOM_SPEEDS.map((speed) => {
-                const isSelected = playbackSpeed === speed
-                const isHovered = hoveredSpeed === speed
-                return (
-                  <button
-                    key={speed}
-                    onClick={(e) => { e.stopPropagation(); changeSpeed(speed) }}
-                    onMouseEnter={() => setHoveredSpeed(speed)}
-                    onMouseLeave={() => setHoveredSpeed(null)}
-                    className="relative px-2.5 py-1 rounded-full transition-all duration-200"
-                  >
-                    <span
-                      className={`tabular-nums transition-all duration-200 ${
-                        isSelected
-                          ? 'text-white font-bold text-[15px]'
-                          : isHovered
-                            ? 'text-white/90 font-semibold text-[14px] scale-105'
-                            : 'text-white/35 font-medium text-[13px]'
-                      }`}
-                      style={{
-                        display: 'inline-block',
-                        transform: isHovered && !isSelected ? 'scale(1.1)' : 'scale(1)',
-                        transition: 'all 0.2s ease-out'
-                      }}
-                    >
-                      {speed}x
-                    </span>
-                    {/* Subtle background on hover */}
-                    <div
-                      className={`absolute inset-0 rounded-full transition-all duration-200 ${
-                        isHovered && !isSelected ? 'bg-white/10' : isSelected ? 'bg-white/15' : ''
-                      }`}
-                    />
-                  </button>
-                )
-              })}
-            </div>
+          {/* Speed pill + Duration — floating below play */}
+          <div className="flex flex-col items-center gap-2">
+            {/* Speed micro-control */}
+            <SpeedControl speed={playbackSpeed} onChangeSpeed={changeSpeed} />
 
-            {/* Duration that updates dynamically on hover */}
-            <div className="mt-2 flex items-center justify-center bg-black/50 backdrop-blur-md rounded-full px-4 py-1.5 min-w-[80px]">
-              <span
-                className="text-white text-sm font-medium tabular-nums transition-all duration-300 ease-out"
-                key={previewSpeed} // Force re-render animation on change
-              >
-                {formatDuration(previewDuration)}
-              </span>
+            {/* Duration */}
+            <div className="text-white/50 text-[13px] font-medium tabular-nums tracking-wide">
+              {formatDuration(effectiveDuration)}
             </div>
           </div>
         </div>
       )}
 
       {/* ─── Bottom bar ─── */}
-      {/* Before first play: only thin progress bar. After play: full controls. */}
-      <div
-        className={`absolute inset-x-0 bottom-0 transition-all duration-300`}
-      >
-        {/* Gradient backdrop — only when full controls are visible */}
+      <div className="absolute inset-x-0 bottom-0 transition-all duration-300">
+        {/* Gradient backdrop — only when full controls visible */}
         <div
           className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none transition-opacity duration-300 ${
             hasStarted && controlsVisible ? 'opacity-100' : 'opacity-0'
@@ -361,10 +386,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
         />
 
         <div className="relative">
-          {/* ─── Progress bar — always visible ─── */}
-          <div
-            className={`px-4 transition-all duration-300 ${hasStarted ? 'pb-0' : 'pb-3'}`}
-          >
+          {/* Progress bar — always visible */}
+          <div className={`px-4 transition-all duration-300 ${hasStarted ? 'pb-0' : 'pb-3'}`}>
             <div
               ref={progressBarRef}
               className={`relative cursor-pointer group/progress transition-all duration-200 ${
@@ -396,7 +419,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             </div>
           </div>
 
-          {/* ─── Full controls row — only after first play ─── */}
+          {/* Full controls row — only after first play */}
           <div
             className={`px-4 pb-3 transition-all duration-300 ${
               hasStarted && controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 pb-0 overflow-hidden'
@@ -436,16 +459,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
               <div className="flex-1" />
 
-              {/* Speed indicator in bar */}
-              <PlayerButton onClick={() => {
-                const currentIdx = LOOM_SPEEDS.indexOf(playbackSpeed)
-                const nextIdx = (currentIdx + 1) % LOOM_SPEEDS.length
-                changeSpeed(LOOM_SPEEDS[nextIdx])
-              }} tooltip={`Vitesse: ${playbackSpeed}x`}>
-                <span className={`text-xs font-bold ${playbackSpeed !== 1 ? 'text-[#08CF65]' : ''}`}>
-                  {playbackSpeed}x
-                </span>
-              </PlayerButton>
+              {/* Speed control in bottom bar — same micro-interaction */}
+              <SpeedControl speed={playbackSpeed} onChangeSpeed={changeSpeed} />
 
               {/* PiP */}
               <PlayerButton
