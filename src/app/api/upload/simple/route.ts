@@ -217,6 +217,18 @@ export async function POST(request: NextRequest) {
 
       console.log(`[SimpleUpload] Completed upload for video ${videoId} - SUCCESS`);
 
+      // Trigger transcription in the background (fire-and-forget)
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        fetch(`${baseUrl}/api/videos/${videoId}/transcribe`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }).catch(err => console.error(`[SimpleUpload] Background transcription trigger failed:`, err));
+        console.log(`[SimpleUpload] Transcription triggered for video ${videoId}`);
+      } catch (e) {
+        console.error(`[SimpleUpload] Failed to trigger transcription:`, e);
+      }
+
       return NextResponse.json({
         success: true,
         shareUrl,

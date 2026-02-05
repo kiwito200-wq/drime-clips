@@ -189,11 +189,23 @@ export async function POST(request: NextRequest) {
     const uploadedClamped = Math.min(uploaded, total);
 
     if (video.upload) {
-      // Upload complete for singlepart - delete tracking
+      // Upload complete for singlepart - delete tracking + trigger transcription
       if (uploadedClamped === total && video.upload.mode === 'singlepart') {
         await prisma.videoUpload.delete({
           where: { videoId },
         });
+
+        // Auto-transcribe in background
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+          fetch(`${baseUrl}/api/videos/${videoId}/transcribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          }).catch(err => console.error(`[Desktop] Background transcription failed:`, err));
+          console.log(`[Desktop] Transcription triggered for video ${videoId}`);
+        } catch (e) {
+          console.error(`[Desktop] Failed to trigger transcription:`, e);
+        }
       } else {
         // Update progress (only if newer)
         const existingUpdatedAt = video.upload.updatedAt;

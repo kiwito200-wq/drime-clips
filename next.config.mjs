@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Whisper / ONNX runtime must stay out of the webpack bundle
+  experimental: {
+    serverComponentsExternalPackages: [
+      '@huggingface/transformers',
+      'onnxruntime-node',
+    ],
+  },
+
   // SECURITY: Configure security headers
   async headers() {
     return [

@@ -36,6 +36,17 @@ export async function POST(request: NextRequest) {
     
     await uploadFile(key, buffer, 'video/webm');
 
+    // Trigger transcription in the background
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      fetch(`${baseUrl}/api/videos/${video.id}/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      }).catch(err => console.error(`[WebRecording] Background transcription trigger failed:`, err));
+    } catch (e) {
+      console.error(`[WebRecording] Failed to trigger transcription:`, e);
+    }
+
     return NextResponse.json({
       success: true,
       videoId: video.id,
