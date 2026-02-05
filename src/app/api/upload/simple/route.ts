@@ -5,13 +5,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { nanoid } from 'nanoid';
-import { initiateMultipartUpload, getPresignedPartUrl, completeMultipartUpload } from '@/lib/r2';
+import { 
+  initiateMultipartUpload, 
+  getPresignedPartUrl, 
+  completeMultipartUpload,
+  getVideoKey 
+} from '@/lib/r2';
 
-// POST /api/upload/simple - Create video entry for upload
+// POST /api/upload/simple - Handle all upload operations
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { email, name, action, videoId, uploadId, partNumber, parts } = body;
+
+    console.log('[SimpleUpload] Request:', { action, email, videoId, partNumber });
 
     // Validate email is provided
     if (!email) {
@@ -35,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle different actions
-    if (action === 'create') {
+    if (action === 'create' || !action) {
       // Create video entry
       const date = new Date();
       const formattedDate = `${date.getDate()} ${date.toLocaleString('fr-FR', { month: 'long' })} ${date.getFullYear()}`;
@@ -60,11 +67,11 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Initiate multipart upload in R2
-      const key = `${user.id}/${video.id}/result.mp4`;
-      const r2UploadId = await initiateMultipartUpload(key, 'video/mp4');
+      // Initiate multipart upload in R2 (use webm for live recordings)
+      const key = getVideoKey(user.id, video.id, 'result.webm');
+      const r2UploadId = await initiateMultipartUpload(key, 'video/webm');
 
-      console.log(`[SimpleUpload] Created video ${video.id} for ${email}`);
+      console.log(`[SimpleUpload] Created video ${video.id} for ${email}, uploadId: ${r2UploadId}`);
 
       return NextResponse.json({
         success: true,
@@ -76,9 +83,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'presign' && videoId && uploadId && partNumber) {
+      // Get video to find owner
+      const video = await prisma.video.findUnique({
+        where: { id: videoId },
+        select: { ownerId: true },
+      });
+
+      if (!video) {
+        return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+      }
+
       // Get presigned URL for part upload
-      const key = `${user.id}/${videoId}/result.mp4`;
+      const key = getVideoKey(video.ownerId, videoId, 'result.webm');
       const presignedUrl = await getPresignedPartUrl(key, uploadId, partNumber);
+
+      console.log(`[SimpleUpload] Presigned URL for part ${partNumber} of video ${videoId}`);
 
       return NextResponse.json({
         success: true,
@@ -87,16 +106,26 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'complete' && videoId && uploadId && parts) {
+      // Get video to find owner
+      const video = await prisma.video.findUnique({
+        where: { id: videoId },
+        select: { ownerId: true },
+      });
+
+      if (!video) {
+        return NextResponse.json({ error: 'Video not found' }, { status: 404 });
+      }
+
       // Complete multipart upload
-      const key = `${user.id}/${videoId}/result.mp4`;
+      const key = getVideoKey(video.ownerId, videoId, 'result.webm');
       await completeMultipartUpload(key, uploadId, parts);
 
-      // Update video as uploaded
+      // Remove upload tracking (video is now ready)
       await prisma.videoUpload.deleteMany({
         where: { videoId },
       });
 
-      // Update video with upload completion
+      // Update video timestamp
       await prisma.video.update({
         where: { id: videoId },
         data: {

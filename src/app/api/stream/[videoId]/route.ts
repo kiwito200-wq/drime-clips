@@ -1,7 +1,7 @@
 // Stream video via signed URL (R2 buckets are private by default)
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getPresignedDownloadUrl, getVideoKey } from '@/lib/r2';
+import { getPresignedDownloadUrl, getVideoKey, fileExists } from '@/lib/r2';
 
 export async function GET(
   request: NextRequest,
@@ -17,9 +17,24 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    // Generate a signed URL valid for 1 hour
-    const key = getVideoKey(video.ownerId, video.id, 'result.mp4');
-    const signedUrl = await getPresignedDownloadUrl(key, 3600);
+    // Try different video formats (webm for live recordings, mp4 for processed)
+    const formats = ['result.webm', 'result.mp4', 'video.webm', 'video.mp4'];
+    let signedUrl: string | null = null;
+
+    for (const format of formats) {
+      const key = getVideoKey(video.ownerId, video.id, format);
+      const exists = await fileExists(key);
+      if (exists) {
+        signedUrl = await getPresignedDownloadUrl(key, 3600);
+        console.log(`[Stream] Found video at: ${key}`);
+        break;
+      }
+    }
+
+    if (!signedUrl) {
+      console.error(`[Stream] No video file found for ${video.id}`);
+      return NextResponse.json({ error: 'Video file not found' }, { status: 404 });
+    }
 
     // Redirect to the signed URL
     return NextResponse.redirect(signedUrl);
