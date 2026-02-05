@@ -54,13 +54,17 @@ function FloatingEmojiPicker({
   const [category, setCategory] = useState(0);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
+  const [visible, setVisible] = useState(false);
+
   useEffect(() => {
     if (!anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
     setPos({
-      top: rect.top - 220,
-      left: Math.max(8, Math.min(rect.left, window.innerWidth - 296)),
+      top: Math.max(8, rect.top - 220),
+      left: Math.max(8, Math.min(rect.left - 120, window.innerWidth - 296)),
     });
+    // Trigger animation after mount
+    requestAnimationFrame(() => setVisible(true));
   }, [anchorRef]);
 
   useEffect(() => {
@@ -81,8 +85,10 @@ function FloatingEmojiPicker({
   return createPortal(
     <div
       ref={pickerRef}
-      className="fixed bg-white rounded-xl border border-gray-200 shadow-xl z-[9999] w-[288px] animate-in fade-in slide-in-from-bottom-2 duration-150"
-      style={{ top: pos.top, left: pos.left }}
+      className={`fixed bg-white rounded-xl border border-gray-200 shadow-xl z-[9999] w-[288px] transition-all duration-200 ease-out ${
+        visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+      }`}
+      style={{ top: pos.top, left: pos.left, transformOrigin: 'bottom center' }}
     >
       <div className="flex border-b border-gray-100 px-2 pt-2">
         {EMOJI_CATEGORIES.map((cat, i) => (
