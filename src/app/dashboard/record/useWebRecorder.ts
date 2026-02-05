@@ -417,8 +417,16 @@ export const useWebRecorder = ({
   }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, onError])
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
+    console.log('[WebRecorder] stopRecording called, state:', mediaRecorderRef.current?.state)
+    if (mediaRecorderRef.current) {
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        console.log('[WebRecorder] Stopping MediaRecorder...')
+        mediaRecorderRef.current.stop()
+      } else {
+        console.log('[WebRecorder] MediaRecorder already inactive')
+      }
+    } else {
+      console.log('[WebRecorder] No MediaRecorder instance')
     }
   }, [])
 

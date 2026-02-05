@@ -201,11 +201,18 @@ export const InProgressRecordingBar = ({
             <button
               type="button"
               data-no-drag
-              onClick={onStop}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                console.log('[RecordingBar] Stop clicked')
+                onStop()
+              }}
               disabled={!canStop}
-              className="py-1.5 px-3 text-red-400 gap-2 flex items-center rounded-lg transition-opacity disabled:opacity-60 hover:bg-gray-800"
+              className="py-1.5 px-3 text-red-400 gap-2 flex items-center rounded-lg transition-all disabled:opacity-60 hover:bg-red-500/20 active:scale-95"
             >
-              <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
               <span className="font-medium text-sm tabular-nums min-w-[48px]">{statusText}</span>
             </button>
 
