@@ -133,27 +133,27 @@ select {
   animation: upload-pulse 2s ease-in-out infinite;
 }
 
-/* Range input styling for video player */
-input[type="range"] {
+/* Range input styling for video player volume */
+input[type="range"].volume-slider {
   -webkit-appearance: none;
   appearance: none;
   background: transparent;
   cursor: pointer;
 }
 
-input[type="range"]::-webkit-slider-runnable-track {
+input[type="range"].volume-slider::-webkit-slider-runnable-track {
   @apply h-1 bg-white/30 rounded-full;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+input[type="range"].volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   @apply w-3 h-3 bg-[#08CF65] rounded-full -mt-1;
 }
 
-input[type="range"]::-moz-range-track {
+input[type="range"].volume-slider::-moz-range-track {
   @apply h-1 bg-white/30 rounded-full;
 }
 
-input[type="range"]::-moz-range-thumb {
+input[type="range"].volume-slider::-moz-range-thumb {
   @apply w-3 h-3 bg-[#08CF65] rounded-full border-0;
 }

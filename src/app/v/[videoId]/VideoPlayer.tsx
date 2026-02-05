@@ -289,7 +289,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
               step="0.1"
               value={isMuted ? 0 : volume}
               onChange={handleVolumeChange}
-              className="w-0 group-hover/volume:w-20 transition-all duration-200 accent-[#08CF65]"
+              className="volume-slider w-0 group-hover/volume:w-20 transition-all duration-200 accent-[#08CF65] opacity-0 group-hover/volume:opacity-100"
             />
           </div>
 

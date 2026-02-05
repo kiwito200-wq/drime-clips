@@ -93,9 +93,39 @@ export const useWebRecorder = ({
   const stopResolverRef = useRef<((blob: Blob) => void) | null>(null)
   const stopRejecterRef = useRef<((err: Error) => void) | null>(null)
   const isStoppingRef = useRef(false)
+  const liveThumbnailRef = useRef<string | null>(null)
 
   const isRecording = phase === 'recording' || phase === 'paused'
   const isBusy = phase !== 'idle' && phase !== 'completed' && phase !== 'error'
+
+  // Helper to capture thumbnail from stream via video element
+  const captureThumbnailFromStream = useCallback((stream: MediaStream, w: number, h: number) => {
+    try {
+      const video = document.createElement('video')
+      video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      video.play().then(() => {
+        setTimeout(() => {
+          const canvas = document.createElement('canvas')
+          canvas.width = w
+          canvas.height = h
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(video, 0, 0, w, h)
+            liveThumbnailRef.current = canvas.toDataURL('image/jpeg', 0.7)
+            console.log('[WebRecorder] Live thumbnail captured via video element')
+          }
+          video.pause()
+          video.srcObject = null
+        }, 200)
+      }).catch(err => {
+        console.warn('[WebRecorder] Video play for thumbnail failed:', err)
+      })
+    } catch (err) {
+      console.warn('[WebRecorder] captureThumbnailFromStream failed:', err)
+    }
+  }, [])
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -110,6 +140,7 @@ export const useWebRecorder = ({
     uploaderRef.current = null
     videoIdRef.current = null
     totalBytesRef.current = 0
+    liveThumbnailRef.current = null
   }, [])
 
   const resetState = useCallback(() => {
@@ -321,6 +352,45 @@ export const useWebRecorder = ({
         }
       }, 100)
 
+      // Capture a live thumbnail from the stream after a short delay
+      setTimeout(() => {
+        try {
+          const liveVideoTrack = stream.getVideoTracks()[0]
+          if (liveVideoTrack) {
+            const settings = liveVideoTrack.getSettings()
+            const sw = settings.width || 1280
+            const sh = settings.height || 720
+            const scale = Math.min(1280 / sw, 720 / sh, 1)
+            const cw = Math.round(sw * scale)
+            const ch = Math.round(sh * scale)
+            
+            // Use ImageCapture API if available
+            if (typeof ImageCapture !== 'undefined') {
+              const imageCapture = new ImageCapture(liveVideoTrack)
+              imageCapture.grabFrame().then(bitmap => {
+                const canvas = document.createElement('canvas')
+                canvas.width = cw
+                canvas.height = ch
+                const ctx = canvas.getContext('2d')
+                if (ctx) {
+                  ctx.drawImage(bitmap, 0, 0, cw, ch)
+                  liveThumbnailRef.current = canvas.toDataURL('image/jpeg', 0.7)
+                  console.log('[WebRecorder] Live thumbnail captured via ImageCapture')
+                }
+                bitmap.close()
+              }).catch(err => {
+                console.warn('[WebRecorder] ImageCapture failed, trying video element:', err)
+                captureThumbnailFromStream(stream, cw, ch)
+              })
+            } else {
+              captureThumbnailFromStream(stream, cw, ch)
+            }
+          }
+        } catch (err) {
+          console.warn('[WebRecorder] Live thumbnail capture failed:', err)
+        }
+      }, 1500) // Wait 1.5s for first frame to render
+
       // Handle stream ending (user stops sharing)
       const mainVideoTrack = stream.getVideoTracks()[0]
       if (mainVideoTrack) {
@@ -452,19 +522,24 @@ export const useWebRecorder = ({
         throw new Error('Enregistrement vide')
       }
 
-      // Generate thumbnail
+      // Use live thumbnail if available, otherwise try from blob
       setPhase('uploading')
-      console.log('[WebRecorder] Generating thumbnail...')
       let thumbnailDataUrl: string | undefined
       
-      try {
-        const thumbResult = await captureThumbnail(recordedBlob)
-        if (thumbResult) {
-          thumbnailDataUrl = thumbResult.dataUrl
-          console.log('[WebRecorder] Thumbnail OK:', thumbnailDataUrl.length, 'chars')
+      if (liveThumbnailRef.current) {
+        thumbnailDataUrl = liveThumbnailRef.current
+        console.log('[WebRecorder] Using live thumbnail:', thumbnailDataUrl.length, 'chars')
+      } else {
+        console.log('[WebRecorder] No live thumbnail, trying from blob...')
+        try {
+          const thumbResult = await captureThumbnail(recordedBlob)
+          if (thumbResult) {
+            thumbnailDataUrl = thumbResult.dataUrl
+            console.log('[WebRecorder] Blob thumbnail OK:', thumbnailDataUrl.length, 'chars')
+          }
+        } catch (thumbErr) {
+          console.warn('[WebRecorder] Blob thumbnail also failed:', thumbErr)
         }
-      } catch (thumbErr) {
-        console.warn('[WebRecorder] Thumbnail failed:', thumbErr)
       }
 
       // Finalize upload
