@@ -32,19 +32,46 @@ export async function POST(request: NextRequest) {
 
     // Try access token first (desktop app JWT)
     if (drimeAccessToken) {
-      console.log('[Desktop Auth] Trying drimeAccessToken...');
-      const apiRes = await fetch(`${DRIME_API_URL}/api/v1/user`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${drimeAccessToken}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (apiRes.ok) {
-        const data = await apiRes.json();
-        if (data.user || data.status === 'success') {
-          drimeUser = data.user || data;
+      console.log('[Desktop Auth] Trying drimeAccessToken:', drimeAccessToken.substring(0, 30) + '...');
+      
+      // Try multiple Drime API endpoints
+      const endpoints = [
+        '/api/v1/user',
+        '/api/v1/me',
+        '/api/v1/user/space-usage', // This one is used for keep-alive in desktop app
+      ];
+      
+      for (const endpoint of endpoints) {
+        console.log(`[Desktop Auth] Trying endpoint: ${DRIME_API_URL}${endpoint}`);
+        try {
+          const apiRes = await fetch(`${DRIME_API_URL}${endpoint}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${drimeAccessToken}`,
+              'Accept': 'application/json',
+            },
+          });
+          
+          console.log(`[Desktop Auth] ${endpoint} status:`, apiRes.status);
+          
+          if (apiRes.ok) {
+            const data = await apiRes.json();
+            console.log(`[Desktop Auth] ${endpoint} response:`, JSON.stringify(data).substring(0, 200));
+            
+            // Extract user from various response formats
+            if (data.user) {
+              drimeUser = data.user;
+              break;
+            } else if (data.email) {
+              drimeUser = data;
+              break;
+            } else if (data.status === 'success' && data.data?.user) {
+              drimeUser = data.data.user;
+              break;
+            }
+          }
+        } catch (e) {
+          console.error(`[Desktop Auth] Error with ${endpoint}:`, e);
         }
       }
     }
