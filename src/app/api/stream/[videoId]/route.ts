@@ -50,7 +50,7 @@ export async function GET(
         videoId: video.id,
       }, { status: 500 });
     }
-    const fileSize = metadata.size;
+    const fileSize = metadata.contentLength || 0;
     const contentType = foundFormat?.endsWith('.webm') ? 'video/webm' : 'video/mp4';
 
     // Generate signed URL that supports Range requests
