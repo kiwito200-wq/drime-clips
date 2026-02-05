@@ -365,28 +365,33 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
           <div className={`px-4 transition-all duration-300 ${hasStarted ? 'pb-0' : 'pb-3'}`}>
             <div
               ref={progressBarRef}
-              className={`relative cursor-pointer group/progress transition-all duration-200 ${
-                hasStarted ? 'h-1 mb-2' : 'h-[3px]'
-              }`}
+              className="relative cursor-pointer h-5 flex items-center"
               onMouseDown={handleProgressMouseDown}
               onMouseEnter={() => setIsHoveringProgress(true)}
               onMouseLeave={() => setIsHoveringProgress(false)}
               onMouseMove={handleProgressHover}
             >
-              <div className={`absolute inset-0 bg-white/20 rounded-full overflow-hidden transition-transform duration-150 origin-bottom ${isHoveringProgress || isDraggingProgress ? 'scale-y-[2.5]' : ''}`}>
+              {/* Track */}
+              <div className={`absolute left-0 right-0 rounded-full overflow-hidden transition-all duration-150 ${
+                isHoveringProgress || isDraggingProgress ? 'h-[5px]' : hasStarted ? 'h-1' : 'h-[3px]'
+              }`} style={{ top: '50%', transform: 'translateY(-50%)' }}>
                 <div className="absolute inset-y-0 left-0 bg-white/15 rounded-full" style={{ width: `${buffered}%` }} />
                 <div className="absolute inset-y-0 left-0 bg-[#08CF65] rounded-full" style={{ width: `${progress}%` }} />
+                {/* Unfilled track */}
+                <div className="absolute inset-0 bg-white/20 rounded-full -z-10" />
               </div>
+              {/* Scrubber dot — centered on track */}
               <div
-                className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 bg-[#08CF65] rounded-full shadow-lg transition-all duration-100 ${
+                className={`absolute top-1/2 -translate-y-1/2 w-[14px] h-[14px] bg-[#08CF65] rounded-full shadow-lg transition-all duration-100 z-10 ${
                   isHoveringProgress || isDraggingProgress ? 'opacity-100 scale-100' : 'opacity-0 scale-50'
                 }`}
                 style={{ left: `calc(${progress}% - 7px)` }}
               />
+              {/* Hover time tooltip */}
               {isHoveringProgress && !isDraggingProgress && (
                 <div
-                  className="absolute -top-8 pointer-events-none bg-black text-white text-[11px] font-medium px-2 py-1 rounded-md"
-                  style={{ left: hoverProgressX, transform: 'translateX(-50%)' }}
+                  className="absolute top-0 -translate-y-full pointer-events-none bg-black text-white text-[11px] font-medium px-2 py-1 rounded-md -mt-1"
+                  style={{ left: hoverProgressX, transform: `translateX(-50%) translateY(-100%)` }}
                 >
                   {formatTime(hoverTime)}
                 </div>
