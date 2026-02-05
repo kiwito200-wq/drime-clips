@@ -34,8 +34,9 @@ export async function POST(request: NextRequest) {
     if (drimeAccessToken) {
       console.log('[Desktop Auth] Trying drimeAccessToken:', drimeAccessToken.substring(0, 30) + '...');
       
-      // Try the main user endpoint
-      const endpoint = '/api/v1/user';
+      // Use /me/workspaces endpoint - it's what the Drime desktop app uses
+      // and it contains user info in the response
+      const endpoint = '/api/v1/me/workspaces';
       console.log(`[Desktop Auth] Calling: ${DRIME_API_URL}${endpoint}`);
       
       try {
@@ -49,23 +50,60 @@ export async function POST(request: NextRequest) {
         
         console.log(`[Desktop Auth] Drime API status:`, apiRes.status);
         const responseText = await apiRes.text();
-        console.log(`[Desktop Auth] Drime API raw response:`, responseText.substring(0, 500));
+        console.log(`[Desktop Auth] Drime API raw response (first 500):`, responseText.substring(0, 500));
         
-        if (apiRes.ok) {
-          const data = JSON.parse(responseText);
-          
-          // Extract user from various response formats
-          if (data.user) {
-            drimeUser = data.user;
-            console.log('[Desktop Auth] Found user in data.user');
-          } else if (data.email) {
-            drimeUser = data;
-            console.log('[Desktop Auth] Found user in root');
-          } else if (data.status === 'success') {
-            // Might be nested differently
-            drimeUser = data.data?.user || data.data || data;
-            console.log('[Desktop Auth] Found user in success response');
+        if (apiRes.ok && !responseText.startsWith('<!')) {
+          try {
+            const data = JSON.parse(responseText);
+            console.log('[Desktop Auth] Parsed response:', JSON.stringify(data).substring(0, 300));
+            
+            // /me/workspaces returns { status: 'success', workspaces: [...], user: {...} }
+            // Or sometimes just { workspaces: [...] } with user info in workspaces[0].owner
+            if (data.user) {
+              drimeUser = data.user;
+              console.log('[Desktop Auth] Found user in data.user');
+            } else if (data.workspaces && data.workspaces.length > 0) {
+              // Get user info from workspace owner
+              const workspace = data.workspaces[0];
+              if (workspace.owner) {
+                drimeUser = workspace.owner;
+                console.log('[Desktop Auth] Found user in workspace.owner');
+              } else if (workspace.user) {
+                drimeUser = workspace.user;
+                console.log('[Desktop Auth] Found user in workspace.user');
+              }
+            } else if (data.data?.user) {
+              drimeUser = data.data.user;
+              console.log('[Desktop Auth] Found user in data.data.user');
+            }
+            
+            // If still no user, try to get email from token payload (JWT decode)
+            if (!drimeUser) {
+              console.log('[Desktop Auth] No user found in workspaces response, trying to decode JWT...');
+              try {
+                // JWT has 3 parts: header.payload.signature
+                const parts = drimeAccessToken.split('.');
+                if (parts.length === 3) {
+                  const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+                  console.log('[Desktop Auth] JWT payload:', JSON.stringify(payload));
+                  if (payload.email || payload.sub) {
+                    drimeUser = {
+                      id: payload.sub || payload.user_id || payload.id,
+                      email: payload.email,
+                      name: payload.name || payload.display_name,
+                    };
+                    console.log('[Desktop Auth] Extracted user from JWT');
+                  }
+                }
+              } catch (jwtError) {
+                console.log('[Desktop Auth] Could not decode JWT:', jwtError);
+              }
+            }
+          } catch (parseError) {
+            console.error(`[Desktop Auth] JSON parse error:`, parseError);
           }
+        } else {
+          console.log('[Desktop Auth] Response is not JSON or not OK');
         }
       } catch (e) {
         console.error(`[Desktop Auth] Error calling Drime API:`, e);
