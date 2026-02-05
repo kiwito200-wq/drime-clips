@@ -79,15 +79,13 @@ export default function DashboardLayout({
     <div className="min-h-screen flex">
       {/* Sidebar */}
       <aside className="w-52 bg-[#F3F4F6] border-r border-gray-200 flex flex-col flex-shrink-0">
-        {/* Logo with Drime branding */}
+        {/* Logo */}
         <div className="h-16 flex items-center px-4">
           <Tooltip content="Retour à Drime" position="right">
-            <a href="https://app.drime.cloud/drive" className="flex items-center gap-2.5">
-              <svg className="w-7 h-7" viewBox="0 0 32 32" fill="none">
-                <rect width="32" height="32" rx="8" fill="#08CF65"/>
-                <path d="M10 8h6l6 8-6 8h-6l6-8-6-8z" fill="white"/>
-              </svg>
-              <span className="font-semibold text-lg text-gray-900">Clips</span>
+            <a href="https://app.drime.cloud/drive" className="flex items-center gap-2">
+              <img src="/drime-logo.png" alt="Drime" className="h-6" />
+              <span className="text-gray-400 font-medium">|</span>
+              <span className="font-semibold text-gray-900">Clips</span>
             </a>
           </Tooltip>
         </div>

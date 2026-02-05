@@ -237,7 +237,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
       <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-12 pb-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
         {/* Progress bar */}
         <div 
-          className="relative h-1 bg-white/30 rounded-full cursor-pointer group/progress mb-4"
+          className="relative h-1 bg-white/30 rounded-full cursor-pointer group/progress mb-4 hover:h-1.5 transition-all"
           onClick={handleSeek}
         >
           <div 
@@ -245,8 +245,8 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             style={{ width: `${progress}%` }}
           />
           <div 
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-[#08CF65] rounded-full opacity-0 group-hover/progress:opacity-100 transition-opacity"
-            style={{ left: `${progress}%`, transform: 'translate(-50%, -50%)' }}
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-md opacity-0 group-hover/progress:opacity-100 transition-opacity"
+            style={{ left: `calc(${progress}% - 6px)` }}
           />
         </div>
 

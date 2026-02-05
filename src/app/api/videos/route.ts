@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
 
-    // Fetch videos with upload status and view count
+    // Fetch videos with upload status, view count and comment count
     const videos = await prisma.video.findMany({
       where: {
         ownerId: user.id,
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       include: {
         upload: true,
         _count: {
-          select: { views: true }
+          select: { views: true, comments: true }
         }
       },
       orderBy: {
@@ -59,6 +59,7 @@ export async function GET(request: NextRequest) {
               : null)
           : null,
         viewCount: video._count.views,
+        commentCount: video._count.comments,
       };
     }));
 
