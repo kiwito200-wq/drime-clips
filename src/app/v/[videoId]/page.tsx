@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const thumbnailUrl = getPublicUrl(getThumbnailKey(video.ownerId, video.id));
-  const videoUrl = getPublicUrl(getVideoKey(video.ownerId, video.id, 'result.mp4'));
+  const videoUrl = `https://clips.drime.cloud/api/stream/${video.id}`;
   const title = video.name;
   const description = `Regardez "${video.name}" partagé via Drime Clips`;
 
@@ -87,7 +87,8 @@ export default async function VideoPage({ params }: Props) {
     notFound();
   }
 
-  const videoUrl = getPublicUrl(getVideoKey(video.ownerId, video.id, 'result.mp4'));
+  // Use streaming API instead of public URL (R2 buckets are private by default)
+  const videoUrl = `/api/stream/${video.id}`;
   const thumbnailUrl = getPublicUrl(getThumbnailKey(video.ownerId, video.id));
   const isUploading = video.upload !== null;
 
@@ -169,7 +170,7 @@ export default async function VideoPage({ params }: Props) {
             {/* Download button */}
             {!isUploading && (
               <a
-                href={videoUrl}
+                href={`/api/stream/${video.id}`}
                 download={`${video.name}.mp4`}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
