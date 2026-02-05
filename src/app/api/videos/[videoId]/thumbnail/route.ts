@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getPresignedDownloadUrl, getVideoKey, fileExists, getPresignedPutUrl } from '@/lib/r2';
+import { getPresignedDownloadUrl, fileExists } from '@/lib/r2';
 
 // GET /api/videos/[videoId]/thumbnail - Get thumbnail for a video
 export async function GET(
