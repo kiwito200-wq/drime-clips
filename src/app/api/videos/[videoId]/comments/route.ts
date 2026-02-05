@@ -10,6 +10,7 @@ export async function GET(
     const { videoId } = params;
     const { searchParams } = request.nextUrl;
     const type = searchParams.get('type'); // 'text' or 'emoji' filter
+    const visitorId = searchParams.get('visitorId'); // For showing which emojis current user reacted to
 
     const video = await prisma.video.findUnique({
       where: { id: videoId },
@@ -71,6 +72,16 @@ export async function GET(
       where: { videoId },
     });
 
+    // Get which emojis this visitor already reacted to
+    let myReactions: string[] = [];
+    if (visitorId) {
+      const myReactionComments = await prisma.videoComment.findMany({
+        where: { videoId, type: 'emoji', visitorId },
+        select: { content: true },
+      });
+      myReactions = myReactionComments.map(r => r.content);
+    }
+
     return NextResponse.json({
       comments: textComments.map(c => ({
         id: c.id,
@@ -93,6 +104,7 @@ export async function GET(
       totalComments: textComments.length,
       totalReactions: reactions.length,
       viewCount,
+      myReactions,
     });
   } catch (error) {
     console.error('Error fetching comments:', error);
@@ -142,6 +154,26 @@ export async function POST(
       return NextResponse.json({ error: 'Comments are disabled for this video' }, { status: 403 });
     }
 
+    // Get visitorId from body (for anonymous dedup)
+    const visitorId = body.visitorId || null;
+
+    // For emoji reactions, deduplicate: one reaction per emoji per visitor
+    if (type === 'emoji' && visitorId) {
+      const existing = await prisma.videoComment.findFirst({
+        where: {
+          videoId,
+          type: 'emoji',
+          content,
+          visitorId,
+        },
+      });
+      if (existing) {
+        // Already reacted with this emoji — toggle off (delete)
+        await prisma.videoComment.delete({ where: { id: existing.id } });
+        return NextResponse.json({ toggled: 'off', emoji: content });
+      }
+    }
+
     // Validate parent comment if replying
     if (parentCommentId) {
       const parentComment = await prisma.videoComment.findUnique({
@@ -161,6 +193,7 @@ export async function POST(
         timestamp: timestamp ? parseFloat(timestamp) : null,
         authorName: authorName || 'Anonymous',
         authorEmail,
+        visitorId,
         parentCommentId,
       },
       include: {

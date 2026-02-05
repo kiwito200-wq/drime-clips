@@ -1,8 +1,19 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
 import CommentsPanel from './CommentsPanel';
+
+// Generate or retrieve a stable visitor ID for deduplication
+function getVisitorId(): string {
+  const key = 'drime_visitor_id';
+  let id = typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+  if (!id) {
+    id = crypto.randomUUID();
+    if (typeof window !== 'undefined') localStorage.setItem(key, id);
+  }
+  return id;
+}
 
 const REACTIONS = [
   { emoji: '😂', label: 'Drôle' },
@@ -47,6 +58,8 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
   // Toolbar state
   const [sendingReaction, setSendingReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
+  const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
+  const visitorId = useMemo(() => getVisitorId(), []);
 
   const handleSeek = (time: number) => {
     playerRef.current?.seek(time);
@@ -114,7 +127,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
   // Fetch reaction counts
   const fetchReactionCounts = useCallback(async () => {
     try {
-      const response = await fetch(`/api/videos/${video.id}/comments`);
+      const response = await fetch(`/api/videos/${video.id}/comments?visitorId=${encodeURIComponent(visitorId)}`);
       const data = await response.json();
       const counts: Record<string, number> = {};
       if (data.reactions) {
@@ -123,10 +136,13 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         });
       }
       setReactionCounts(counts);
+      if (data.myReactions) {
+        setMyReactions(new Set(data.myReactions));
+      }
     } catch (error) {
       console.error('Failed to fetch reaction counts:', error);
     }
-  }, [video.id]);
+  }, [video.id, visitorId]);
 
   useEffect(() => {
     fetchReactionCounts();
@@ -138,24 +154,38 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     }
   }, [refreshTrigger, fetchReactionCounts]);
 
-  // Post emoji reaction
+  // Post emoji reaction (toggle: add or remove)
   const handleEmojiReaction = useCallback(async (emoji: string) => {
     setSendingReaction(emoji);
+    // Optimistic update
+    setMyReactions(prev => {
+      const next = new Set(prev);
+      if (next.has(emoji)) {
+        next.delete(emoji);
+        setReactionCounts(c => ({ ...c, [emoji]: Math.max(0, (c[emoji] || 0) - 1) }));
+      } else {
+        next.add(emoji);
+        setReactionCounts(c => ({ ...c, [emoji]: (c[emoji] || 0) + 1 }));
+      }
+      return next;
+    });
     try {
       const response = await fetch(`/api/videos/${video.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'emoji', content: emoji, timestamp: currentTime }),
+        body: JSON.stringify({ type: 'emoji', content: emoji, timestamp: currentTime, visitorId }),
       });
       if (response.ok) {
         setRefreshTrigger(prev => prev + 1);
       }
     } catch (error) {
       console.error('Failed to post reaction:', error);
+      // Revert optimistic update on error
+      fetchReactionCounts();
     } finally {
       setSendingReaction(null);
     }
-  }, [video.id, currentTime]);
+  }, [video.id, currentTime, visitorId, fetchReactionCounts]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
@@ -252,19 +282,20 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         </div>
 
         {/* ─── Reaction Toolbar (Cap-style) ─── */}
-        <div className="mt-4">
-          <div className="inline-flex p-2 mx-auto bg-white rounded-full border border-gray-200 shadow-sm w-full md:w-auto justify-center">
+        <div className="mt-4 flex justify-center">
+          <div className="inline-flex p-2 bg-white rounded-full border border-gray-200 shadow-sm">
             <div className="flex items-center gap-1">
               {REACTIONS.map((reaction) => {
                 const count = reactionCounts[reaction.emoji] || 0;
+                const hasReacted = myReactions.has(reaction.emoji);
                 return (
                   <div key={reaction.emoji} className="relative group">
                     <button
                       onClick={() => handleEmojiReaction(reaction.emoji)}
                       disabled={sendingReaction === reaction.emoji}
-                      className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 hover:bg-gray-100 active:bg-[#E0F5EA] active:scale-90 ${
+                      className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 active:scale-90 ${
                         sendingReaction === reaction.emoji ? 'opacity-50 scale-90' : ''
-                      }`}
+                      } ${hasReacted ? 'bg-[#E0F5EA] ring-1 ring-[#08CF65]/30' : 'hover:bg-gray-100'}`}
                     >
                       <span className="select-none">{reaction.emoji}</span>
                     </button>

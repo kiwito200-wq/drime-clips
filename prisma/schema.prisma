@@ -409,6 +409,9 @@ model VideoComment {
   authorName  String? // Display name for anonymous users
   authorEmail String? // Email for notifications (optional)
 
+  // Anonymous visitor fingerprint for deduplication
+  visitorId String?
+
   // Reply to another comment
   parentCommentId String?
 
@@ -426,6 +429,7 @@ model VideoComment {
   @@index([authorId])
   @@index([parentCommentId])
   @@index([createdAt])
+  @@index([videoId, type, content, visitorId])
 }
 
 // Thumbnail cache for hover previews
