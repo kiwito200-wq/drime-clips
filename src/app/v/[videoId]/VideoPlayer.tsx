@@ -353,16 +353,16 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
       {/* ─── Bottom bar ─── */}
       <div className="absolute inset-x-0 bottom-0 transition-all duration-300">
-        {/* Gradient backdrop — only when full controls visible */}
+        {/* Gradient backdrop */}
         <div
           className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none transition-opacity duration-300 ${
-            hasStarted && controlsVisible ? 'opacity-100' : 'opacity-0'
+            controlsVisible ? 'opacity-100' : 'opacity-0'
           }`}
         />
 
         <div className="relative">
           {/* Progress bar — always visible */}
-          <div className={`px-4 transition-all duration-300 ${hasStarted ? 'pb-0' : 'pb-3'}`}>
+          <div className="px-4">
             <div
               ref={progressBarRef}
               className="relative cursor-pointer h-5 flex items-center"
@@ -373,7 +373,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             >
               {/* Track */}
               <div className={`absolute left-0 right-0 rounded-full overflow-hidden transition-all duration-150 ${
-                isHoveringProgress || isDraggingProgress ? 'h-[5px]' : hasStarted ? 'h-1' : 'h-[3px]'
+                isHoveringProgress || isDraggingProgress ? 'h-[5px]' : 'h-1'
               }`} style={{ top: '50%', transform: 'translateY(-50%)' }}>
                 <div className="absolute inset-y-0 left-0 bg-white/15 rounded-full" style={{ width: `${buffered}%` }} />
                 <div className="absolute inset-y-0 left-0 bg-[#08CF65] rounded-full" style={{ width: `${progress}%` }} />
@@ -399,10 +399,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             </div>
           </div>
 
-          {/* Full controls row — only after first play */}
+          {/* Full controls row — always visible (auto-hides on mouse inactivity during playback) */}
           <div
             className={`px-4 pb-3 transition-all duration-300 ${
-              hasStarted && controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 pb-0 overflow-hidden'
+              controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 pb-0 overflow-hidden'
             }`}
           >
             <div className="flex items-center gap-0.5">

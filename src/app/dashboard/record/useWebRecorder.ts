@@ -200,16 +200,19 @@ export const useWebRecorder = ({
 
         stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions)
 
-        // Add microphone if selected
-        if (selectedMicId) {
-          try {
-            const micStream = await navigator.mediaDevices.getUserMedia({
-              audio: { deviceId: { exact: selectedMicId } },
-            })
-            micStream.getAudioTracks().forEach(track => stream.addTrack(track))
-          } catch (micError) {
-            console.warn('[WebRecorder] Could not add microphone:', micError)
+        // Always try to add microphone audio for screen recordings
+        try {
+          const micConstraints: MediaStreamConstraints = {
+            audio: selectedMicId 
+              ? { deviceId: { exact: selectedMicId } } 
+              : true,
           }
+          const micStream = await navigator.mediaDevices.getUserMedia(micConstraints)
+          micStream.getAudioTracks().forEach(track => stream.addTrack(track))
+          console.log('[WebRecorder] Microphone added to stream')
+        } catch (micError) {
+          console.warn('[WebRecorder] Could not add microphone:', micError)
+          // Continue without mic — screen audio may still be available
         }
       }
 

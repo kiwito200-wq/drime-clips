@@ -283,9 +283,9 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
       const response = await fetch(`/api/videos/${videoId}/transcript`);
       const data = await response.json();
       setTranscriptStatus(data.status || 'PENDING');
-      if (data.status === 'COMPLETE' && data.content) {
-        const entries = parseVTT(data.content);
-        setTranscriptEntries(entries);
+      if (data.status === 'COMPLETE' && data.transcript && Array.isArray(data.transcript)) {
+        // API returns already-parsed entries
+        setTranscriptEntries(data.transcript);
       }
     } catch (error) {
       console.error('Failed to fetch transcript:', error);
@@ -336,12 +336,17 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
     return entries;
   };
 
-  // Fetch transcript when tab is opened
+  // Auto-fetch transcript on page load (not just when tab is opened)
   useEffect(() => {
-    if (activeTab === 'transcript' && transcriptStatus === null) {
-      fetchTranscript();
+    fetchTranscript();
+  }, [videoId]);
+
+  // If status is PROCESSING, start polling automatically
+  useEffect(() => {
+    if (transcriptStatus === 'PROCESSING' || transcriptStatus === 'PENDING') {
+      pollTranscript();
     }
-  }, [activeTab]);
+  }, [transcriptStatus]);
 
   // Auto-scroll to active transcript entry
   useEffect(() => {
@@ -392,9 +397,8 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
         const response = await fetch(`/api/videos/${videoId}/transcript`);
         const data = await response.json();
         setTranscriptStatus(data.status);
-        if (data.status === 'COMPLETE' && data.content) {
-          const entries = parseVTT(data.content);
-          setTranscriptEntries(entries);
+        if (data.status === 'COMPLETE' && data.transcript && Array.isArray(data.transcript)) {
+          setTranscriptEntries(data.transcript);
           clearInterval(interval);
         } else if (data.status === 'FAILED' || data.status === 'NO_AUDIO' || attempts >= maxAttempts) {
           clearInterval(interval);

@@ -111,7 +111,17 @@ export default function RecordPage() {
 
   const loadDevices = useCallback(async () => {
     try {
-      await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() => {})
+      // Request permissions for both audio and video
+      await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then(stream => {
+        // Stop all tracks immediately — we only needed permission
+        stream.getTracks().forEach(t => t.stop())
+      }).catch(() => {
+        // Try audio only if video permission fails
+        return navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+          stream.getTracks().forEach(t => t.stop())
+        }).catch(() => {})
+      })
+
       const devices = await navigator.mediaDevices.enumerateDevices()
       
       const cams = devices.filter(d => d.kind === 'videoinput').map(d => ({
@@ -125,10 +135,17 @@ export default function RecordPage() {
       
       setCameras(cams)
       setMicrophones(mics)
+
+      // Auto-select default microphone if none selected yet
+      if (!selectedMic && mics.length > 0) {
+        // Prefer "default" device, otherwise first available
+        const defaultMic = mics.find(m => m.deviceId === 'default') || mics[0]
+        setSelectedMic(defaultMic.deviceId)
+      }
     } catch (error) {
       console.error('Error loading devices:', error)
     }
-  }, [])
+  }, [selectedMic])
 
   useEffect(() => {
     if (dialogOpen) loadDevices()
