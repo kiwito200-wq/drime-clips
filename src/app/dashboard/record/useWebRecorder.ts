@@ -373,16 +373,21 @@ export const useWebRecorder = ({
       }
 
       mediaRecorder.onstop = async () => {
+        console.log('[WebRecorder] ========== ONSTOP EVENT FIRED ==========')
         setPhase('uploading')
         onRecordingStop?.()
         
+        console.log('[WebRecorder] Finalizing upload...')
         const shareUrl = await finalizeUpload()
+        console.log('[WebRecorder] Upload finalized, shareUrl:', shareUrl)
         cleanup()
         
         if (shareUrl && uploadStateRef.current.videoId) {
+          console.log('[WebRecorder] Recording complete, opening share URL')
           setPhase('completed')
           onComplete?.(uploadStateRef.current.videoId, shareUrl)
         } else {
+          console.error('[WebRecorder] Upload failed - no shareUrl or videoId')
           setPhase('error')
           onError?.(new Error('Upload failed'))
         }
@@ -417,18 +422,28 @@ export const useWebRecorder = ({
   }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, onError])
 
   const stopRecording = useCallback(() => {
-    console.log('[WebRecorder] stopRecording called, state:', mediaRecorderRef.current?.state)
+    console.log('[WebRecorder] ========== STOP RECORDING CALLED ==========')
+    console.log('[WebRecorder] MediaRecorder exists:', !!mediaRecorderRef.current)
+    console.log('[WebRecorder] MediaRecorder state:', mediaRecorderRef.current?.state)
+    console.log('[WebRecorder] Current phase:', phase)
+    
     if (mediaRecorderRef.current) {
-      if (mediaRecorderRef.current.state !== 'inactive') {
-        console.log('[WebRecorder] Stopping MediaRecorder...')
-        mediaRecorderRef.current.stop()
+      const state = mediaRecorderRef.current.state
+      if (state === 'recording' || state === 'paused') {
+        console.log('[WebRecorder] Calling MediaRecorder.stop()...')
+        try {
+          mediaRecorderRef.current.stop()
+          console.log('[WebRecorder] MediaRecorder.stop() called successfully')
+        } catch (err) {
+          console.error('[WebRecorder] Error calling stop():', err)
+        }
       } else {
-        console.log('[WebRecorder] MediaRecorder already inactive')
+        console.log('[WebRecorder] MediaRecorder not in recording/paused state, state is:', state)
       }
     } else {
-      console.log('[WebRecorder] No MediaRecorder instance')
+      console.error('[WebRecorder] No MediaRecorder instance available!')
     }
-  }, [])
+  }, [phase])
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
