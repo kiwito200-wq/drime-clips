@@ -91,6 +91,9 @@ export const useWebRecorder = ({
   const uploaderRef = useRef<InstantUploader | null>(null)
   const videoIdRef = useRef<string | null>(null)
   const totalBytesRef = useRef<number>(0)
+  const stopResolverRef = useRef<((blob: Blob) => void) | null>(null)
+  const stopRejecterRef = useRef<((err: Error) => void) | null>(null)
+  const isStoppingRef = useRef(false)
 
   const isRecording = phase === 'recording' || phase === 'paused'
   const isBusy = phase !== 'idle' && phase !== 'completed' && phase !== 'error'
@@ -217,70 +220,40 @@ export const useWebRecorder = ({
         }
       }
 
-      mediaRecorder.onstop = async () => {
-        console.log('[WebRecorder] MediaRecorder stopped')
-        setPhase('stopping')
-        onRecordingStop?.()
-
-        try {
-          // Create final blob
-          const actualMimeType = mediaRecorder.mimeType || 'video/webm'
-          console.log('[WebRecorder] Creating blob with mimeType:', actualMimeType)
-          console.log('[WebRecorder] Total chunks:', chunksRef.current.length)
-          console.log('[WebRecorder] Total bytes:', totalBytesRef.current)
-          
-          const recordedBlob = new Blob(chunksRef.current, { type: actualMimeType })
-          console.log('[WebRecorder] Blob size:', recordedBlob.size)
-          
-          if (recordedBlob.size === 0) {
-            throw new Error('Enregistrement vide - aucune donnée capturée')
-          }
-
-          // Generate thumbnail
-          setPhase('uploading')
-          console.log('[WebRecorder] Generating thumbnail...')
-          let thumbnailDataUrl: string | undefined
-          
-          try {
-            const thumbResult = await captureThumbnail(recordedBlob)
-            if (thumbResult) {
-              thumbnailDataUrl = thumbResult.dataUrl
-              console.log('[WebRecorder] Thumbnail generated, size:', thumbnailDataUrl.length)
-            } else {
-              console.warn('[WebRecorder] Thumbnail generation returned null')
-            }
-          } catch (thumbError) {
-            console.error('[WebRecorder] Thumbnail generation failed:', thumbError)
-          }
-
-          // Finalize upload
-          console.log('[WebRecorder] Finalizing upload...')
-          const currentUploader = uploaderRef.current
-          if (!currentUploader) {
-            throw new Error('Uploader not available')
-          }
-          
-          const finalShareUrl = await currentUploader.finalize(recordedBlob, thumbnailDataUrl)
-          console.log('[WebRecorder] Upload finalized, shareUrl:', finalShareUrl)
-          
-          cleanup()
-
-          if (finalShareUrl && videoIdRef.current) {
-            console.log('[WebRecorder] Recording complete!')
-            setPhase('completed')
-            onComplete?.(videoIdRef.current, finalShareUrl)
-          } else {
-            throw new Error('Upload échoué - pas de shareUrl')
-          }
-        } catch (error) {
-          console.error('[WebRecorder] Error in onstop:', error)
-          handleError(error as Error)
+      mediaRecorder.onstop = () => {
+        console.log('[WebRecorder] MediaRecorder onstop fired')
+        
+        if (chunksRef.current.length === 0) {
+          const rejecter = stopRejecterRef.current
+          stopResolverRef.current = null
+          stopRejecterRef.current = null
+          isStoppingRef.current = false
+          rejecter?.(new Error('Aucune donnée enregistrée'))
+          return
         }
+
+        const actualMimeType = mediaRecorder.mimeType || 'video/webm'
+        const blob = new Blob(chunksRef.current, { type: actualMimeType })
+        console.log('[WebRecorder] Created blob:', blob.size, 'bytes')
+        
+        const resolver = stopResolverRef.current
+        stopResolverRef.current = null
+        stopRejecterRef.current = null
+        isStoppingRef.current = false
+        resolver?.(blob)
       }
 
       mediaRecorder.onerror = (event) => {
         console.error('[WebRecorder] MediaRecorder error:', event)
-        handleError(new Error('Erreur d\'enregistrement'))
+        const rejecter = stopRejecterRef.current
+        stopResolverRef.current = null
+        stopRejecterRef.current = null
+        isStoppingRef.current = false
+        if (rejecter) {
+          rejecter(new Error('Erreur MediaRecorder'))
+        } else {
+          handleError(new Error('Erreur d\'enregistrement'))
+        }
       }
 
       mediaRecorderRef.current = mediaRecorder
@@ -322,18 +295,97 @@ export const useWebRecorder = ({
     }
   }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, cleanup, handleError])
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current) {
-      const state = mediaRecorderRef.current.state
-      if (state === 'recording' || state === 'paused') {
-        try {
-          mediaRecorderRef.current.stop()
-        } catch (err) {
-          console.error('[WebRecorder] Error stopping:', err)
-        }
-      }
+  const stopRecording = useCallback(async () => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder || recorder.state === 'inactive') {
+      console.log('[WebRecorder] No recorder or already inactive')
+      return
     }
-  }, [])
+    if (isStoppingRef.current) {
+      console.log('[WebRecorder] Already stopping')
+      return
+    }
+
+    console.log('[WebRecorder] Stopping recording...')
+    isStoppingRef.current = true
+    setPhase('stopping')
+    onRecordingStop?.()
+
+    // Stop timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+
+    // Create promise that resolves when onstop fires
+    const stopPromise = new Promise<Blob>((resolve, reject) => {
+      stopResolverRef.current = resolve
+      stopRejecterRef.current = reject
+    })
+
+    // Stop the recorder
+    try {
+      recorder.stop()
+    } catch (err) {
+      console.error('[WebRecorder] Error calling stop():', err)
+      isStoppingRef.current = false
+      handleError(new Error('Erreur arrêt enregistrement'))
+      return
+    }
+
+    // Stop streams
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
+
+    try {
+      // Wait for the blob
+      const recordedBlob = await stopPromise
+      console.log('[WebRecorder] Got blob:', recordedBlob.size)
+
+      if (recordedBlob.size === 0) {
+        throw new Error('Enregistrement vide')
+      }
+
+      // Generate thumbnail
+      setPhase('uploading')
+      console.log('[WebRecorder] Generating thumbnail...')
+      let thumbnailDataUrl: string | undefined
+      
+      try {
+        const thumbResult = await captureThumbnail(recordedBlob)
+        if (thumbResult) {
+          thumbnailDataUrl = thumbResult.dataUrl
+          console.log('[WebRecorder] Thumbnail OK:', thumbnailDataUrl.length, 'chars')
+        }
+      } catch (thumbErr) {
+        console.warn('[WebRecorder] Thumbnail failed:', thumbErr)
+      }
+
+      // Finalize upload
+      console.log('[WebRecorder] Finalizing upload...')
+      const currentUploader = uploaderRef.current
+      if (!currentUploader) {
+        throw new Error('Uploader indisponible')
+      }
+      
+      const finalShareUrl = await currentUploader.finalize(recordedBlob, thumbnailDataUrl)
+      console.log('[WebRecorder] Done, shareUrl:', finalShareUrl)
+      
+      cleanup()
+
+      if (finalShareUrl && videoIdRef.current) {
+        setPhase('completed')
+        onComplete?.(videoIdRef.current, finalShareUrl)
+      } else {
+        throw new Error('Upload échoué')
+      }
+    } catch (error) {
+      console.error('[WebRecorder] Stop error:', error)
+      handleError(error as Error)
+    }
+  }, [cleanup, handleError, onComplete, onRecordingStop])
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current?.state === 'recording') {
