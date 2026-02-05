@@ -87,9 +87,24 @@ export async function GET(
       });
     }
 
-    // No range header - return full video or redirect
-    // Redirect to signed URL (R2 handles Range requests natively)
-    return NextResponse.redirect(signedUrl, { status: 302 });
+    // No range header - return full video with proper headers
+    // We need to include Content-Length and Accept-Ranges for proper video metadata detection
+    const fullResponse = await fetch(signedUrl);
+    
+    if (!fullResponse.ok) {
+      console.error(`[Stream] Full fetch failed: ${fullResponse.status}`);
+      return NextResponse.json({ error: 'Failed to fetch video' }, { status: 502 });
+    }
+
+    return new NextResponse(fullResponse.body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': String(fileSize),
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
 
   } catch (error) {
     console.error('[Stream] Error:', error);

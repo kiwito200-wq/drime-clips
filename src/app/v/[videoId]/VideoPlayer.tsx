@@ -190,13 +190,25 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
         onLoadedMetadata={() => {
           if (videoRef.current) {
             const dur = videoRef.current.duration
-            setDuration(dur)
+            if (isFinite(dur) && dur > 0) {
+              setDuration(dur)
+              onDurationChange?.(dur)
+            }
             setIsLoading(false)
-            onDurationChange?.(dur)
+          }
+        }}
+        onDurationChange={() => {
+          if (videoRef.current) {
+            const dur = videoRef.current.duration
+            if (isFinite(dur) && dur > 0 && dur !== duration) {
+              setDuration(dur)
+              onDurationChange?.(dur)
+            }
           }
         }}
         onWaiting={() => setIsLoading(true)}
         onCanPlay={() => setIsLoading(false)}
+        preload="metadata"
         playsInline
       />
 
