@@ -1,10 +1,10 @@
 {
-  "name": "drime-sign",
+  "name": "drime-clips",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (node scripts/baseline-migrations.js || true) && (prisma migrate deploy || prisma db push --skip-generate) && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
