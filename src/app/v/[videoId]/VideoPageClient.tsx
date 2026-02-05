@@ -48,6 +48,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
   const [commentBoxOpen, setCommentBoxOpen] = useState(false);
   const [toolbarComment, setToolbarComment] = useState('');
   const [sendingReaction, setSendingReaction] = useState<string | null>(null);
+  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
 
   const handleSeek = (time: number) => {
     playerRef.current?.seek(time);
@@ -111,6 +112,33 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     if (days < 7) return `Il y a ${days}j`;
     return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   };
+
+  // Fetch reaction counts
+  const fetchReactionCounts = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/videos/${video.id}/comments`);
+      const data = await response.json();
+      const counts: Record<string, number> = {};
+      if (data.reactions) {
+        Object.entries(data.reactions).forEach(([emoji, info]: [string, any]) => {
+          counts[emoji] = info.count || 0;
+        });
+      }
+      setReactionCounts(counts);
+    } catch (error) {
+      console.error('Failed to fetch reaction counts:', error);
+    }
+  }, [video.id]);
+
+  useEffect(() => {
+    fetchReactionCounts();
+  }, [fetchReactionCounts]);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchReactionCounts();
+    }
+  }, [refreshTrigger, fetchReactionCounts]);
 
   // Keyboard shortcut "C" to open comment box
   useEffect(() => {
@@ -263,16 +291,16 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
 
         {/* ─── Reaction Toolbar (Cap-style) ─── */}
         <div className="mt-4">
-          <div className="flex overflow-hidden p-2 mx-auto max-w-full bg-white rounded-full border border-gray-200 md:max-w-fit shadow-sm">
+          <div className="inline-flex p-2 mx-auto bg-white rounded-full border border-gray-200 shadow-sm w-full md:w-auto justify-center">
             {commentBoxOpen ? (
-              <div className="flex items-center w-full gap-2 animate-in fade-in duration-200">
+              <div className="flex items-center w-full gap-2">
                 <input
                   autoFocus
                   type="text"
                   value={toolbarComment}
                   onChange={(e) => setToolbarComment(e.target.value)}
                   placeholder="Ajouter un commentaire..."
-                  className="flex-grow px-3 h-9 outline-none text-sm min-w-[200px]"
+                  className="flex-grow px-3 h-9 outline-none text-sm min-w-[180px]"
                   maxLength={255}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -285,7 +313,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
                     }
                   }}
                 />
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-shrink-0">
                   <button
                     disabled={!toolbarComment.trim()}
                     onClick={handleToolbarComment}
@@ -302,31 +330,38 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row gap-2 items-center mx-auto w-full md:w-fit">
-                {/* Emoji reactions row */}
-                <div className="flex gap-1 items-center">
-                  {REACTIONS.map((reaction) => (
-                    <button
-                      key={reaction.emoji}
-                      onClick={() => handleEmojiReaction(reaction.emoji)}
-                      disabled={sendingReaction === reaction.emoji}
-                      className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 hover:bg-gray-100 active:bg-[#E0F5EA] active:scale-90 ${
-                        sendingReaction === reaction.emoji ? 'opacity-50 scale-90' : ''
-                      }`}
-                      title={reaction.label}
-                    >
-                      <span className="select-none">{reaction.emoji}</span>
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-1">
+                {/* Emoji reactions */}
+                {REACTIONS.map((reaction) => {
+                  const count = reactionCounts[reaction.emoji] || 0;
+                  return (
+                    <div key={reaction.emoji} className="relative group">
+                      <button
+                        onClick={() => handleEmojiReaction(reaction.emoji)}
+                        disabled={sendingReaction === reaction.emoji}
+                        className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 hover:bg-gray-100 active:bg-[#E0F5EA] active:scale-90 ${
+                          sendingReaction === reaction.emoji ? 'opacity-50 scale-90' : ''
+                        }`}
+                      >
+                        <span className="select-none">{reaction.emoji}</span>
+                      </button>
+                      {/* Tooltip with label + count */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
+                        <div className="bg-gray-900 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                          {reaction.label}{count > 0 ? ` · ${count}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {/* Separator */}
-                <div className="hidden sm:block w-px bg-gray-200 h-5 mx-2" />
+                <div className="w-px bg-gray-200 h-5 mx-2 flex-shrink-0" />
 
                 {/* Comment button */}
                 <button
                   onClick={() => setCommentBoxOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors flex-shrink-0"
                 >
                   <span>Commenter</span>
                   <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded text-white/70">c</kbd>
