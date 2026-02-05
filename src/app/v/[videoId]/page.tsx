@@ -73,7 +73,7 @@ export default async function VideoPage({ params }: Props) {
   const video = await prisma.video.findUnique({
     where: { id: params.videoId },
     include: {
-      owner: { select: { name: true, email: true, avatarUrl: true } },
+      owner: { select: { id: true, name: true, email: true, avatarUrl: true } },
       upload: true,
     },
   });
@@ -86,6 +86,11 @@ export default async function VideoPage({ params }: Props) {
   if (!video.public) {
     notFound();
   }
+
+  // Check if current user is the owner (for edit permissions)
+  const { getCurrentUser } = await import('@/lib/auth');
+  const currentUser = await getCurrentUser().catch(() => null);
+  const canEdit = currentUser?.id === video.ownerId;
 
   // Use streaming API instead of public URL (R2 buckets are private by default)
   const videoUrl = `/api/stream/${video.id}`;
@@ -143,6 +148,7 @@ export default async function VideoPage({ params }: Props) {
             }}
             videoUrl={videoUrl}
             thumbnailUrl={thumbnailUrl}
+            canEdit={canEdit}
           />
         )}
       </main>

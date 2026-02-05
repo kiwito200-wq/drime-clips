@@ -152,7 +152,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
   const totalReactions = Object.values(reactions).reduce((sum, r) => sum + r.count, 0);
 
   return (
-    <div className="w-[340px] bg-white rounded-2xl border border-gray-200 flex flex-col h-full shadow-sm">
+    <div className="w-full bg-white rounded-2xl border border-gray-200 flex flex-col h-full min-h-[400px] shadow-sm">
       {/* Tabs */}
       <div className="flex border-b border-gray-100">
         {['Comments', 'Summary', 'Transcript'].map((tab) => (

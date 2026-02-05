@@ -1,14 +1,14 @@
-// Stream video via signed URL (R2 buckets are private by default)
+// Stream video via signed URL with Range support (R2 buckets are private by default)
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getPresignedDownloadUrl, getVideoKey, fileExists } from '@/lib/r2';
+import { getPresignedDownloadUrl, getVideoKey, fileExists, getFileMetadata } from '@/lib/r2';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { videoId: string } }
 ) {
   const videoId = params.videoId;
-  console.log(`[Stream] Request for video: ${videoId}`);
+  const rangeHeader = request.headers.get('range');
   
   try {
     const video = await prisma.video.findUnique({
@@ -16,63 +16,75 @@ export async function GET(
       select: { id: true, ownerId: true, public: true },
     });
 
-    console.log(`[Stream] Video found:`, video ? { id: video.id, ownerId: video.ownerId, public: video.public } : 'NOT FOUND');
-
     if (!video || !video.public) {
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
     // Try different video formats (webm for live recordings, mp4 for processed)
     const formats = ['result.webm', 'result.mp4', 'video.webm', 'video.mp4'];
-    let signedUrl: string | null = null;
+    let foundKey: string | null = null;
     let foundFormat: string | null = null;
 
     for (const format of formats) {
       const key = getVideoKey(video.ownerId, video.id, format);
-      console.log(`[Stream] Checking key: ${key}`);
       const exists = await fileExists(key);
-      console.log(`[Stream] Key ${key} exists: ${exists}`);
       if (exists) {
-        signedUrl = await getPresignedDownloadUrl(key, 3600);
+        foundKey = key;
         foundFormat = format;
-        console.log(`[Stream] Found video at: ${key}, signed URL generated`);
         break;
       }
     }
 
-    if (!signedUrl) {
-      console.error(`[Stream] No video file found for ${video.id} (owner: ${video.ownerId})`);
+    if (!foundKey) {
       return NextResponse.json({ 
         error: 'Video file not found',
         videoId: video.id,
-        ownerId: video.ownerId,
-        checkedFormats: formats,
       }, { status: 404 });
     }
 
-    console.log(`[Stream] Proxying video for ${foundFormat}`);
-    
-    // Proxy the video content instead of redirecting (better browser compatibility)
-    const videoResponse = await fetch(signedUrl);
-    
-    if (!videoResponse.ok) {
-      console.error(`[Stream] Failed to fetch video from R2: ${videoResponse.status}`);
-      return NextResponse.json({ error: 'Failed to fetch video' }, { status: 502 });
+    // Get file metadata for Content-Length
+    const metadata = await getFileMetadata(foundKey);
+    const fileSize = metadata.size;
+    const contentType = foundFormat?.endsWith('.webm') ? 'video/webm' : 'video/mp4';
+
+    // Generate signed URL that supports Range requests
+    const signedUrl = await getPresignedDownloadUrl(foundKey, 3600);
+
+    // For Range requests, we need to proxy to support seeking properly
+    if (rangeHeader) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+      const chunkSize = (end - start) + 1;
+
+      // Fetch the specific range from R2
+      const rangeResponse = await fetch(signedUrl, {
+        headers: {
+          'Range': `bytes=${start}-${end}`,
+        },
+      });
+
+      if (!rangeResponse.ok && rangeResponse.status !== 206) {
+        console.error(`[Stream] Range request failed: ${rangeResponse.status}`);
+        return NextResponse.json({ error: 'Failed to fetch video range' }, { status: 502 });
+      }
+
+      return new NextResponse(rangeResponse.body, {
+        status: 206,
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': String(chunkSize),
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
     }
 
-    // Get content type based on format
-    const contentType = foundFormat?.endsWith('.webm') ? 'video/webm' : 'video/mp4';
-    
-    // Stream the video with proper headers
-    return new NextResponse(videoResponse.body, {
-      status: 200,
-      headers: {
-        'Content-Type': contentType,
-        'Content-Length': videoResponse.headers.get('Content-Length') || '',
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=3600',
-      },
-    });
+    // No range header - return full video or redirect
+    // Redirect to signed URL (R2 handles Range requests natively)
+    return NextResponse.redirect(signedUrl, { status: 302 });
+
   } catch (error) {
     console.error('[Stream] Error:', error);
     return NextResponse.json({ error: 'Failed to stream video' }, { status: 500 });
