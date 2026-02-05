@@ -443,9 +443,9 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             <div className="flex-1" />
 
             {/* Speed control */}
-            <div className="relative">
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
               <PlayerButton
-                onClick={(e: any) => { e?.stopPropagation?.(); setShowSpeedMenu(!showSpeedMenu) }}
+                onClick={() => setShowSpeedMenu(!showSpeedMenu)}
                 tooltip="Vitesse de lecture"
               >
                 <span className="text-xs font-bold">{playbackSpeed === 1 ? '1x' : `${playbackSpeed}x`}</span>
