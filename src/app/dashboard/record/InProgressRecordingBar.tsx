@@ -111,16 +111,30 @@ export const InProgressRecordingBar = ({
   // Show saving state when stopping
   const showSaving = isSaving || isUploading
 
-  const handleStopClick = async (e: React.MouseEvent) => {
+  const handleStopClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('[RecordingBar] Stop clicked, phase:', phase)
-    if (isSaving) return
+    console.log('[RecordingBar] ========== STOP BUTTON CLICKED ==========')
+    console.log('[RecordingBar] phase:', phase)
+    console.log('[RecordingBar] isSaving:', isSaving)
+    console.log('[RecordingBar] onStop function exists:', typeof onStop === 'function')
+    
+    // Visual feedback
+    alert('Stop clicked! Check console for details.')
+    
+    if (isSaving) {
+      console.log('[RecordingBar] Already saving, ignoring click')
+      return
+    }
+    
     setIsSaving(true)
+    console.log('[RecordingBar] Calling onStop()...')
+    
     try {
-      await onStop()
-    } finally {
-      setIsSaving(false)
+      onStop()
+      console.log('[RecordingBar] onStop() called')
+    } catch (err) {
+      console.error('[RecordingBar] Error calling onStop:', err)
     }
   }
 
