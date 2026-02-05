@@ -1,9 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { InstantUploader, initializeUpload } from './instant-uploader'
+import { captureThumbnail, convertToMp4 } from './recording-conversion'
 
 export type RecordingMode = 'fullscreen' | 'window' | 'tab' | 'camera'
-export type RecorderPhase = 'idle' | 'recording' | 'paused' | 'creating' | 'uploading' | 'completed' | 'error'
+export type RecorderPhase = 
+  | 'idle' 
+  | 'creating'      // Creating video entry
+  | 'recording' 
+  | 'paused' 
+  | 'stopping'      // MediaRecorder stopping
+  | 'converting'    // Converting WebM to MP4
+  | 'uploading'     // Finalizing upload
+  | 'completed' 
+  | 'error'
 
 export interface ChunkUploadState {
   partNumber: number
@@ -13,16 +24,10 @@ export interface ChunkUploadState {
   progress: number
 }
 
-interface UploadState {
-  videoId: string | null
-  uploadId: string | null
-  userId: string | null
-  partNumber: number
-  parts: { PartNumber: number; ETag: string }[]
-  uploading: boolean
-  uploadedBytes: number
-  totalBytes: number
-  shareUrl: string | null
+export interface RecorderError {
+  message: string
+  code?: string
+  recoverable?: boolean
 }
 
 interface UseWebRecorderOptions {
@@ -34,13 +39,6 @@ interface UseWebRecorderOptions {
   onComplete?: (videoId: string, shareUrl: string) => void
   onError?: (error: Error) => void
 }
-
-export interface RecorderError {
-  message: string
-  code?: string
-}
-
-const MIN_CHUNK_SIZE = 5 * 1024 * 1024
 
 const SUPPORTED_MIME_TYPES = [
   'video/webm;codecs=vp9,opus',
@@ -60,12 +58,10 @@ function getSupportedMimeType(): string | undefined {
   
   for (const mimeType of SUPPORTED_MIME_TYPES) {
     if (MediaRecorder.isTypeSupported(mimeType)) {
-      console.log('[WebRecorder] Using MIME type:', mimeType)
       return mimeType
     }
   }
   
-  console.warn('[WebRecorder] No supported MIME type found, using default')
   return undefined
 }
 
@@ -83,404 +79,21 @@ export const useWebRecorder = ({
   const [hasAudioTrack, setHasAudioTrack] = useState(false)
   const [chunkUploads, setChunkUploads] = useState<ChunkUploadState[]>([])
   const [lastError, setLastError] = useState<RecorderError | null>(null)
+  const [conversionProgress, setConversionProgress] = useState(0)
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const chunksRef = useRef<Blob[]>([])
-  const pendingChunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startTimeRef = useRef<number>(0)
   const pausedDurationRef = useRef<number>(0)
   const pauseStartRef = useRef<number | null>(null)
-  const actualMimeTypeRef = useRef<string>('video/webm')
-  
-  const uploadStateRef = useRef<UploadState>({
-    videoId: null,
-    uploadId: null,
-    userId: null,
-    partNumber: 1,
-    parts: [],
-    uploading: false,
-    uploadedBytes: 0,
-    totalBytes: 0,
-    shareUrl: null,
-  })
+  const uploaderRef = useRef<InstantUploader | null>(null)
+  const videoIdRef = useRef<string | null>(null)
+  const totalBytesRef = useRef<number>(0)
 
-  const initializeUpload = async (): Promise<UploadState> => {
-    const res = await fetch('/api/upload/simple', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ action: 'create' }),
-    })
-    
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}))
-      console.error('[WebRecorder] Upload init failed:', res.status, errorData)
-      if (res.status === 401) {
-        throw new Error('Session expirée. Veuillez vous reconnecter.')
-      }
-      throw new Error(errorData.error || 'Failed to initialize upload')
-    }
-    
-    const data = await res.json()
-    console.log('[WebRecorder] Upload initialized:', data.videoId)
-    
-    const state: UploadState = {
-      videoId: data.videoId,
-      uploadId: data.uploadId,
-      userId: data.userId,
-      partNumber: 1,
-      parts: [],
-      uploading: false,
-      uploadedBytes: 0,
-      totalBytes: 0,
-      shareUrl: data.shareUrl,
-    }
-    uploadStateRef.current = state
-    return state
-  }
-
-  const uploadChunk = async (chunk: Blob, partNumber: number) => {
-    const state = uploadStateRef.current
-    if (!state.videoId || !state.uploadId || !state.userId) return
-
-    setChunkUploads(prev => {
-      const existing = prev.find(c => c.partNumber === partNumber)
-      if (existing) {
-        return prev.map(c => c.partNumber === partNumber ? { ...c, status: 'uploading' as const } : c)
-      }
-      return [...prev, {
-        partNumber,
-        status: 'uploading' as const,
-        sizeBytes: chunk.size,
-        uploadedBytes: 0,
-        progress: 0,
-      }]
-    })
-
-    try {
-      const presignRes = await fetch('/api/upload/simple', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          action: 'presign',
-          videoId: state.videoId,
-          uploadId: state.uploadId,
-          userId: state.userId,
-          partNumber,
-        }),
-      })
-      
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL')
-      const { presignedUrl } = await presignRes.json()
-
-      const contentType = actualMimeTypeRef.current.split(';')[0] || 'video/webm'
-      const uploadRes = await fetch(presignedUrl, {
-        method: 'PUT',
-        body: chunk,
-        headers: { 'Content-Type': contentType },
-      })
-
-      if (!uploadRes.ok) throw new Error('Failed to upload chunk')
-      
-      const etag = uploadRes.headers.get('ETag') || `"part-${partNumber}"`
-      
-      state.parts.push({
-        PartNumber: partNumber,
-        ETag: etag.replace(/"/g, ''),
-      })
-      state.uploadedBytes += chunk.size
-
-      setChunkUploads(prev => prev.map(c => 
-        c.partNumber === partNumber 
-          ? { ...c, status: 'complete' as const, uploadedBytes: chunk.size, progress: 1 }
-          : c
-      ))
-    } catch (error) {
-      console.error('Error uploading chunk:', error)
-      setChunkUploads(prev => prev.map(c => 
-        c.partNumber === partNumber ? { ...c, status: 'error' as const } : c
-      ))
-    }
-  }
-
-  const processPendingChunks = async () => {
-    const state = uploadStateRef.current
-    if (state.uploading) return
-
-    state.uploading = true
-    
-    while (pendingChunksRef.current.length > 0) {
-      const chunks = pendingChunksRef.current
-      const blobType = actualMimeTypeRef.current.split(';')[0] || 'video/webm'
-      let combined = new Blob(chunks, { type: blobType })
-      
-      if (combined.size >= MIN_CHUNK_SIZE) {
-        pendingChunksRef.current = []
-        await uploadChunk(combined, state.partNumber)
-        state.partNumber++
-      } else {
-        break
-      }
-    }
-    
-    state.uploading = false
-  }
-
-  const generateThumbnail = async (videoBlob: Blob): Promise<string | null> => {
-    return new Promise((resolve) => {
-      // Timeout after 10 seconds
-      const timeout = setTimeout(() => {
-        console.warn('[WebRecorder] Thumbnail generation timed out')
-        resolve(null)
-      }, 10000)
-      
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      video.muted = true
-      video.playsInline = true
-      video.crossOrigin = 'anonymous'
-      
-      const cleanup = () => {
-        clearTimeout(timeout)
-        URL.revokeObjectURL(video.src)
-      }
-      
-      video.onloadedmetadata = () => {
-        console.log('[WebRecorder] Video metadata loaded, duration:', video.duration)
-        // Seek to 1 second or 10% of video, whichever is smaller
-        video.currentTime = Math.min(1, video.duration * 0.1)
-      }
-      
-      video.onseeked = () => {
-        console.log('[WebRecorder] Video seeked, generating thumbnail...')
-        try {
-          const canvas = document.createElement('canvas')
-          // Use reasonable dimensions even if video reports 0
-          canvas.width = video.videoWidth || 1280
-          canvas.height = video.videoHeight || 720
-          
-          const ctx = canvas.getContext('2d')
-          if (ctx && canvas.width > 0 && canvas.height > 0) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-            const thumbnail = canvas.toDataURL('image/jpeg', 0.7)
-            console.log('[WebRecorder] Thumbnail generated, size:', thumbnail.length)
-            cleanup()
-            resolve(thumbnail)
-          } else {
-            console.warn('[WebRecorder] Could not get canvas context')
-            cleanup()
-            resolve(null)
-          }
-        } catch (err) {
-          console.error('[WebRecorder] Error generating thumbnail:', err)
-          cleanup()
-          resolve(null)
-        }
-      }
-      
-      video.onerror = (e) => {
-        console.error('[WebRecorder] Video error during thumbnail generation:', e)
-        cleanup()
-        resolve(null)
-      }
-      
-      video.src = URL.createObjectURL(videoBlob)
-    })
-  }
-
-  const finalizeUpload = async (): Promise<string | null> => {
-    const state = uploadStateRef.current
-    if (!state.videoId || !state.uploadId || !state.userId) return null
-
-    try {
-      if (pendingChunksRef.current.length > 0) {
-        const remaining = new Blob(pendingChunksRef.current, { type: 'video/webm' })
-        if (remaining.size > 0) {
-          await uploadChunk(remaining, state.partNumber)
-        }
-        pendingChunksRef.current = []
-      }
-
-      let thumbnail: string | null = null
-      if (chunksRef.current.length > 0) {
-        const fullBlob = new Blob(chunksRef.current, { type: 'video/webm' })
-        thumbnail = await generateThumbnail(fullBlob)
-      }
-
-      const res = await fetch('/api/upload/simple', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          action: 'complete',
-          videoId: state.videoId,
-          uploadId: state.uploadId,
-          userId: state.userId,
-          parts: state.parts.sort((a, b) => a.PartNumber - b.PartNumber),
-          thumbnail,
-        }),
-      })
-
-      if (!res.ok) throw new Error('Failed to finalize upload')
-      
-      return state.shareUrl
-    } catch (error) {
-      console.error('Error finalizing upload:', error)
-      return null
-    }
-  }
-
-  const startRecording = useCallback(async () => {
-    try {
-      setPhase('creating')
-      
-      const uploadState = await initializeUpload()
-      
-      let stream: MediaStream
-
-      if (recordingMode === 'camera') {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: selectedCameraId ? { deviceId: selectedCameraId } : true,
-          audio: selectedMicId ? { deviceId: selectedMicId } : true,
-        })
-      } else {
-        const displayMediaOptions: DisplayMediaStreamOptions = {
-          video: true,
-          audio: true,
-        }
-
-        if (recordingMode === 'window') {
-          (displayMediaOptions.video as any) = { displaySurface: 'window' }
-        } else if (recordingMode === 'tab') {
-          (displayMediaOptions.video as any) = { displaySurface: 'browser' }
-        }
-
-        stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions)
-
-        if (selectedMicId) {
-          try {
-            const audioStream = await navigator.mediaDevices.getUserMedia({
-              audio: { deviceId: selectedMicId, echoCancellation: true, noiseSuppression: true },
-            })
-            audioStream.getAudioTracks().forEach(track => stream.addTrack(track))
-          } catch (e) {
-            console.warn('Could not get microphone:', e)
-          }
-        }
-      }
-
-      streamRef.current = stream
-      chunksRef.current = []
-      pendingChunksRef.current = []
-
-      const hasAudio = stream.getAudioTracks().length > 0
-      setHasAudioTrack(hasAudio)
-
-      const mimeType = getSupportedMimeType()
-      const recorderOptions: MediaRecorderOptions = {}
-      if (mimeType) {
-        recorderOptions.mimeType = mimeType
-      }
-      
-      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
-      actualMimeTypeRef.current = mediaRecorder.mimeType || mimeType || 'video/webm'
-      console.log('[WebRecorder] MediaRecorder created with mimeType:', actualMimeTypeRef.current)
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data)
-          pendingChunksRef.current.push(e.data)
-          uploadStateRef.current.totalBytes += e.data.size
-          processPendingChunks()
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        setPhase('uploading')
-        onRecordingStop?.()
-        
-        const shareUrl = await finalizeUpload()
-        cleanup()
-        
-        if (shareUrl && uploadStateRef.current.videoId) {
-          setPhase('completed')
-          onComplete?.(uploadStateRef.current.videoId, shareUrl)
-        } else {
-          setPhase('error')
-          onError?.(new Error('Upload failed'))
-        }
-      }
-
-      mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start(1000)
-
-      startTimeRef.current = Date.now()
-      pausedDurationRef.current = 0
-      pauseStartRef.current = null
-      
-      timerRef.current = setInterval(() => {
-        const elapsed = Date.now() - startTimeRef.current - pausedDurationRef.current
-        setDurationMs(elapsed)
-      }, 100)
-
-      stream.getTracks().forEach(track => {
-        track.onended = () => stopRecording()
-      })
-
-      setPhase('recording')
-      onRecordingStart?.()
-
-    } catch (error) {
-      console.error('Error starting recording:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
-      setLastError({ message: errorMessage })
-      setPhase('error')
-      onError?.(error as Error)
-    }
-  }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, onError])
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current) {
-      const state = mediaRecorderRef.current.state
-      if (state === 'recording' || state === 'paused') {
-        try {
-          mediaRecorderRef.current.stop()
-        } catch (err) {
-          console.error('[WebRecorder] Error calling stop():', err)
-        }
-      }
-    }
-  }, [])
-
-  const pauseRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.pause()
-      pauseStartRef.current = Date.now()
-      setPhase('paused')
-    }
-  }, [])
-
-  const resumeRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
-      if (pauseStartRef.current) {
-        pausedDurationRef.current += Date.now() - pauseStartRef.current
-        pauseStartRef.current = null
-      }
-      mediaRecorderRef.current.resume()
-      setPhase('recording')
-    }
-  }, [])
-
-  const restartRecording = useCallback(async () => {
-    cleanup()
-    setPhase('idle')
-    setDurationMs(0)
-    setChunkUploads([])
-    await startRecording()
-  }, [startRecording])
+  const isRecording = phase === 'recording' || phase === 'paused'
+  const isBusy = phase !== 'idle' && phase !== 'completed' && phase !== 'error'
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -492,6 +105,9 @@ export const useWebRecorder = ({
       streamRef.current = null
     }
     mediaRecorderRef.current = null
+    uploaderRef.current = null
+    videoIdRef.current = null
+    totalBytesRef.current = 0
   }, [])
 
   const resetState = useCallback(() => {
@@ -501,27 +117,255 @@ export const useWebRecorder = ({
     setHasAudioTrack(false)
     setChunkUploads([])
     setLastError(null)
-    uploadStateRef.current = {
-      videoId: null,
-      uploadId: null,
-      userId: null,
-      partNumber: 1,
-      parts: [],
-      uploading: false,
-      uploadedBytes: 0,
-      totalBytes: 0,
-      shareUrl: null,
+    setConversionProgress(0)
+    chunksRef.current = []
+  }, [cleanup])
+
+  const handleError = useCallback((error: Error, recoverable = false) => {
+    console.error('[WebRecorder] Error:', error.message)
+    setLastError({ 
+      message: error.message, 
+      recoverable 
+    })
+    setPhase('error')
+    onError?.(error)
+    cleanup()
+  }, [cleanup, onError])
+
+  const startRecording = useCallback(async () => {
+    try {
+      setPhase('creating')
+      setLastError(null)
+      chunksRef.current = []
+      totalBytesRef.current = 0
+      
+      // Initialize upload
+      const uploadData = await initializeUpload()
+      if (!uploadData) {
+        throw new Error('Connexion échouée. Vérifiez que vous êtes connecté.')
+      }
+
+      const { videoId, uploadId, userId, shareUrl } = uploadData
+      videoIdRef.current = videoId
+
+      // Get display media
+      let stream: MediaStream
+
+      if (recordingMode === 'camera') {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: selectedCameraId ? { deviceId: { exact: selectedCameraId } } : true,
+          audio: selectedMicId ? { deviceId: { exact: selectedMicId } } : true,
+        })
+      } else {
+        const displayMediaOptions: DisplayMediaStreamOptions = {
+          video: {
+            displaySurface: recordingMode === 'window' ? 'window' : 
+                           recordingMode === 'tab' ? 'browser' : 'monitor',
+          },
+          audio: true,
+        }
+
+        stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions)
+
+        // Add microphone if selected
+        if (selectedMicId) {
+          try {
+            const micStream = await navigator.mediaDevices.getUserMedia({
+              audio: { deviceId: { exact: selectedMicId } },
+            })
+            micStream.getAudioTracks().forEach(track => stream.addTrack(track))
+          } catch (micError) {
+            console.warn('[WebRecorder] Could not add microphone:', micError)
+          }
+        }
+      }
+
+      streamRef.current = stream
+      
+      const audioTracks = stream.getAudioTracks()
+      setHasAudioTrack(audioTracks.length > 0)
+
+      // Create uploader instance
+      const uploader = new InstantUploader({
+        videoId,
+        uploadId,
+        userId,
+        mimeType: 'video/webm',
+        shareUrl,
+        onChunkStateChange: setChunkUploads,
+        onProgress: (uploaded, total) => {
+          console.log(`[WebRecorder] Upload progress: ${uploaded}/${total}`)
+        },
+        onError: (err) => {
+          console.error('[WebRecorder] Upload error:', err)
+        },
+      })
+      uploaderRef.current = uploader
+
+      // Setup MediaRecorder
+      const mimeType = getSupportedMimeType()
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType,
+        videoBitsPerSecond: 5000000, // 5 Mbps
+      })
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunksRef.current.push(e.data)
+          totalBytesRef.current += e.data.size
+          uploader.handleChunk(e.data, totalBytesRef.current)
+        }
+      }
+
+      mediaRecorder.onstop = async () => {
+        setPhase('stopping')
+        onRecordingStop?.()
+
+        try {
+          // Create final blob
+          const mimeType = mediaRecorder.mimeType || 'video/webm'
+          const recordedBlob = new Blob(chunksRef.current, { type: mimeType })
+          
+          if (recordedBlob.size === 0) {
+            throw new Error('Enregistrement vide')
+          }
+
+          // Generate thumbnail
+          setPhase('uploading')
+          let thumbnailDataUrl: string | undefined
+          
+          try {
+            const thumbResult = await captureThumbnail(recordedBlob)
+            if (thumbResult) {
+              thumbnailDataUrl = thumbResult.dataUrl
+            }
+          } catch (thumbError) {
+            console.warn('[WebRecorder] Thumbnail generation failed:', thumbError)
+          }
+
+          // Finalize upload
+          const finalShareUrl = await uploader.finalize(recordedBlob, thumbnailDataUrl)
+          cleanup()
+
+          if (finalShareUrl && videoIdRef.current) {
+            setPhase('completed')
+            onComplete?.(videoIdRef.current, finalShareUrl)
+          } else {
+            throw new Error('Upload échoué')
+          }
+        } catch (error) {
+          handleError(error as Error)
+        }
+      }
+
+      mediaRecorder.onerror = (event) => {
+        console.error('[WebRecorder] MediaRecorder error:', event)
+        handleError(new Error('Erreur d\'enregistrement'))
+      }
+
+      mediaRecorderRef.current = mediaRecorder
+      mediaRecorder.start(1000) // Chunk every second
+
+      // Start timer
+      startTimeRef.current = Date.now()
+      pausedDurationRef.current = 0
+      pauseStartRef.current = null
+      
+      timerRef.current = setInterval(() => {
+        const elapsed = Date.now() - startTimeRef.current - pausedDurationRef.current
+        setDurationMs(elapsed)
+      }, 100)
+
+      // Handle stream ending (user stops sharing)
+      stream.getTracks().forEach(track => {
+        track.onended = () => {
+          if (mediaRecorderRef.current?.state === 'recording') {
+            stopRecording()
+          }
+        }
+      })
+
+      setPhase('recording')
+      onRecordingStart?.()
+
+    } catch (error) {
+      const err = error as Error
+      
+      // Handle specific errors
+      if (err.name === 'NotAllowedError') {
+        handleError(new Error('Permission refusée. Autorisez le partage d\'écran.'), true)
+      } else if (err.name === 'NotFoundError') {
+        handleError(new Error('Aucune source vidéo trouvée.'), true)
+      } else {
+        handleError(err, true)
+      }
     }
-  }, [cleanup])
+  }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, cleanup, handleError])
 
-  useEffect(() => {
-    return () => cleanup()
-  }, [cleanup])
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current) {
+      const state = mediaRecorderRef.current.state
+      if (state === 'recording' || state === 'paused') {
+        try {
+          mediaRecorderRef.current.stop()
+        } catch (err) {
+          console.error('[WebRecorder] Error stopping:', err)
+        }
+      }
+    }
+  }, [])
 
-  const isRecording = phase === 'recording' || phase === 'paused'
-  const isBusy = phase === 'creating' || phase === 'recording' || phase === 'paused' || phase === 'uploading'
+  const pauseRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'recording') {
+      mediaRecorderRef.current.pause()
+      pauseStartRef.current = Date.now()
+      setPhase('paused')
+    }
+  }, [])
+
+  const resumeRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === 'paused') {
+      if (pauseStartRef.current) {
+        pausedDurationRef.current += Date.now() - pauseStartRef.current
+        pauseStartRef.current = null
+      }
+      mediaRecorderRef.current.resume()
+      setPhase('recording')
+    }
+  }, [])
+
+  const restartRecording = useCallback(async () => {
+    // Cancel current upload
+    if (uploaderRef.current) {
+      await uploaderRef.current.cancel()
+    }
+    
+    resetState()
+    await startRecording()
+  }, [resetState, startRecording])
+
+  const cancelRecording = useCallback(async () => {
+    // Stop MediaRecorder without triggering onstop handler
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.ondataavailable = null
+      mediaRecorderRef.current.onstop = null
+      mediaRecorderRef.current.onerror = null
+      
+      if (mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop()
+      }
+    }
+
+    // Cancel upload
+    if (uploaderRef.current) {
+      await uploaderRef.current.cancel()
+    }
+
+    resetState()
+  }, [resetState])
 
   return {
+    // State
     phase,
     durationMs,
     hasAudioTrack,
@@ -529,13 +373,15 @@ export const useWebRecorder = ({
     isRecording,
     isBusy,
     lastError,
-    videoId: uploadStateRef.current.videoId,
-    shareUrl: uploadStateRef.current.shareUrl,
+    conversionProgress,
+    
+    // Actions
     startRecording,
     stopRecording,
     pauseRecording,
     resumeRecording,
     restartRecording,
+    cancelRecording,
     resetState,
   }
 }

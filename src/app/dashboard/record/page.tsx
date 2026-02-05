@@ -85,11 +85,13 @@ export default function RecordPage() {
     isRecording,
     isBusy,
     lastError,
+    conversionProgress,
     startRecording,
     stopRecording,
     pauseRecording,
     resumeRecording,
     restartRecording,
+    cancelRecording,
     resetState,
   } = useWebRecorder({
     recordingMode,
@@ -160,7 +162,7 @@ export default function RecordPage() {
     { q: "Puis-je enregistrer l'audio système ?", a: "L'audio système est limité dans les navigateurs. Pour de meilleurs résultats, utilisez Drime Desktop." },
   ]
 
-  const showRecordingBar = isRecording || phase === 'uploading' || phase === 'creating' || phase === 'error'
+  const showRecordingBar = isRecording || phase === 'stopping' || phase === 'converting' || phase === 'uploading' || phase === 'creating' || phase === 'error'
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-8">
@@ -466,10 +468,12 @@ export default function RecordPage() {
             hasAudioTrack={hasAudioTrack}
             chunkUploads={chunkUploads}
             errorMessage={lastError?.message}
+            conversionProgress={conversionProgress}
             onStop={stopRecording}
             onPause={pauseRecording}
             onResume={resumeRecording}
             onRestart={restartRecording}
+            onCancel={cancelRecording}
           />
         )}
       </AnimatePresence>

@@ -19,11 +19,12 @@ interface InProgressRecordingBarProps {
   hasAudioTrack: boolean
   chunkUploads: ChunkUploadState[]
   errorMessage?: string | null
+  conversionProgress?: number
   onStop: () => void
   onPause?: () => void
   onResume?: () => void
   onRestart?: () => void
-  onDelete?: () => void
+  onCancel?: () => void
 }
 
 export const InProgressRecordingBar = ({
@@ -32,11 +33,12 @@ export const InProgressRecordingBar = ({
   hasAudioTrack,
   chunkUploads,
   errorMessage,
+  conversionProgress = 0,
   onStop,
   onPause,
   onResume,
   onRestart,
-  onDelete,
+  onCancel,
 }: InProgressRecordingBarProps) => {
   const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 24 })
@@ -106,10 +108,13 @@ export const InProgressRecordingBar = ({
   const isPaused = phase === 'paused'
   const isRecording = phase === 'recording'
   const isError = phase === 'error'
-  const isUploading = phase === 'uploading' || phase === 'creating'
+  const isStopping = phase === 'stopping'
+  const isConverting = phase === 'converting'
+  const isUploading = phase === 'uploading'
+  const isCreating = phase === 'creating'
   
-  // Show saving state when stopping
-  const showSaving = isSaving || isUploading
+  // Show processing state
+  const showProcessing = isSaving || isStopping || isConverting || isUploading || isCreating
 
   const handleStopClick = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -144,11 +149,10 @@ export const InProgressRecordingBar = ({
     onRestart?.()
   }
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
+  const handleCancelClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('[RecordingBar] Delete clicked')
-    onDelete?.()
+    onCancel?.()
   }
 
   // Calculate upload progress
@@ -164,12 +168,16 @@ export const InProgressRecordingBar = ({
       onMouseDown={handleMouseDown}
     >
       <div className="flex items-center gap-1 px-2 py-1.5 bg-white rounded-full border border-gray-200 shadow-lg">
-        {showSaving ? (
-          // Saving/Uploading state
+        {showProcessing ? (
+          // Processing states
           <div className="flex items-center gap-2 px-3 py-1">
             <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: DRIME_GREEN }} />
             <span className="text-sm font-semibold text-gray-600">
-              {isUploading ? 'Upload...' : 'Enregistrement...'}
+              {isCreating && 'Préparation...'}
+              {isStopping && 'Arrêt...'}
+              {isConverting && `Conversion ${Math.round(conversionProgress)}%`}
+              {isUploading && 'Finalisation...'}
+              {isSaving && 'Enregistrement...'}
             </span>
             {hasChunks && (
               <span className="text-xs text-gray-400">{completedChunks}/{totalChunks}</span>
@@ -242,9 +250,9 @@ export const InProgressRecordingBar = ({
               </IconButton>
             )}
 
-            {/* Delete button */}
-            {onDelete && (
-              <IconButton onClick={handleDeleteClick} tooltip="Annuler" variant="danger">
+            {/* Cancel button */}
+            {onCancel && (
+              <IconButton onClick={handleCancelClick} tooltip="Annuler" variant="danger">
                 <DeleteIcon className="w-4 h-4" />
               </IconButton>
             )}
