@@ -46,6 +46,15 @@ export async function GET(request: NextRequest) {
     const totalComments = videos.reduce((sum, v) => sum + v.comments.length, 0)
     const totalVideos = videos.length
 
+    // Unique viewers by IP
+    const uniqueIPs = new Set<string>()
+    videos.forEach(v => {
+      v.views.forEach(view => {
+        if (view.ipAddress) uniqueIPs.add(view.ipAddress)
+      })
+    })
+    const uniqueViewers = uniqueIPs.size
+
     const allViews = videos.flatMap(v => v.views.map(view => ({
       ...view,
       videoId: v.id,
@@ -147,6 +156,7 @@ export async function GET(request: NextRequest) {
         totalViews,
         totalComments,
         totalVideos,
+        uniqueViewers,
         chart,
         topVideos,
         countries,
@@ -171,6 +181,18 @@ function getCountryName(code: string): string {
     CA: 'Canada',
     BE: 'Belgique',
     CH: 'Suisse',
+    NL: 'Pays-Bas',
+    PT: 'Portugal',
+    BR: 'Brésil',
+    JP: 'Japon',
+    CN: 'Chine',
+    IN: 'Inde',
+    AU: 'Australie',
+    MA: 'Maroc',
+    DZ: 'Algérie',
+    TN: 'Tunisie',
+    SN: 'Sénégal',
+    CI: 'Côte d\'Ivoire',
     Unknown: 'Inconnu',
   }
   return countries[code] || code

@@ -104,16 +104,16 @@ export default async function VideoPage({ params }: Props) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <a href="https://clips.drime.cloud" className="flex items-center gap-2">
-            <img src="/drime-logo.png" alt="Drime" className="h-7" />
-            <span className="font-semibold text-gray-900">Clips</span>
+        <div className="max-w-[1600px] mx-auto px-4 lg:px-6 h-14 flex items-center justify-between">
+          <a href="https://clips.drime.cloud" className="flex items-center gap-2.5">
+            <img src="/drime-logo.png" alt="Drime" className="h-8 w-auto" />
+            <span className="text-base font-semibold text-gray-900 leading-none">Clips</span>
           </a>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <a
               href="https://drime.cloud/download"
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
             >
               Télécharger l&apos;app
             </a>
@@ -156,11 +156,11 @@ export default async function VideoPage({ params }: Props) {
       </main>
 
       {/* Minimal footer */}
-      <footer className="py-4 border-t border-gray-200">
+      <footer className="py-3 border-t border-gray-200">
         <div className="max-w-[1600px] mx-auto px-4 lg:px-6 text-center">
           <p className="text-gray-400 text-xs">
             Partagé avec{' '}
-            <a href="https://drime.cloud" className="text-[#08CF65] hover:underline">
+            <a href="https://drime.cloud" className="text-[#08CF65] hover:underline font-medium">
               Drime Clips
             </a>
           </p>

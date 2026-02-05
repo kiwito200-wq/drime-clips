@@ -20,6 +20,26 @@ interface CommentsPanelProps {
   onSeek: (time: number) => void;
 }
 
+// Common emojis organized by category
+const EMOJI_CATEGORIES = [
+  {
+    name: 'Populaires',
+    emojis: ['😀', '😂', '🤣', '😍', '🥰', '😎', '🤩', '🥳', '👍', '👏', '🔥', '💯', '❤️', '💪', '🎉', '✨'],
+  },
+  {
+    name: 'Visages',
+    emojis: ['😊', '😄', '😁', '😆', '😅', '🤗', '🤔', '🤭', '😏', '😮', '😱', '😴', '🤯', '🥱', '😤', '😢'],
+  },
+  {
+    name: 'Gestes',
+    emojis: ['👋', '🤝', '✌️', '🤟', '🤙', '👌', '🙏', '💅', '👀', '🫡', '🫶', '🤌', '👎', '✊', '🤞', '🫰'],
+  },
+  {
+    name: 'Objets',
+    emojis: ['🎬', '📹', '🎮', '🎧', '💻', '📱', '🎯', '🏆', '⭐', '🌟', '💡', '🚀', '🎵', '🎶', '📸', '🖥️'],
+  },
+];
+
 export default function CommentsPanel({ videoId, currentTime, duration, onSeek }: CommentsPanelProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'summary' | 'transcript'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
@@ -28,8 +48,13 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showReplyEmojiPicker, setShowReplyEmojiPicker] = useState(false);
+  const [emojiCategory, setEmojiCategory] = useState(0);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const replyEmojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Fetch comments
   useEffect(() => {
@@ -58,6 +83,31 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   }, [replyingTo]);
 
+  // Close emoji picker on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+      if (replyEmojiPickerRef.current && !replyEmojiPickerRef.current.contains(e.target as Node)) {
+        setShowReplyEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Insert emoji into comment
+  const insertEmoji = (emoji: string, isReply: boolean) => {
+    if (isReply) {
+      setReplyContent(prev => prev + emoji);
+      replyInputRef.current?.focus();
+    } else {
+      setNewComment(prev => prev + emoji);
+      mainInputRef.current?.focus();
+    }
+  };
+
   // Submit main comment
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -78,6 +128,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
         const newCommentData = { ...data.comment, replies: [] };
         setComments(prev => [newCommentData, ...prev]);
         setNewComment('');
+        setShowEmojiPicker(false);
       }
     } catch (error) {
       console.error('Failed to post comment:', error);
@@ -110,6 +161,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
         ));
         setReplyContent('');
         setReplyingTo(null);
+        setShowReplyEmojiPicker(false);
       }
     } catch (error) {
       console.error('Failed to post reply:', error);
@@ -170,6 +222,45 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
   // Count all comments including replies
   const totalComments = comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
 
+  // Emoji Picker Component
+  const EmojiPicker = ({ isReply, pickerRef }: { isReply: boolean; pickerRef: React.RefObject<HTMLDivElement> }) => (
+    <div
+      ref={pickerRef}
+      className="absolute bottom-full left-0 mb-2 bg-white rounded-xl border border-gray-200 shadow-lg z-50 w-[280px]"
+    >
+      {/* Category tabs */}
+      <div className="flex border-b border-gray-100 px-2 pt-2">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button
+            key={cat.name}
+            onClick={() => setEmojiCategory(i)}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+              emojiCategory === i
+                ? 'text-gray-900 bg-gray-100'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {cat.emojis[0]}
+          </button>
+        ))}
+      </div>
+      {/* Emoji grid */}
+      <div className="p-2 max-h-[160px] overflow-y-auto">
+        <div className="grid grid-cols-8 gap-0.5">
+          {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => insertEmoji(emoji, isReply)}
+              className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   // Render single comment
   const renderComment = (comment: Comment, isReply = false, parentId?: string) => (
     <div 
@@ -207,6 +298,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
               onClick={() => {
                 setReplyingTo(replyingTo === comment.id ? null : comment.id);
                 setReplyContent('');
+                setShowReplyEmojiPicker(false);
               }}
               className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
             >
@@ -310,23 +402,41 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                               if (e.key === 'Escape') {
                                 setReplyingTo(null);
                                 setReplyContent('');
+                                setShowReplyEmojiPicker(false);
                               }
                             }}
                             className="w-full px-3 py-2 text-sm resize-none focus:outline-none placeholder-gray-400 bg-transparent"
                             rows={2}
                           />
                           <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-white">
-                            <span className="text-xs text-gray-400 flex items-center gap-1">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              {formatTimestamp(currentTime)}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400 flex items-center gap-1">
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                {formatTimestamp(currentTime)}
+                              </span>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setShowReplyEmojiPicker(!showReplyEmojiPicker)}
+                                  className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+                                  title="Ajouter un emoji"
+                                >
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </button>
+                                {showReplyEmojiPicker && (
+                                  <EmojiPicker isReply={true} pickerRef={replyEmojiPickerRef} />
+                                )}
+                              </div>
+                            </div>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => {
                                   setReplyingTo(null);
                                   setReplyContent('');
+                                  setShowReplyEmojiPicker(false);
                                 }}
                                 className="px-3 py-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
                               >
@@ -375,11 +485,27 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                 rows={2}
               />
               <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-100">
-                <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{formatTimestamp(currentTime)}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{formatTimestamp(currentTime)}</span>
+                  </div>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="p-1 hover:bg-gray-200 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+                      title="Ajouter un emoji"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </button>
+                    {showEmojiPicker && (
+                      <EmojiPicker isReply={false} pickerRef={emojiPickerRef} />
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={handleSubmitComment}
