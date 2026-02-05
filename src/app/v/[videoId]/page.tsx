@@ -4,6 +4,7 @@ import { getPublicUrl, getVideoKey, getThumbnailKey } from '@/lib/r2';
 import VideoPlayer from './VideoPlayer';
 import CopyLinkButton from './CopyLinkButton';
 import { notFound } from 'next/navigation';
+import UploadingStatus from './UploadingStatus';
 
 interface Props {
   params: { videoId: string };
@@ -127,11 +128,7 @@ export default async function VideoPage({ params }: Props) {
         {/* Video player */}
         <div className="bg-black rounded-xl overflow-hidden shadow-lg">
           {isUploading ? (
-            <div className="aspect-video flex flex-col items-center justify-center text-white">
-              <div className="w-12 h-12 border-3 border-white border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-lg font-medium">Upload en cours...</p>
-              <p className="text-gray-400 text-sm mt-1">La vidéo sera bientôt disponible</p>
-            </div>
+            <UploadingStatus videoId={video.id} />
           ) : (
             <VideoPlayer
               src={videoUrl}
