@@ -12,7 +12,7 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     const user = await getCurrentUser();
     
     // Find the comment
-    const comment = await prisma.comment.findUnique({
+    const comment = await prisma.videoComment.findUnique({
       where: { id: params.commentId },
       include: { video: true },
     });
@@ -30,7 +30,7 @@ export async function DELETE(request: NextRequest, { params }: Props) {
     }
 
     // Delete the comment (and its replies due to cascade)
-    await prisma.comment.delete({
+    await prisma.videoComment.delete({
       where: { id: params.commentId },
     });
 
