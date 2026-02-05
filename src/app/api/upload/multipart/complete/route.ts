@@ -2,13 +2,13 @@
 // Finish a multipart upload by combining all parts
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserAny } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { completeMultipartUpload, getVideoKey, type CompletedPart } from '@/lib/r2';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAny(request);
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }

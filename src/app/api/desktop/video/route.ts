@@ -3,14 +3,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserAny } from '@/lib/auth';
 import { nanoid } from 'nanoid';
 import { deleteFiles, listFiles, getVideoKey } from '@/lib/r2';
 
 // GET /api/desktop/video/create - Create a new video
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAny(request);
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 // DELETE /api/desktop/video/delete - Delete a video
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAny(request);
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest) {
 // POST /api/desktop/video/progress - Update upload progress
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAny(request);
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }

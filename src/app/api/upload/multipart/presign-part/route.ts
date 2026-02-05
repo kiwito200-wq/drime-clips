@@ -2,13 +2,13 @@
 // Get a presigned URL for uploading a single part
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUserAny } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getPresignedPartUrl, getVideoKey } from '@/lib/r2';
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserAny(request);
     if (!user) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }

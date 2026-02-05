@@ -168,6 +168,43 @@ export async function getCurrentUser() {
   }
 }
 
+// Get user from Authorization header (for desktop app)
+export async function getCurrentUserFromHeader(authHeader: string | null) {
+  if (!authHeader?.startsWith('Bearer ')) return null
+  
+  try {
+    const token = authHeader.substring(7)
+    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const userId = payload.userId as string
+    
+    if (!userId) return null
+    
+    // For desktop tokens, we check directly by userId (no session table needed)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    })
+    
+    return user
+  } catch {
+    return null
+  }
+}
+
+// Get user from either cookie or header
+export async function getCurrentUserAny(request?: { headers: { get: (name: string) => string | null } }) {
+  // First try cookie-based auth
+  const cookieUser = await getCurrentUser()
+  if (cookieUser) return cookieUser
+  
+  // Then try header-based auth (for desktop app)
+  if (request) {
+    const authHeader = request.headers.get('authorization')
+    return getCurrentUserFromHeader(authHeader)
+  }
+  
+  return null
+}
+
 export async function setSessionCookie(token: string) {
   const cookieStore = await cookies()
   cookieStore.set('session', token, {
