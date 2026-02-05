@@ -1,14 +1,20 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useImperativeHandle, forwardRef } from 'react'
 
 interface VideoPlayerProps {
   src: string
   poster?: string
   title: string
+  onTimeUpdate?: (time: number) => void
 }
 
-export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
+export interface VideoPlayerRef {
+  seek: (time: number) => void
+  getCurrentTime: () => number
+}
+
+const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ src, poster, title, onTimeUpdate }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -21,6 +27,16 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const controlsTimeout = useRef<NodeJS.Timeout>()
+
+  // Expose seek function to parent
+  useImperativeHandle(ref, () => ({
+    seek: (time: number) => {
+      if (videoRef.current) {
+        videoRef.current.currentTime = time
+      }
+    },
+    getCurrentTime: () => currentTime,
+  }))
 
   // Play/pause
   const togglePlay = () => {
@@ -39,6 +55,7 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
     const total = videoRef.current.duration
     setCurrentTime(current)
     setProgress((current / total) * 100)
+    onTimeUpdate?.(current)
   }
 
   // Seek
@@ -287,4 +304,6 @@ export default function VideoPlayer({ src, poster, title }: VideoPlayerProps) {
       </div>
     </div>
   )
-}
+})
+
+export default VideoPlayer

@@ -49,6 +49,7 @@ model User {
   notifications Notification[]
   templates     Template[]
   videos        Video[]
+  comments      VideoComment[]
 
   @@index([email])
   @@index([drimeUserId])
@@ -331,9 +332,11 @@ model Video {
   updatedAt DateTime @updatedAt
 
   // Relations
-  owner  User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  upload VideoUpload?
-  views  VideoView[]
+  owner      User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  upload     VideoUpload?
+  views      VideoView[]
+  comments   VideoComment[]
+  thumbnails VideoThumbnail[]
 
   @@index([ownerId])
   @@index([public])
@@ -382,4 +385,63 @@ model VideoView {
 
   @@index([videoId])
   @@index([createdAt])
+}
+
+// ============================================
+// VIDEO COMMENTS & REACTIONS
+// ============================================
+
+model VideoComment {
+  id      String @id @default(cuid())
+  videoId String
+
+  // Comment type: text or emoji reaction
+  type    String // "text" or "emoji"
+  content String @db.Text
+
+  // Timestamp in video (null for general comments)
+  timestamp Float?
+
+  // Author info (can be anonymous)
+  authorId    String? // User ID if logged in
+  authorName  String? // Display name for anonymous users
+  authorEmail String? // Email for notifications (optional)
+
+  // Reply to another comment
+  parentCommentId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  video         Video          @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  author        User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  parentComment VideoComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       VideoComment[] @relation("CommentReplies")
+
+  @@index([videoId])
+  @@index([videoId, type])
+  @@index([authorId])
+  @@index([parentCommentId])
+  @@index([createdAt])
+}
+
+// Thumbnail cache for hover previews
+model VideoThumbnail {
+  id      String @id @default(cuid())
+  videoId String
+
+  // Timestamp in video where this thumbnail is from
+  timestamp Float
+
+  // Storage key in R2
+  key String
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, timestamp])
+  @@index([videoId])
 }

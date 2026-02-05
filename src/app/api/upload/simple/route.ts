@@ -110,6 +110,9 @@ export async function POST(request: NextRequest) {
       console.log(`[SimpleUpload] Upload ID: ${uploadId}`);
       console.log(`[SimpleUpload] Parts:`, JSON.stringify(parts));
       
+      // Get metadata from request body
+      const { duration, width, height, fps } = body;
+      
       // Get video to find owner
       const video = await prisma.video.findUnique({
         where: { id: videoId },
@@ -141,13 +144,21 @@ export async function POST(request: NextRequest) {
       });
       console.log(`[SimpleUpload] Deleted ${deleteResult.count} VideoUpload records`);
 
-      // Update video timestamp
+      // Update video with metadata
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+      if (duration !== undefined) updateData.duration = parseFloat(duration);
+      if (width !== undefined) updateData.width = parseInt(width, 10);
+      if (height !== undefined) updateData.height = parseInt(height, 10);
+      if (fps !== undefined) updateData.fps = parseInt(fps, 10);
+
       await prisma.video.update({
         where: { id: videoId },
-        data: {
-          updatedAt: new Date(),
-        },
+        data: updateData,
       });
+      
+      console.log(`[SimpleUpload] Updated video metadata:`, updateData);
 
       const shareUrl = `https://clips.drime.cloud/v/${videoId}`;
 

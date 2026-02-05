@@ -1,10 +1,9 @@
 import { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
 import { getPublicUrl, getVideoKey, getThumbnailKey } from '@/lib/r2';
-import VideoPlayer from './VideoPlayer';
-import CopyLinkButton from './CopyLinkButton';
 import { notFound } from 'next/navigation';
 import UploadingStatus from './UploadingStatus';
+import VideoPageClient from './VideoPageClient';
 
 interface Props {
   params: { videoId: string };
@@ -124,89 +123,27 @@ export default async function VideoPage({ params }: Props) {
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* Video player */}
-        <div className="bg-black rounded-xl overflow-hidden shadow-lg">
-          {isUploading ? (
-            <UploadingStatus videoId={video.id} />
-          ) : (
-            <VideoPlayer
-              src={videoUrl}
-              poster={thumbnailUrl}
-              title={video.name}
-            />
-          )}
-        </div>
-
-        {/* Video info */}
-        <div className="mt-6 flex items-start justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold text-gray-900">{video.name}</h1>
-            <div className="flex items-center gap-3 mt-2 text-gray-500 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#E0F5EA] flex items-center justify-center text-xs font-semibold text-[#08CF65]">
-                  {(video.owner?.name || video.owner?.email || 'U').slice(0, 2).toUpperCase()}
-                </div>
-                <span>{video.owner?.name || video.owner?.email?.split('@')[0]}</span>
-              </div>
-              <span>•</span>
-              <span>{formatDate(video.createdAt)}</span>
-              {video.duration && (
-                <>
-                  <span>•</span>
-                  <span>{formatDuration(video.duration)}</span>
-                </>
-              )}
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {isUploading ? (
+          <div className="max-w-5xl mx-auto">
+            <div className="bg-black rounded-xl overflow-hidden shadow-lg">
+              <UploadingStatus videoId={video.id} />
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            {/* Copy link button */}
-            <CopyLinkButton videoId={video.id} />
-            
-            {/* Download button */}
-            {!isUploading && (
-              <a
-                href={`/api/stream/${video.id}`}
-                download={`${video.name}.mp4`}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Télécharger
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Video details */}
-        {video.width && video.height && (
-          <div className="mt-6 p-4 bg-white rounded-xl border border-gray-200">
-            <h2 className="font-medium text-gray-900 mb-2">Détails</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-gray-500">Résolution</p>
-                <p className="text-gray-900 font-medium">{video.width}×{video.height}</p>
-              </div>
-              {video.fps && (
-                <div>
-                  <p className="text-gray-500">FPS</p>
-                  <p className="text-gray-900 font-medium">{video.fps}</p>
-                </div>
-              )}
-              {video.duration && (
-                <div>
-                  <p className="text-gray-500">Durée</p>
-                  <p className="text-gray-900 font-medium">{formatDuration(video.duration)}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-gray-500">Créé le</p>
-                <p className="text-gray-900 font-medium">{formatFullDate(video.createdAt)}</p>
-              </div>
-            </div>
-          </div>
+        ) : (
+          <VideoPageClient
+            video={{
+              id: video.id,
+              name: video.name,
+              duration: video.duration,
+              width: video.width,
+              height: video.height,
+              owner: video.owner,
+              createdAt: video.createdAt,
+            }}
+            videoUrl={videoUrl}
+            thumbnailUrl={thumbnailUrl}
+          />
         )}
       </main>
 
