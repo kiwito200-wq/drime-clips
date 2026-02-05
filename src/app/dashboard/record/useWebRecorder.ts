@@ -477,11 +477,14 @@ export const useWebRecorder = ({
       const finalShareUrl = await currentUploader.finalize(recordedBlob, thumbnailDataUrl)
       console.log('[WebRecorder] Done, shareUrl:', finalShareUrl)
       
+      // Save videoId before cleanup clears it
+      const completedVideoId = videoIdRef.current
+      
       cleanup()
 
-      if (finalShareUrl && videoIdRef.current) {
+      if (finalShareUrl && completedVideoId) {
         setPhase('completed')
-        onComplete?.(videoIdRef.current, finalShareUrl)
+        onComplete?.(completedVideoId, finalShareUrl)
       } else {
         throw new Error('Upload échoué')
       }
