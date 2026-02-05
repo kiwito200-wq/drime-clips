@@ -363,28 +363,7 @@ export const useWebRecorder = ({
             const scale = Math.min(1280 / sw, 720 / sh, 1)
             const cw = Math.round(sw * scale)
             const ch = Math.round(sh * scale)
-            
-            // Use ImageCapture API if available
-            if (typeof ImageCapture !== 'undefined') {
-              const imageCapture = new ImageCapture(liveVideoTrack)
-              imageCapture.grabFrame().then(bitmap => {
-                const canvas = document.createElement('canvas')
-                canvas.width = cw
-                canvas.height = ch
-                const ctx = canvas.getContext('2d')
-                if (ctx) {
-                  ctx.drawImage(bitmap, 0, 0, cw, ch)
-                  liveThumbnailRef.current = canvas.toDataURL('image/jpeg', 0.7)
-                  console.log('[WebRecorder] Live thumbnail captured via ImageCapture')
-                }
-                bitmap.close()
-              }).catch(err => {
-                console.warn('[WebRecorder] ImageCapture failed, trying video element:', err)
-                captureThumbnailFromStream(stream, cw, ch)
-              })
-            } else {
-              captureThumbnailFromStream(stream, cw, ch)
-            }
+            captureThumbnailFromStream(stream, cw, ch)
           }
         } catch (err) {
           console.warn('[WebRecorder] Live thumbnail capture failed:', err)
