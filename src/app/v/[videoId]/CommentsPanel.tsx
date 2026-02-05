@@ -335,7 +335,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                               <button
                                 onClick={() => handleSubmitReply(comment.id)}
                                 disabled={!replyContent.trim()}
-                                className="px-3 py-1 bg-gray-900 text-white text-xs font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
+                                className="px-3 py-1 bg-[#08CF65] text-white text-xs font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#07B859] transition-colors"
                               >
                                 Répondre
                               </button>
@@ -384,7 +384,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                 <button
                   onClick={handleSubmitComment}
                   disabled={!newComment.trim()}
-                  className="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-800 transition-colors"
+                  className="px-4 py-1.5 bg-[#08CF65] text-white text-sm font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#07B859] transition-colors"
                 >
                   Publier
                 </button>
