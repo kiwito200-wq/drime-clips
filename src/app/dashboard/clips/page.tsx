@@ -62,7 +62,10 @@ function VideoCard({ video, onDelete, onCopyLink }: {
   const [isHovering, setIsHovering] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -74,6 +77,38 @@ function VideoCard({ video, onDelete, onCopyLink }: {
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  // Handle hover preview with delay
+  const handleMouseEnter = () => {
+    setIsHovering(true)
+    // Start video preview after a small delay
+    if (!video.hasActiveUpload) {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setShowPreview(true)
+      }, 300)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    setIsHovering(false)
+    setShowPreview(false)
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current)
+      hoverTimeoutRef.current = null
+    }
+    // Pause and reset video
+    if (videoRef.current) {
+      videoRef.current.pause()
+      videoRef.current.currentTime = 0
+    }
+  }
+
+  // Play video when preview is shown
+  useEffect(() => {
+    if (showPreview && videoRef.current) {
+      videoRef.current.play().catch(() => {})
+    }
+  }, [showPreview])
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/v/${video.id}`
@@ -88,10 +123,10 @@ function VideoCard({ video, onDelete, onCopyLink }: {
   return (
     <div 
       className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#08CF65] transition-all duration-200"
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Thumbnail */}
+      {/* Thumbnail / Video Preview */}
       <Link href={`/v/${video.id}`} className="block relative aspect-video bg-gray-100">
         {video.hasActiveUpload ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60">
@@ -100,18 +135,36 @@ function VideoCard({ video, onDelete, onCopyLink }: {
               {video.uploadProgress !== null ? `${Math.round(video.uploadProgress)}%` : 'Upload...'}
             </span>
           </div>
-        ) : video.thumbnailUrl ? (
-          <img 
-            src={video.thumbnailUrl} 
-            alt={video.name}
-            className="w-full h-full object-cover"
-          />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
-            <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </div>
+          <>
+            {/* Thumbnail image */}
+            {video.thumbnailUrl ? (
+              <img 
+                src={video.thumbnailUrl} 
+                alt={video.name}
+                className={`w-full h-full object-cover transition-opacity duration-200 ${showPreview ? 'opacity-0' : 'opacity-100'}`}
+              />
+            ) : (
+              <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 transition-opacity duration-200 ${showPreview ? 'opacity-0' : 'opacity-100'}`}>
+                <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            
+            {/* Video preview on hover */}
+            {(showPreview || isHovering) && (
+              <video
+                ref={videoRef}
+                src={`/api/stream/${video.id}`}
+                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${showPreview ? 'opacity-100' : 'opacity-0'}`}
+                muted
+                loop
+                playsInline
+                preload="none"
+              />
+            )}
+          </>
         )}
         
         {/* Duration badge */}

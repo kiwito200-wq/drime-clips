@@ -9,7 +9,9 @@ import {
   initiateMultipartUpload, 
   getPresignedPartUrl, 
   completeMultipartUpload,
-  getVideoKey 
+  getVideoKey,
+  uploadFile,
+  getThumbnailKey
 } from '@/lib/r2';
 
 // POST /api/upload/simple - Handle all upload operations
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
       console.log(`[SimpleUpload] Parts:`, JSON.stringify(parts));
       
       // Get metadata from request body
-      const { duration, width, height, fps } = body;
+      const { duration, width, height, fps, thumbnail } = body;
       
       // Get video to find owner
       const video = await prisma.video.findUnique({
@@ -136,6 +138,22 @@ export async function POST(request: NextRequest) {
       } catch (r2Error) {
         console.error(`[SimpleUpload] R2 multipart complete FAILED:`, r2Error);
         throw r2Error;
+      }
+
+      // Upload thumbnail if provided (base64 data URL)
+      if (thumbnail && thumbnail.startsWith('data:image/')) {
+        try {
+          // Extract base64 data from data URL
+          const base64Data = thumbnail.split(',')[1];
+          const thumbnailBuffer = Buffer.from(base64Data, 'base64');
+          const thumbnailKey = getThumbnailKey(video.ownerId, videoId);
+          
+          await uploadFile(thumbnailKey, thumbnailBuffer, 'image/jpeg');
+          console.log(`[SimpleUpload] Thumbnail uploaded: ${thumbnailKey}`);
+        } catch (thumbError) {
+          console.error(`[SimpleUpload] Thumbnail upload failed:`, thumbError);
+          // Don't fail the whole upload if thumbnail fails
+        }
       }
 
       // Remove upload tracking (video is now ready)
