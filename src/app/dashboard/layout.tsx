@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Tooltip from '@/components/Tooltip'
 
 interface User {
   id: string
@@ -28,12 +29,10 @@ export default function DashboardLayout({
         const res = await fetch('/api/auth/me', { credentials: 'include' })
         const data = await res.json()
         
-        // Fix: check data.user instead of data.authenticated
         if (data.user) {
           setUser(data.user)
           setLoading(false)
         } else {
-          // Not authenticated - redirect to login
           window.location.href = DRIME_LOGIN_URL
         }
       } catch (error) {
@@ -78,21 +77,22 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen flex">
-      {/* Sidebar - Style like Drime Sign/Notes */}
+      {/* Sidebar */}
       <aside className="w-52 bg-[#F3F4F6] border-r border-gray-200 flex flex-col flex-shrink-0">
-        {/* Logo */}
+        {/* Logo with Drime branding */}
         <div className="h-16 flex items-center px-4">
-          <Link href="/dashboard/clips" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-[#08CF65] rounded-lg flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
+          <Tooltip content="Retour à Drime" position="right">
+            <a href="https://app.drime.cloud/drive" className="flex items-center gap-2.5">
+              <svg className="w-7 h-7" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="#08CF65"/>
+                <path d="M10 8h6l6 8-6 8h-6l6-8-6-8z" fill="white"/>
               </svg>
-            </div>
-            <span className="font-semibold text-lg text-gray-900">Clips</span>
-          </Link>
+              <span className="font-semibold text-lg text-gray-900">Clips</span>
+            </a>
+          </Tooltip>
         </div>
 
-        {/* Navigation - Style like Drime Sign (gray active, black text) */}
+        {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
@@ -135,7 +135,7 @@ export default function DashboardLayout({
         </div>
       </aside>
 
-      {/* Main content - White background */}
+      {/* Main content */}
       <main className="flex-1 overflow-auto bg-white">
         {children}
       </main>

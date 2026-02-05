@@ -14,6 +14,7 @@ interface Video {
   thumbnailUrl: string | null
   hasActiveUpload: boolean
   uploadProgress: number | null
+  viewCount?: number
 }
 
 function formatDuration(seconds: number | null): string {
@@ -40,10 +41,202 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-function VideoCard({ video, onDelete, onCopyLink }: { 
+// Sharing Modal Component
+function SharingModal({ 
+  video, 
+  isOpen, 
+  onClose, 
+  onUpdate 
+}: { 
+  video: Video
+  isOpen: boolean
+  onClose: () => void
+  onUpdate: (video: Video) => void
+}) {
+  const [activeTab, setActiveTab] = useState<'share' | 'embed'>('share')
+  const [isPublic, setIsPublic] = useState(video.public)
+  const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [embedCopied, setEmbedCopied] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsPublic(video.public)
+      setActiveTab('share')
+    }
+  }, [isOpen, video.public])
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/videos/${video.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ public: isPublic }),
+      })
+      if (res.ok) {
+        onUpdate({ ...video, public: isPublic })
+        onClose()
+      }
+    } catch (error) {
+      console.error('Error updating video:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(`${window.location.origin}/v/${video.id}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const copyEmbed = () => {
+    const embedCode = `<iframe src="${window.location.origin}/embed/${video.id}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9;"></iframe>`
+    navigator.clipboard.writeText(embedCode)
+    setEmbedCopied(true)
+    setTimeout(() => setEmbedCopied(false), 2000)
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-md bg-white rounded-xl shadow-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+              <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-900 truncate">Partager {video.name}</h2>
+              <p className="text-sm text-gray-500">Sélectionnez comment partager cette vidéo</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('share')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'share' 
+                ? 'text-gray-900 border-b-2 border-gray-900' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Partager
+          </button>
+          <button
+            onClick={() => setActiveTab('embed')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'embed' 
+                ? 'text-gray-900 border-b-2 border-gray-900' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Intégrer
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5">
+          {activeTab === 'share' ? (
+            <>
+              {/* Public toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center shadow-sm">
+                    <svg className="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Tout le monde avec le lien</p>
+                    <p className="text-xs text-gray-500">
+                      {isPublic ? 'N\'importe qui avec le lien peut voir' : 'Seules les personnes avec accès peuvent voir'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsPublic(!isPublic)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${isPublic ? 'bg-[#08CF65]' : 'bg-gray-300'}`}
+                >
+                  <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isPublic ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+
+              {/* Copy link */}
+              {isPublic && (
+                <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
+                  <input
+                    type="text"
+                    readOnly
+                    value={`${window.location.origin}/v/${video.id}`}
+                    className="flex-1 bg-transparent text-sm text-gray-600 outline-none truncate"
+                  />
+                  <button
+                    onClick={copyLink}
+                    className="px-3 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+                  >
+                    {copied ? 'Copié !' : 'Copier'}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <code className="text-xs text-gray-600 break-all">
+                  {`<iframe src="${window.location.origin}/embed/${video.id}" frameborder="0" allowfullscreen style="width:100%;aspect-ratio:16/9;"></iframe>`}
+                </code>
+              </div>
+              <button
+                onClick={copyEmbed}
+                className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                {embedCopied ? 'Copié !' : 'Copier le code d\'intégration'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        {activeTab === 'share' && (
+          <div className="px-5 pb-5 pt-2 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function VideoCard({ video, onDelete, onShare, onUpdate }: { 
   video: Video
   onDelete: (id: string) => void
-  onCopyLink: (id: string) => void
+  onShare: (video: Video) => void
+  onUpdate: (video: Video) => void
 }) {
   const [isHovering, setIsHovering] = useState(false)
   const [showMenu, setShowMenu] = useState(false)
@@ -91,24 +284,25 @@ function VideoCard({ video, onDelete, onCopyLink }: {
     }
   }, [showPreview])
 
-  const handleCopyLink = () => {
+  const handleCopyLink = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     const url = `${window.location.origin}/v/${video.id}`
     navigator.clipboard.writeText(url)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-    onCopyLink(video.id)
   }
 
   return (
     <div 
-      className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#08CF65] transition-all duration-200 hover:shadow-md"
+      className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-200"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <Link href={`/v/${video.id}`} className="block relative aspect-video bg-gray-100">
         {video.hasActiveUpload ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60">
-            <div className="w-10 h-10 border-3 border-white border-t-transparent rounded-full animate-spin mb-2" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-600">
+            <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-2" />
             <span className="text-white text-sm font-medium">
               {video.uploadProgress !== null ? `${Math.round(video.uploadProgress)}%` : 'Upload...'}
             </span>
@@ -122,14 +316,14 @@ function VideoCard({ video, onDelete, onCopyLink }: {
                 className={`w-full h-full object-cover transition-opacity duration-200 ${showPreview ? 'opacity-0' : 'opacity-100'}`}
               />
             ) : (
-              <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 transition-opacity duration-200 ${showPreview ? 'opacity-0' : 'opacity-100'}`}>
+              <div className={`absolute inset-0 flex items-center justify-center bg-gray-200 transition-opacity duration-200 ${showPreview ? 'opacity-0' : 'opacity-100'}`}>
                 <svg className="w-12 h-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                 </svg>
               </div>
             )}
             
-            {(showPreview || isHovering) && (
+            {(showPreview || isHovering) && !video.hasActiveUpload && (
               <video
                 ref={videoRef}
                 src={`/api/stream/${video.id}`}
@@ -143,16 +337,31 @@ function VideoCard({ video, onDelete, onCopyLink }: {
           </>
         )}
         
+        {/* Duration badge - Always visible */}
         {video.duration && !video.hasActiveUpload && (
-          <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
+          <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/80 text-white text-xs font-medium rounded">
             {formatDuration(video.duration)}
           </div>
         )}
 
-        <div className={`absolute inset-0 bg-black/40 flex items-center justify-center gap-3 transition-opacity duration-200 ${isHovering && !video.hasActiveUpload ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Hover actions */}
+        <div className={`absolute inset-0 bg-black/30 flex items-center justify-center gap-2 transition-opacity duration-200 ${isHovering && !video.hasActiveUpload ? 'opacity-100' : 'opacity-0'}`}>
+          {/* Share button */}
           <button
-            onClick={(e) => { e.preventDefault(); handleCopyLink() }}
-            className="p-2.5 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onShare(video) }}
+            className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+            title="Partager"
+          >
+            <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+            </svg>
+          </button>
+          
+          {/* Copy link button */}
+          <button
+            onClick={handleCopyLink}
+            className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+            title="Copier le lien"
           >
             {copied ? (
               <svg className="w-5 h-5 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -165,10 +374,11 @@ function VideoCard({ video, onDelete, onCopyLink }: {
             )}
           </button>
           
+          {/* Menu button */}
           <div className="relative" ref={menuRef}>
             <button
-              onClick={(e) => { e.preventDefault(); setShowMenu(!showMenu) }}
-              className="p-2.5 bg-white rounded-lg hover:bg-gray-100 transition-colors"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowMenu(!showMenu) }}
+              className="p-2 bg-white rounded-lg hover:bg-gray-100 transition-colors"
             >
               <svg className="w-5 h-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
@@ -188,7 +398,7 @@ function VideoCard({ video, onDelete, onCopyLink }: {
                   Voir
                 </Link>
                 <button
-                  onClick={(e) => { e.preventDefault(); handleCopyLink(); setShowMenu(false) }}
+                  onClick={(e) => { e.preventDefault(); onShare(video); setShowMenu(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -212,15 +422,52 @@ function VideoCard({ video, onDelete, onCopyLink }: {
         </div>
       </Link>
 
+      {/* Card info */}
       <div className="p-3">
-        <h3 className="font-medium text-gray-900 truncate">{video.name}</h3>
-        <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
-          <span>{formatDate(video.createdAt)}</span>
+        <h3 className="font-medium text-gray-900 truncate text-sm">{video.name}</h3>
+        
+        {/* Status + date row */}
+        <div className="flex items-center justify-between mt-1.5">
+          <div className="flex items-center gap-2">
+            {/* Shared status badge */}
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+              video.public 
+                ? 'bg-green-50 text-green-700' 
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {video.public ? (
+                <>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                  </svg>
+                  Partagé
+                </>
+              ) : (
+                <>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Privé
+                </>
+              )}
+            </span>
+          </div>
+          <span className="text-xs text-gray-500">{formatDate(video.createdAt)}</span>
+        </div>
+
+        {/* Stats row */}
+        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+          {video.viewCount !== undefined && (
+            <span className="flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              {video.viewCount}
+            </span>
+          )}
           {video.width && video.height && (
-            <>
-              <span>•</span>
-              <span>{video.width}×{video.height}</span>
-            </>
+            <span>{video.width}×{video.height}</span>
           )}
         </div>
       </div>
@@ -232,6 +479,7 @@ export default function ClipsDashboard() {
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
+  const [sharingVideo, setSharingVideo] = useState<Video | null>(null)
 
   const fetchVideos = useCallback(async () => {
     try {
@@ -276,8 +524,8 @@ export default function ClipsDashboard() {
     }
   }
 
-  const handleCopyLink = (videoId: string) => {
-    console.log(`Copied link for video ${videoId}`)
+  const handleUpdateVideo = (updatedVideo: Video) => {
+    setVideos(prev => prev.map(v => v.id === updatedVideo.id ? updatedVideo : v))
   }
 
   const filteredVideos = videos.filter(v => 
@@ -293,7 +541,7 @@ export default function ClipsDashboard() {
     return (
       <div className="h-full flex items-center justify-center p-8">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-3 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
           <span className="text-gray-600">Chargement...</span>
         </div>
       </div>
@@ -301,9 +549,9 @@ export default function ClipsDashboard() {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-gray-50">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Top bar with search */}
-      <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-gray-200">
+      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Mes Clips</h1>
@@ -322,7 +570,7 @@ export default function ClipsDashboard() {
                 placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-[#08CF65] focus:ring-2 focus:ring-[#08CF65]/20 transition-all"
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:bg-white focus:border-gray-300 focus:ring-0 transition-all"
               />
             </div>
           </div>
@@ -338,7 +586,8 @@ export default function ClipsDashboard() {
                 key={video.id} 
                 video={video}
                 onDelete={handleDelete}
-                onCopyLink={handleCopyLink}
+                onShare={setSharingVideo}
+                onUpdate={handleUpdateVideo}
               />
             ))}
           </div>
@@ -370,6 +619,16 @@ export default function ClipsDashboard() {
           </div>
         )}
       </div>
+
+      {/* Sharing Modal */}
+      {sharingVideo && (
+        <SharingModal
+          video={sharingVideo}
+          isOpen={!!sharingVideo}
+          onClose={() => setSharingVideo(null)}
+          onUpdate={handleUpdateVideo}
+        />
+      )}
     </div>
   )
 }
