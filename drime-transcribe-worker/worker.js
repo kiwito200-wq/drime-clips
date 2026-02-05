@@ -89,14 +89,13 @@ export default {
 };
 
 // ── Build WebVTT from word-level timestamps ──
-// Groups words into ~8-second segments for a nice reading experience
+// Groups words into short ~3-second segments for precise seeking
 function buildVttFromWords(words) {
   let vtt = 'WEBVTT\n\n';
   let segmentStart = null;
   let segmentEnd = null;
   let segmentText = '';
   let cueIndex = 1;
-  const SEGMENT_DURATION = 8; // seconds
 
   for (const w of words) {
     if (segmentStart === null) {
@@ -105,11 +104,12 @@ function buildVttFromWords(words) {
     segmentEnd = w.end;
     segmentText += (segmentText ? ' ' : '') + w.word;
 
-    // Flush segment if duration exceeded or at sentence boundary
     const duration = segmentEnd - segmentStart;
-    const isSentenceEnd = /[.!?]$/.test(w.word);
+    const isSentenceEnd = /[.!?,;:]$/.test(w.word);
+    const wordCount = segmentText.trim().split(/\s+/).length;
 
-    if (duration >= SEGMENT_DURATION || (duration >= 3 && isSentenceEnd)) {
+    // Flush: at punctuation (min 1.5s), or after ~3s, or after 8+ words
+    if ((isSentenceEnd && duration >= 1.5) || duration >= 3.5 || wordCount >= 8) {
       vtt += `${cueIndex}\n`;
       vtt += `${fmtTime(segmentStart)} --> ${fmtTime(segmentEnd)}\n`;
       vtt += `${segmentText.trim()}\n\n`;
