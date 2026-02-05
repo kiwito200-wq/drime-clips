@@ -34,45 +34,41 @@ export async function POST(request: NextRequest) {
     if (drimeAccessToken) {
       console.log('[Desktop Auth] Trying drimeAccessToken:', drimeAccessToken.substring(0, 30) + '...');
       
-      // Try multiple Drime API endpoints
-      const endpoints = [
-        '/api/v1/user',
-        '/api/v1/me',
-        '/api/v1/user/space-usage', // This one is used for keep-alive in desktop app
-      ];
+      // Try the main user endpoint
+      const endpoint = '/api/v1/user';
+      console.log(`[Desktop Auth] Calling: ${DRIME_API_URL}${endpoint}`);
       
-      for (const endpoint of endpoints) {
-        console.log(`[Desktop Auth] Trying endpoint: ${DRIME_API_URL}${endpoint}`);
-        try {
-          const apiRes = await fetch(`${DRIME_API_URL}${endpoint}`, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${drimeAccessToken}`,
-              'Accept': 'application/json',
-            },
-          });
+      try {
+        const apiRes = await fetch(`${DRIME_API_URL}${endpoint}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${drimeAccessToken}`,
+            'Accept': 'application/json',
+          },
+        });
+        
+        console.log(`[Desktop Auth] Drime API status:`, apiRes.status);
+        const responseText = await apiRes.text();
+        console.log(`[Desktop Auth] Drime API raw response:`, responseText.substring(0, 500));
+        
+        if (apiRes.ok) {
+          const data = JSON.parse(responseText);
           
-          console.log(`[Desktop Auth] ${endpoint} status:`, apiRes.status);
-          
-          if (apiRes.ok) {
-            const data = await apiRes.json();
-            console.log(`[Desktop Auth] ${endpoint} response:`, JSON.stringify(data).substring(0, 200));
-            
-            // Extract user from various response formats
-            if (data.user) {
-              drimeUser = data.user;
-              break;
-            } else if (data.email) {
-              drimeUser = data;
-              break;
-            } else if (data.status === 'success' && data.data?.user) {
-              drimeUser = data.data.user;
-              break;
-            }
+          // Extract user from various response formats
+          if (data.user) {
+            drimeUser = data.user;
+            console.log('[Desktop Auth] Found user in data.user');
+          } else if (data.email) {
+            drimeUser = data;
+            console.log('[Desktop Auth] Found user in root');
+          } else if (data.status === 'success') {
+            // Might be nested differently
+            drimeUser = data.data?.user || data.data || data;
+            console.log('[Desktop Auth] Found user in success response');
           }
-        } catch (e) {
-          console.error(`[Desktop Auth] Error with ${endpoint}:`, e);
         }
+      } catch (e) {
+        console.error(`[Desktop Auth] Error calling Drime API:`, e);
       }
     }
 
