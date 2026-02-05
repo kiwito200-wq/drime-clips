@@ -25,6 +25,7 @@ interface VideoPageClientProps {
 export default function VideoPageClient({ video, videoUrl, thumbnailUrl }: VideoPageClientProps) {
   const playerRef = useRef<VideoPlayerRef>(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(video.duration || 0);
 
   const handleSeek = (time: number) => {
     playerRef.current?.seek(time);
@@ -32,6 +33,10 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl }: Video
 
   const handleTimeUpdate = (time: number) => {
     setCurrentTime(time);
+  };
+
+  const handleDurationChange = (duration: number) => {
+    setVideoDuration(duration);
   };
 
   // Format duration
@@ -62,6 +67,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl }: Video
             poster={thumbnailUrl}
             title={video.name}
             onTimeUpdate={handleTimeUpdate}
+            onDurationChange={handleDurationChange}
           />
         </div>
 
@@ -144,11 +150,12 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl }: Video
       </div>
 
       {/* Comments panel */}
-      <div className="hidden lg:block w-80 flex-shrink-0">
+      <div className="hidden lg:block w-[340px] flex-shrink-0">
         <div className="sticky top-4">
           <CommentsPanel
             videoId={video.id}
             currentTime={currentTime}
+            duration={videoDuration}
             onSeek={handleSeek}
           />
         </div>

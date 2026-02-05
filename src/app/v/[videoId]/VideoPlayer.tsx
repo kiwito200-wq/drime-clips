@@ -7,6 +7,7 @@ interface VideoPlayerProps {
   poster?: string
   title: string
   onTimeUpdate?: (time: number) => void
+  onDurationChange?: (duration: number) => void
 }
 
 export interface VideoPlayerRef {
@@ -14,7 +15,7 @@ export interface VideoPlayerRef {
   getCurrentTime: () => number
 }
 
-const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ src, poster, title, onTimeUpdate }, ref) {
+const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer({ src, poster, title, onTimeUpdate, onDurationChange }, ref) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -164,6 +165,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
   // Format time
   const formatTime = (seconds: number) => {
+    if (!seconds || !isFinite(seconds)) return '0:00'
     const mins = Math.floor(seconds / 60)
     const secs = Math.floor(seconds % 60)
     return `${mins}:${secs.toString().padStart(2, '0')}`
@@ -187,8 +189,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => {
           if (videoRef.current) {
-            setDuration(videoRef.current.duration)
+            const dur = videoRef.current.duration
+            setDuration(dur)
             setIsLoading(false)
+            onDurationChange?.(dur)
           }
         }}
         onWaiting={() => setIsLoading(true)}
