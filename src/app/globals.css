@@ -139,21 +139,59 @@ input[type="range"].volume-slider {
   appearance: none;
   background: transparent;
   cursor: pointer;
+  height: 16px;
 }
 
 input[type="range"].volume-slider::-webkit-slider-runnable-track {
-  @apply h-1 bg-white/30 rounded-full;
+  height: 4px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 9999px;
 }
 
 input[type="range"].volume-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
-  @apply w-3 h-3 bg-[#08CF65] rounded-full -mt-1;
+  width: 12px;
+  height: 12px;
+  background: #08CF65;
+  border-radius: 50%;
+  margin-top: -4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.group\/volume:hover input[type="range"].volume-slider::-webkit-slider-thumb {
+  opacity: 1;
 }
 
 input[type="range"].volume-slider::-moz-range-track {
-  @apply h-1 bg-white/30 rounded-full;
+  height: 4px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 9999px;
 }
 
 input[type="range"].volume-slider::-moz-range-thumb {
-  @apply w-3 h-3 bg-[#08CF65] rounded-full border-0;
+  width: 12px;
+  height: 12px;
+  background: #08CF65;
+  border-radius: 50%;
+  border: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.group\/volume:hover input[type="range"].volume-slider::-moz-range-thumb {
+  opacity: 1;
+}
+
+/* Animate-in utilities */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideInFromBottom {
+  from { transform: translateY(4px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-in {
+  animation: fadeIn 0.15s ease-out, slideInFromBottom 0.15s ease-out;
 }

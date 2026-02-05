@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 
 interface AnalyticsData {
   totalViews: number
@@ -33,18 +33,31 @@ const formatCount = (value: number) => {
 function LineChart({ 
   data, 
   selectedMetrics,
-  height = 240 
+  height = 260 
 }: { 
   data: { date: string; views: number; comments: number }[]
   selectedMetrics: Set<'views' | 'comments'>
   height?: number
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; date: string; views: number; comments: number } | null>(null)
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [containerWidth, setContainerWidth] = useState(0)
   
-  const padding = { top: 20, right: 20, bottom: 30, left: 45 }
-  const width = 800
+  const padding = { top: 20, right: 16, bottom: 32, left: 48 }
+
+  // Measure actual container width
+  useEffect(() => {
+    if (!containerRef.current) return
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width)
+      }
+    })
+    observer.observe(containerRef.current)
+    return () => observer.disconnect()
+  }, [])
+
+  const width = containerWidth || 800
   const chartW = width - padding.left - padding.right
   const chartH = height - padding.top - padding.bottom
 
@@ -67,8 +80,8 @@ function LineChart({
     return ticks
   }, [maxVal])
 
-  const getX = (i: number) => padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartW : chartW / 2)
-  const getY = (val: number) => padding.top + chartH - (val / maxVal) * chartH
+  const getX = useCallback((i: number) => padding.left + (data.length > 1 ? (i / (data.length - 1)) * chartW : chartW / 2), [data.length, chartW, padding.left])
+  const getY = useCallback((val: number) => padding.top + chartH - (val / maxVal) * chartH, [chartH, maxVal, padding.top])
 
   const buildPath = (key: 'views' | 'comments') => {
     if (!data.length) return ''
@@ -93,22 +106,31 @@ function LineChart({
   }
 
   const formatDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr)
-    if (dateStr.length <= 13) { // Hourly
-      return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    try {
+      if (dateStr.length <= 13) {
+        // Hourly format: "2026-02-05T14" -> extract hour
+        const hour = parseInt(dateStr.split('T')[1] || '0', 10)
+        return `${hour.toString().padStart(2, '0')}:00`
+      }
+      const parts = dateStr.split('-')
+      const day = parseInt(parts[2], 10)
+      const months = ['jan', 'fév', 'mars', 'avr', 'mai', 'juin', 'juil', 'août', 'sept', 'oct', 'nov', 'déc']
+      const month = months[parseInt(parts[1], 10) - 1] || parts[1]
+      return `${day} ${month}`
+    } catch {
+      return dateStr
     }
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
   }
 
-  // Show ~6 x-axis labels max
-  const labelInterval = Math.max(1, Math.floor(data.length / 6))
+  // Show ~7 x-axis labels max
+  const labelInterval = Math.max(1, Math.floor(data.length / 7))
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!containerRef.current || !data.length) return
     const rect = containerRef.current.getBoundingClientRect()
-    const svgX = ((e.clientX - rect.left) / rect.width) * width
+    const mouseX = e.clientX - rect.left
+    const svgX = (mouseX / rect.width) * width
     
-    // Find closest data point
     let closestIdx = 0
     let closestDist = Infinity
     data.forEach((_, i) => {
@@ -120,13 +142,6 @@ function LineChart({
     })
     
     setHoveredIdx(closestIdx)
-    setTooltip({
-      x: getX(closestIdx),
-      y: e.clientY - rect.top,
-      date: data[closestIdx].date,
-      views: data[closestIdx].views,
-      comments: data[closestIdx].comments,
-    })
   }
 
   if (!data.length) {
@@ -137,113 +152,125 @@ function LineChart({
     )
   }
 
+  // Tooltip positioning
+  const tooltipLeft = hoveredIdx !== null ? getX(hoveredIdx) : 0
+  const tooltipPct = (tooltipLeft / width) * 100
+  // Clamp tooltip so it doesn't overflow
+  const tooltipTransform = tooltipPct > 80 ? 'translateX(-90%)' : tooltipPct < 20 ? 'translateX(-10%)' : 'translateX(-50%)'
+
   return (
-    <div ref={containerRef} className="relative w-full" style={{ height }}>
-      <svg 
-        viewBox={`0 0 ${width} ${height}`} 
-        className="w-full h-full"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => { setTooltip(null); setHoveredIdx(null) }}
-      >
-        {/* Grid lines */}
-        {yTicks.map(tick => (
-          <g key={tick}>
-            <line 
-              x1={padding.left} y1={getY(tick)} 
-              x2={width - padding.right} y2={getY(tick)} 
-              stroke="#f0f0f0" strokeWidth={1}
-            />
-            <text 
-              x={padding.left - 8} y={getY(tick)} 
-              textAnchor="end" dominantBaseline="middle"
-              fontSize={10} fill="#9ca3af"
-            >
-              {formatCount(tick)}
-            </text>
-          </g>
-        ))}
+    <div ref={containerRef} className="relative w-full overflow-visible" style={{ height }}>
+      {containerWidth > 0 && (
+        <svg 
+          viewBox={`0 0 ${width} ${height}`} 
+          className="w-full h-full"
+          preserveAspectRatio="none"
+          onMouseMove={handleMouseMove}
+          onMouseLeave={() => setHoveredIdx(null)}
+          style={{ overflow: 'visible' }}
+        >
+          {/* Grid lines */}
+          {yTicks.map(tick => (
+            <g key={tick}>
+              <line 
+                x1={padding.left} y1={getY(tick)} 
+                x2={width - padding.right} y2={getY(tick)} 
+                stroke="#f3f4f6" strokeWidth={1}
+              />
+              <text 
+                x={padding.left - 10} y={getY(tick)} 
+                textAnchor="end" dominantBaseline="middle"
+                fontSize={11} fill="#9ca3af"
+              >
+                {formatCount(tick)}
+              </text>
+            </g>
+          ))}
 
-        {/* X-axis labels */}
-        {data.map((p, i) => {
-          if (i % labelInterval !== 0 && i !== data.length - 1) return null
-          return (
-            <text 
-              key={i} 
-              x={getX(i)} y={height - 5}
-              textAnchor="middle" fontSize={10} fill="#9ca3af"
-            >
-              {formatDateLabel(p.date)}
-            </text>
-          )
-        })}
+          {/* X-axis labels */}
+          {data.map((p, i) => {
+            if (i % labelInterval !== 0 && i !== data.length - 1) return null
+            return (
+              <text 
+                key={i} 
+                x={getX(i)} y={height - 6}
+                textAnchor="middle" fontSize={11} fill="#9ca3af"
+              >
+                {formatDateLabel(p.date)}
+              </text>
+            )
+          })}
 
-        {/* Areas */}
-        {selectedMetrics.has('views') && (
-          <path d={buildAreaPath('views')} fill="url(#viewsGradient)" />
-        )}
-        {selectedMetrics.has('comments') && (
-          <path d={buildAreaPath('comments')} fill="url(#commentsGradient)" />
-        )}
+          {/* Areas */}
+          {selectedMetrics.has('views') && (
+            <path d={buildAreaPath('views')} fill="url(#viewsGradient)" />
+          )}
+          {selectedMetrics.has('comments') && (
+            <path d={buildAreaPath('comments')} fill="url(#commentsGradient)" />
+          )}
 
-        {/* Lines */}
-        {selectedMetrics.has('views') && (
-          <path d={buildPath('views')} fill="none" stroke="#3b82f6" strokeWidth={2} strokeLinejoin="round" />
-        )}
-        {selectedMetrics.has('comments') && (
-          <path d={buildPath('comments')} fill="none" stroke="#ec4899" strokeWidth={2} strokeLinejoin="round" />
-        )}
+          {/* Lines */}
+          {selectedMetrics.has('views') && (
+            <path d={buildPath('views')} fill="none" stroke="#3b82f6" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+          )}
+          {selectedMetrics.has('comments') && (
+            <path d={buildPath('comments')} fill="none" stroke="#ec4899" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+          )}
 
-        {/* Hover line & dots */}
-        {hoveredIdx !== null && (
-          <>
-            <line 
-              x1={getX(hoveredIdx)} y1={padding.top} 
-              x2={getX(hoveredIdx)} y2={padding.top + chartH} 
-              stroke="#d1d5db" strokeWidth={1} strokeDasharray="4,4"
-            />
-            {selectedMetrics.has('views') && (
-              <circle cx={getX(hoveredIdx)} cy={getY(data[hoveredIdx].views)} r={4} fill="#3b82f6" stroke="white" strokeWidth={2} />
-            )}
-            {selectedMetrics.has('comments') && (
-              <circle cx={getX(hoveredIdx)} cy={getY(data[hoveredIdx].comments)} r={4} fill="#ec4899" stroke="white" strokeWidth={2} />
-            )}
-          </>
-        )}
+          {/* Hover line & dots */}
+          {hoveredIdx !== null && (
+            <>
+              <line 
+                x1={getX(hoveredIdx)} y1={padding.top} 
+                x2={getX(hoveredIdx)} y2={padding.top + chartH} 
+                stroke="#d1d5db" strokeWidth={1} strokeDasharray="4,4"
+              />
+              {selectedMetrics.has('views') && (
+                <circle cx={getX(hoveredIdx)} cy={getY(data[hoveredIdx].views)} r={5} fill="#3b82f6" stroke="white" strokeWidth={2.5} />
+              )}
+              {selectedMetrics.has('comments') && (
+                <circle cx={getX(hoveredIdx)} cy={getY(data[hoveredIdx].comments)} r={5} fill="#ec4899" stroke="white" strokeWidth={2.5} />
+              )}
+            </>
+          )}
 
-        {/* Gradients */}
-        <defs>
-          <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-          </linearGradient>
-          <linearGradient id="commentsGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ec4899" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+          {/* Gradients */}
+          <defs>
+            <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="commentsGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#ec4899" stopOpacity="0.12" />
+              <stop offset="100%" stopColor="#ec4899" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      )}
 
-      {/* Tooltip */}
-      {tooltip && hoveredIdx !== null && (
+      {/* Tooltip - rendered outside SVG with proper clamping */}
+      {hoveredIdx !== null && (
         <div 
-          className="absolute pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-10"
+          className="absolute pointer-events-none bg-gray-900 text-white text-xs rounded-lg px-3 py-2.5 shadow-xl z-50 whitespace-nowrap"
           style={{ 
-            left: `${(tooltip.x / width) * 100}%`,
-            top: Math.max(8, tooltip.y - 70),
-            transform: 'translateX(-50%)',
+            left: `${tooltipPct}%`,
+            top: 8,
+            transform: tooltipTransform,
           }}
         >
-          <div className="font-medium mb-1">{formatDateLabel(tooltip.date)}</div>
+          <div className="font-medium mb-1.5 text-gray-300">{formatDateLabel(data[hoveredIdx].date)}</div>
           {selectedMetrics.has('views') && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>{tooltip.views} vues</span>
+              <span className="font-medium">{data[hoveredIdx].views}</span>
+              <span className="text-gray-400">vues</span>
             </div>
           )}
           {selectedMetrics.has('comments') && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-pink-500" />
-              <span>{tooltip.comments} commentaires</span>
+              <span className="font-medium">{data[hoveredIdx].comments}</span>
+              <span className="text-gray-400">commentaires</span>
             </div>
           )}
         </div>
@@ -282,7 +309,7 @@ export default function AnalyticsPage() {
     setSelectedMetrics(prev => {
       const next = new Set(prev)
       if (next.has(metric)) {
-        if (next.size > 1) next.delete(metric) // Keep at least one selected
+        if (next.size > 1) next.delete(metric)
       } else {
         next.add(metric)
       }
@@ -297,12 +324,8 @@ export default function AnalyticsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-gray-900">Analytics</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Statistiques de vos clips
-            </p>
+            <p className="text-sm text-gray-500 mt-0.5">Statistiques de vos clips</p>
           </div>
-
-          {/* Range selector */}
           <div className="flex items-center gap-1 p-1 bg-gray-100 rounded-lg">
             {RANGE_OPTIONS.map(option => (
               <button
@@ -321,14 +344,14 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* Content - NO max-width so it stretches */}
       <div className="flex-1 overflow-auto p-6">
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : data ? (
-          <div className="space-y-6 max-w-6xl">
+          <div className="space-y-6">
             {/* Stats cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
@@ -413,19 +436,12 @@ export default function AnalyticsPage() {
                 {data.topVideos.length > 0 ? (
                   <div className="space-y-3">
                     {data.topVideos.map((video, i) => (
-                      <a
-                        key={video.id}
-                        href={`/v/${video.id}`}
-                        className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors"
-                      >
+                      <a key={video.id} href={`/v/${video.id}`} className="flex items-center gap-3 hover:bg-gray-50 rounded-lg p-1.5 -mx-1.5 transition-colors">
                         <span className="w-6 text-center text-sm text-gray-400 font-medium">{i + 1}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{video.name}</p>
                           <div className="mt-1.5 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-[#08CF65] rounded-full transition-all"
-                              style={{ width: `${video.percentage}%` }}
-                            />
+                            <div className="h-full bg-[#08CF65] rounded-full transition-all" style={{ width: `${video.percentage}%` }} />
                           </div>
                         </div>
                         <span className="text-sm text-gray-500 tabular-nums font-medium">{formatCount(video.views)}</span>
@@ -456,10 +472,7 @@ export default function AnalyticsPage() {
                             <span className="text-xs text-gray-500 tabular-nums">{country.percentage.toFixed(1)}%</span>
                           </div>
                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-500 rounded-full transition-all"
-                              style={{ width: `${country.percentage}%` }}
-                            />
+                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${country.percentage}%` }} />
                           </div>
                         </div>
                       </div>
@@ -491,10 +504,7 @@ export default function AnalyticsPage() {
                             <span className="text-xs text-gray-500 tabular-nums">{browser.percentage.toFixed(1)}%</span>
                           </div>
                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-purple-500 rounded-full transition-all"
-                              style={{ width: `${browser.percentage}%` }}
-                            />
+                            <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${browser.percentage}%` }} />
                           </div>
                         </div>
                       </div>
@@ -526,10 +536,7 @@ export default function AnalyticsPage() {
                             <span className="text-xs text-gray-500 tabular-nums">{device.percentage.toFixed(1)}%</span>
                           </div>
                           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-orange-500 rounded-full transition-all"
-                              style={{ width: `${device.percentage}%` }}
-                            />
+                            <div className="h-full bg-orange-500 rounded-full transition-all" style={{ width: `${device.percentage}%` }} />
                           </div>
                         </div>
                       </div>
@@ -570,34 +577,12 @@ interface StatCardProps {
 
 function StatCard({ title, value, icon, color, isSelected = false, onClick }: StatCardProps) {
   const colors = {
-    blue: {
-      bg: isSelected ? 'bg-blue-50' : 'bg-white',
-      border: isSelected ? 'border-blue-200' : 'border-gray-200',
-      icon: 'text-blue-500',
-      dot: 'bg-blue-500',
-    },
-    pink: {
-      bg: isSelected ? 'bg-pink-50' : 'bg-white',
-      border: isSelected ? 'border-pink-200' : 'border-gray-200',
-      icon: 'text-pink-500',
-      dot: 'bg-pink-500',
-    },
-    green: {
-      bg: 'bg-white',
-      border: 'border-gray-200',
-      icon: 'text-[#08CF65]',
-      dot: 'bg-[#08CF65]',
-    },
-    gray: {
-      bg: 'bg-white',
-      border: 'border-gray-200',
-      icon: 'text-gray-400',
-      dot: 'bg-gray-400',
-    },
+    blue: { bg: isSelected ? 'bg-blue-50' : 'bg-white', border: isSelected ? 'border-blue-200' : 'border-gray-200', icon: 'text-blue-500', dot: 'bg-blue-500' },
+    pink: { bg: isSelected ? 'bg-pink-50' : 'bg-white', border: isSelected ? 'border-pink-200' : 'border-gray-200', icon: 'text-pink-500', dot: 'bg-pink-500' },
+    green: { bg: 'bg-white', border: 'border-gray-200', icon: 'text-[#08CF65]', dot: 'bg-[#08CF65]' },
+    gray: { bg: 'bg-white', border: 'border-gray-200', icon: 'text-gray-400', dot: 'bg-gray-400' },
   }
-
   const styles = colors[color]
-
   return (
     <button
       onClick={onClick}
@@ -617,61 +602,25 @@ function StatCard({ title, value, icon, color, isSelected = false, onClick }: St
 }
 
 function EmptyState({ text }: { text: string }) {
-  return (
-    <div className="py-8 text-center">
-      <p className="text-gray-400 text-sm">{text}</p>
-    </div>
-  )
+  return <div className="py-8 text-center"><p className="text-gray-400 text-sm">{text}</p></div>
 }
 
 function getFlagEmoji(countryCode: string): string {
   if (!countryCode || countryCode.length !== 2 || countryCode === 'Unknown') return '🌍'
-  const codePoints = countryCode
-    .toUpperCase()
-    .split('')
-    .map(char => 127397 + char.charCodeAt(0))
-  return String.fromCodePoint(...codePoints)
+  return String.fromCodePoint(...countryCode.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)))
 }
 
 function getBrowserIcon(name: string): string {
-  const icons: { [key: string]: string } = {
-    Chrome: 'Cr',
-    Firefox: 'Ff',
-    Safari: 'Sa',
-    Edge: 'Ed',
-    Opera: 'Op',
-    IE: 'IE',
-  }
-  return icons[name] || name.slice(0, 2)
+  return ({ Chrome: 'Cr', Firefox: 'Ff', Safari: 'Sa', Edge: 'Ed', Opera: 'Op', IE: 'IE' } as Record<string, string>)[name] || name.slice(0, 2)
 }
 
 function getDeviceIcon(type: string): React.ReactNode {
-  if (type === 'mobile') {
-    return (
-      <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-      </svg>
-    )
-  }
-  if (type === 'tablet') {
-    return (
-      <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 002.25-2.25v-15a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 4.5v15a2.25 2.25 0 002.25 2.25z" />
-      </svg>
-    )
-  }
-  return (
-    <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" />
-    </svg>
-  )
+  const cls = "w-4 h-4 text-gray-500"
+  if (type === 'mobile') return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" /></svg>
+  if (type === 'tablet') return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5h3m-6.75 2.25h10.5a2.25 2.25 0 002.25-2.25v-15a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 4.5v15a2.25 2.25 0 002.25 2.25z" /></svg>
+  return <svg className={cls} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25A2.25 2.25 0 015.25 3h13.5A2.25 2.25 0 0121 5.25z" /></svg>
 }
 
 function getDeviceLabel(type: string): string {
-  const labels: { [key: string]: string } = {
-    desktop: 'Bureau',
-    mobile: 'Mobile',
-    tablet: 'Tablette',
-  }
-  return labels[type] || type
+  return ({ desktop: 'Bureau', mobile: 'Mobile', tablet: 'Tablette' } as Record<string, string>)[type] || type
 }

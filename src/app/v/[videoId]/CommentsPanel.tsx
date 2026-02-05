@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Comment {
   id: string;
@@ -20,7 +21,6 @@ interface CommentsPanelProps {
   onSeek: (time: number) => void;
 }
 
-// Common emojis organized by category
 const EMOJI_CATEGORIES = [
   {
     name: 'Populaires',
@@ -40,6 +40,81 @@ const EMOJI_CATEGORIES = [
   },
 ];
 
+// Floating emoji picker rendered via portal
+function FloatingEmojiPicker({
+  anchorRef,
+  onSelect,
+  onClose,
+}: {
+  anchorRef: React.RefObject<HTMLButtonElement>;
+  onSelect: (emoji: string) => void;
+  onClose: () => void;
+}) {
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const [category, setCategory] = useState(0);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const rect = anchorRef.current.getBoundingClientRect();
+    setPos({
+      top: rect.top - 220,
+      left: Math.max(8, Math.min(rect.left, window.innerWidth - 296)),
+    });
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(e.target as Node) &&
+        anchorRef.current &&
+        !anchorRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [onClose, anchorRef]);
+
+  return createPortal(
+    <div
+      ref={pickerRef}
+      className="fixed bg-white rounded-xl border border-gray-200 shadow-xl z-[9999] w-[288px] animate-in fade-in slide-in-from-bottom-2 duration-150"
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <div className="flex border-b border-gray-100 px-2 pt-2">
+        {EMOJI_CATEGORIES.map((cat, i) => (
+          <button
+            key={cat.name}
+            onClick={() => setCategory(i)}
+            className={`flex-1 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+              category === i ? 'text-gray-900 bg-gray-100' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            {cat.emojis[0]}
+          </button>
+        ))}
+      </div>
+      <div className="p-2 max-h-[160px] overflow-y-auto">
+        <div className="grid grid-cols-8 gap-0.5">
+          {EMOJI_CATEGORIES[category].emojis.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => onSelect(emoji)}
+              className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function CommentsPanel({ videoId, currentTime, duration, onSeek }: CommentsPanelProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'summary' | 'transcript'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
@@ -50,13 +125,11 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReplyEmojiPicker, setShowReplyEmojiPicker] = useState(false);
-  const [emojiCategory, setEmojiCategory] = useState(0);
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const replyEmojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiButtonRef = useRef<HTMLButtonElement>(null);
+  const replyEmojiButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch comments
   useEffect(() => {
     const fetchComments = async () => {
       try {
@@ -76,28 +149,12 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     fetchComments();
   }, [videoId]);
 
-  // Focus reply input when replying
   useEffect(() => {
     if (replyingTo && replyInputRef.current) {
       replyInputRef.current.focus();
     }
   }, [replyingTo]);
 
-  // Close emoji picker on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
-        setShowEmojiPicker(false);
-      }
-      if (replyEmojiPickerRef.current && !replyEmojiPickerRef.current.contains(e.target as Node)) {
-        setShowReplyEmojiPicker(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Insert emoji into comment
   const insertEmoji = (emoji: string, isReply: boolean) => {
     if (isReply) {
       setReplyContent(prev => prev + emoji);
@@ -108,25 +165,17 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   };
 
-  // Submit main comment
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
-
     try {
       const response = await fetch(`/api/videos/${videoId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'text',
-          content: newComment,
-          timestamp: currentTime,
-        }),
+        body: JSON.stringify({ type: 'text', content: newComment, timestamp: currentTime }),
       });
-
       if (response.ok) {
         const data = await response.json();
-        const newCommentData = { ...data.comment, replies: [] };
-        setComments(prev => [newCommentData, ...prev]);
+        setComments(prev => [{ ...data.comment, replies: [] }, ...prev]);
         setNewComment('');
         setShowEmojiPicker(false);
       }
@@ -135,29 +184,18 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   };
 
-  // Submit reply
   const handleSubmitReply = async (parentId: string) => {
     if (!replyContent.trim()) return;
-
     try {
       const response = await fetch(`/api/videos/${videoId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'text',
-          content: replyContent,
-          timestamp: currentTime,
-          parentCommentId: parentId,
-        }),
+        body: JSON.stringify({ type: 'text', content: replyContent, timestamp: currentTime, parentCommentId: parentId }),
       });
-
       if (response.ok) {
         const data = await response.json();
-        const newReply = { ...data.comment, replies: [] };
         setComments(prev => prev.map(c =>
-          c.id === parentId
-            ? { ...c, replies: [...(c.replies || []), newReply] }
-            : c
+          c.id === parentId ? { ...c, replies: [...(c.replies || []), { ...data.comment, replies: [] }] } : c
         ));
         setReplyContent('');
         setReplyingTo(null);
@@ -168,24 +206,14 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   };
 
-  // Delete comment
   const handleDeleteComment = async (commentId: string, parentId?: string) => {
     setDeleting(commentId);
     try {
-      const response = await fetch(`/api/videos/${videoId}/comments/${commentId}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/videos/${videoId}/comments/${commentId}`, { method: 'DELETE' });
       if (response.ok) {
         if (parentId) {
-          // Delete reply
-          setComments(prev => prev.map(c =>
-            c.id === parentId
-              ? { ...c, replies: (c.replies || []).filter(r => r.id !== commentId) }
-              : c
-          ));
+          setComments(prev => prev.map(c => c.id === parentId ? { ...c, replies: (c.replies || []).filter(r => r.id !== commentId) } : c));
         } else {
-          // Delete main comment
           setComments(prev => prev.filter(c => c.id !== commentId));
         }
       }
@@ -196,7 +224,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   };
 
-  // Format timestamp
   const formatTimestamp = (seconds: number) => {
     if (!seconds || !isFinite(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -204,69 +231,21 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Format relative time
   const formatRelativeTime = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = Date.now() - new Date(dateStr).getTime();
     const mins = Math.floor(diff / 60000);
     const hours = Math.floor(mins / 60);
     const days = Math.floor(hours / 24);
-
     if (mins < 1) return 'à l\'instant';
     if (mins < 60) return `il y a ${mins}min`;
     if (hours < 24) return `il y a ${hours}h`;
     return `il y a ${days}j`;
   };
 
-  // Count all comments including replies
   const totalComments = comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
 
-  // Emoji Picker Component
-  const EmojiPicker = ({ isReply, pickerRef }: { isReply: boolean; pickerRef: React.RefObject<HTMLDivElement> }) => (
-    <div
-      ref={pickerRef}
-      className="absolute bottom-full left-0 mb-2 bg-white rounded-xl border border-gray-200 shadow-lg z-50 w-[280px]"
-    >
-      {/* Category tabs */}
-      <div className="flex border-b border-gray-100 px-2 pt-2">
-        {EMOJI_CATEGORIES.map((cat, i) => (
-          <button
-            key={cat.name}
-            onClick={() => setEmojiCategory(i)}
-            className={`flex-1 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
-              emojiCategory === i
-                ? 'text-gray-900 bg-gray-100'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            {cat.emojis[0]}
-          </button>
-        ))}
-      </div>
-      {/* Emoji grid */}
-      <div className="p-2 max-h-[160px] overflow-y-auto">
-        <div className="grid grid-cols-8 gap-0.5">
-          {EMOJI_CATEGORIES[emojiCategory].emojis.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => insertEmoji(emoji, isReply)}
-              className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              {emoji}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Render single comment
   const renderComment = (comment: Comment, isReply = false, parentId?: string) => (
-    <div 
-      key={comment.id} 
-      className={`flex gap-3 ${isReply ? '' : 'px-4 py-3'}`}
-    >
+    <div key={comment.id} className={`flex gap-3 ${isReply ? '' : 'px-4 py-3'}`}>
       <div className={`${isReply ? 'w-7 h-7' : 'w-9 h-9'} rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 flex-shrink-0 overflow-hidden`}>
         {comment.authorAvatar ? (
           <img src={comment.authorAvatar} alt="" className="w-full h-full object-cover" />
@@ -289,17 +268,11 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
             </button>
           )}
         </div>
-        <p className={`text-gray-700 mt-1 leading-relaxed ${isReply ? 'text-xs' : 'text-sm'}`}>
-          {comment.content}
-        </p>
+        <p className={`text-gray-700 mt-1 leading-relaxed ${isReply ? 'text-xs' : 'text-sm'}`}>{comment.content}</p>
         <div className="flex items-center gap-3 mt-2">
           {!isReply && (
             <button
-              onClick={() => {
-                setReplyingTo(replyingTo === comment.id ? null : comment.id);
-                setReplyContent('');
-                setShowReplyEmojiPicker(false);
-              }}
+              onClick={() => { setReplyingTo(replyingTo === comment.id ? null : comment.id); setReplyContent(''); setShowReplyEmojiPicker(false); }}
               className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -308,7 +281,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
               <span>Répondre</span>
             </button>
           )}
-          <button 
+          <button
             onClick={() => handleDeleteComment(comment.id, parentId)}
             disabled={deleting === comment.id}
             className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors disabled:opacity-50"
@@ -337,11 +310,9 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
         ].map((tab) => (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
+            onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`flex-1 py-3.5 text-sm font-medium transition-colors ${
-              activeTab === tab.key
-                ? 'text-gray-900 border-b-2 border-gray-900'
-                : 'text-gray-400 hover:text-gray-600'
+              activeTab === tab.key ? 'text-gray-900 border-b-2 border-gray-900' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
             {tab.label}
@@ -352,7 +323,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
       {/* Comments Tab */}
       {activeTab === 'comments' && (
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Stats bar */}
           <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500 flex items-center gap-4">
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -362,7 +332,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
             </span>
           </div>
 
-          {/* Comments List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-12">
@@ -382,33 +351,25 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
               <div className="divide-y divide-gray-50">
                 {comments.map((comment) => (
                   <div key={comment.id}>
-                    {/* Main comment */}
                     {renderComment(comment)}
 
                     {/* Inline reply box */}
                     {replyingTo === comment.id && (
                       <div className="px-4 pb-3 ml-12">
-                        <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-[#08CF65] focus-within:ring-1 focus-within:ring-[#08CF65]/20 transition-all bg-gray-50">
+                        <div className="border border-gray-200 rounded-xl focus-within:border-[#08CF65] focus-within:ring-1 focus-within:ring-[#08CF65]/20 transition-all bg-gray-50">
                           <textarea
                             ref={replyInputRef}
                             placeholder="Écrire une réponse..."
                             value={replyContent}
                             onChange={(e) => setReplyContent(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSubmitReply(comment.id);
-                              }
-                              if (e.key === 'Escape') {
-                                setReplyingTo(null);
-                                setReplyContent('');
-                                setShowReplyEmojiPicker(false);
-                              }
+                              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitReply(comment.id); }
+                              if (e.key === 'Escape') { setReplyingTo(null); setReplyContent(''); setShowReplyEmojiPicker(false); }
                             }}
-                            className="w-full px-3 py-2 text-sm resize-none focus:outline-none placeholder-gray-400 bg-transparent"
+                            className="w-full px-3 py-2 text-sm resize-none focus:outline-none placeholder-gray-400 bg-transparent rounded-t-xl"
                             rows={2}
                           />
-                          <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-white">
+                          <div className="flex items-center justify-between px-3 py-2 border-t border-gray-100 bg-white rounded-b-xl">
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-gray-400 flex items-center gap-1">
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -416,37 +377,29 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                                 </svg>
                                 {formatTimestamp(currentTime)}
                               </span>
-                              <div className="relative">
-                                <button
-                                  onClick={() => setShowReplyEmojiPicker(!showReplyEmojiPicker)}
-                                  className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-gray-600"
-                                  title="Ajouter un emoji"
-                                >
-                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                  </svg>
-                                </button>
-                                {showReplyEmojiPicker && (
-                                  <EmojiPicker isReply={true} pickerRef={replyEmojiPickerRef} />
-                                )}
-                              </div>
+                              <button
+                                ref={replyEmojiButtonRef}
+                                onClick={() => setShowReplyEmojiPicker(!showReplyEmojiPicker)}
+                                className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+                                title="Ajouter un emoji"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                              </button>
+                              {showReplyEmojiPicker && (
+                                <FloatingEmojiPicker
+                                  anchorRef={replyEmojiButtonRef}
+                                  onSelect={(emoji) => insertEmoji(emoji, true)}
+                                  onClose={() => setShowReplyEmojiPicker(false)}
+                                />
+                              )}
                             </div>
                             <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setReplyingTo(null);
-                                  setReplyContent('');
-                                  setShowReplyEmojiPicker(false);
-                                }}
-                                className="px-3 py-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-                              >
+                              <button onClick={() => { setReplyingTo(null); setReplyContent(''); setShowReplyEmojiPicker(false); }} className="px-3 py-1 text-xs text-gray-600 hover:text-gray-900 transition-colors">
                                 Annuler
                               </button>
-                              <button
-                                onClick={() => handleSubmitReply(comment.id)}
-                                disabled={!replyContent.trim()}
-                                className="px-3 py-1 bg-[#08CF65] text-white text-xs font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#07B859] transition-colors"
-                              >
+                              <button onClick={() => handleSubmitReply(comment.id)} disabled={!replyContent.trim()} className="px-3 py-1 bg-[#08CF65] text-white text-xs font-medium rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#07B859] transition-colors">
                                 Répondre
                               </button>
                             </div>
@@ -455,7 +408,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                       </div>
                     )}
 
-                    {/* Replies */}
                     {comment.replies && comment.replies.length > 0 && (
                       <div className="ml-12 mr-4 pb-3 space-y-3 border-l-2 border-gray-100 pl-3">
                         {comment.replies.map((reply) => renderComment(reply, true, comment.id))}
@@ -469,22 +421,19 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
 
           {/* Main comment input */}
           <div className="px-4 py-3 border-t border-gray-100">
-            <div className="border border-gray-200 rounded-xl overflow-hidden focus-within:border-[#08CF65] focus-within:ring-1 focus-within:ring-[#08CF65]/20 transition-all">
+            <div className="border border-gray-200 rounded-xl focus-within:border-[#08CF65] focus-within:ring-1 focus-within:ring-[#08CF65]/20 transition-all">
               <textarea
                 ref={mainInputRef}
                 placeholder="Écrire un commentaire..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmitComment();
-                  }
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(); }
                 }}
-                className="w-full px-3 py-2.5 text-sm resize-none focus:outline-none placeholder-gray-400"
+                className="w-full px-3 py-2.5 text-sm resize-none focus:outline-none placeholder-gray-400 rounded-t-xl"
                 rows={2}
               />
-              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-100">
+              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 border-t border-gray-100 rounded-b-xl">
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -492,20 +441,23 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                     </svg>
                     <span>{formatTimestamp(currentTime)}</span>
                   </div>
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                      className="p-1 hover:bg-gray-200 rounded-md transition-colors text-gray-400 hover:text-gray-600"
-                      title="Ajouter un emoji"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                    </button>
-                    {showEmojiPicker && (
-                      <EmojiPicker isReply={false} pickerRef={emojiPickerRef} />
-                    )}
-                  </div>
+                  <button
+                    ref={emojiButtonRef}
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-1 hover:bg-gray-200 rounded-md transition-colors text-gray-400 hover:text-gray-600"
+                    title="Ajouter un emoji"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                  {showEmojiPicker && (
+                    <FloatingEmojiPicker
+                      anchorRef={emojiButtonRef}
+                      onSelect={(emoji) => insertEmoji(emoji, false)}
+                      onClose={() => setShowEmojiPicker(false)}
+                    />
+                  )}
                 </div>
                 <button
                   onClick={handleSubmitComment}
@@ -520,7 +472,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
         </div>
       )}
 
-      {/* Summary Tab */}
       {activeTab === 'summary' && (
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="text-center py-12">
@@ -535,7 +486,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
         </div>
       )}
 
-      {/* Transcript Tab */}
       {activeTab === 'transcript' && (
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="text-center py-12">
