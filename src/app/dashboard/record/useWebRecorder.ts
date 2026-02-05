@@ -322,9 +322,9 @@ export const useWebRecorder = ({
       }, 100)
 
       // Handle stream ending (user stops sharing)
-      const videoTrack = stream.getVideoTracks()[0]
-      if (videoTrack) {
-        videoTrack.addEventListener('ended', () => {
+      const mainVideoTrack = stream.getVideoTracks()[0]
+      if (mainVideoTrack) {
+        mainVideoTrack.addEventListener('ended', () => {
           console.log('[WebRecorder] Video track ended by user')
           const rec = mediaRecorderRef.current
           if (rec && rec.state === 'recording' && !isStoppingRef.current) {
