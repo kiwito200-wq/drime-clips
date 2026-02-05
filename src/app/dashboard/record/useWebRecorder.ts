@@ -231,33 +231,59 @@ export const useWebRecorder = ({
 
   const generateThumbnail = async (videoBlob: Blob): Promise<string | null> => {
     return new Promise((resolve) => {
+      // Timeout after 10 seconds
+      const timeout = setTimeout(() => {
+        console.warn('[WebRecorder] Thumbnail generation timed out')
+        resolve(null)
+      }, 10000)
+      
       const video = document.createElement('video')
       video.preload = 'metadata'
       video.muted = true
       video.playsInline = true
+      video.crossOrigin = 'anonymous'
       
-      video.onloadeddata = () => {
+      const cleanup = () => {
+        clearTimeout(timeout)
+        URL.revokeObjectURL(video.src)
+      }
+      
+      video.onloadedmetadata = () => {
+        console.log('[WebRecorder] Video metadata loaded, duration:', video.duration)
+        // Seek to 1 second or 10% of video, whichever is smaller
         video.currentTime = Math.min(1, video.duration * 0.1)
       }
       
       video.onseeked = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          const thumbnail = canvas.toDataURL('image/jpeg', 0.8)
-          URL.revokeObjectURL(video.src)
-          resolve(thumbnail)
-        } else {
+        console.log('[WebRecorder] Video seeked, generating thumbnail...')
+        try {
+          const canvas = document.createElement('canvas')
+          // Use reasonable dimensions even if video reports 0
+          canvas.width = video.videoWidth || 1280
+          canvas.height = video.videoHeight || 720
+          
+          const ctx = canvas.getContext('2d')
+          if (ctx && canvas.width > 0 && canvas.height > 0) {
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+            const thumbnail = canvas.toDataURL('image/jpeg', 0.7)
+            console.log('[WebRecorder] Thumbnail generated, size:', thumbnail.length)
+            cleanup()
+            resolve(thumbnail)
+          } else {
+            console.warn('[WebRecorder] Could not get canvas context')
+            cleanup()
+            resolve(null)
+          }
+        } catch (err) {
+          console.error('[WebRecorder] Error generating thumbnail:', err)
+          cleanup()
           resolve(null)
         }
       }
       
-      video.onerror = () => {
-        URL.revokeObjectURL(video.src)
+      video.onerror = (e) => {
+        console.error('[WebRecorder] Video error during thumbnail generation:', e)
+        cleanup()
         resolve(null)
       }
       
@@ -373,21 +399,16 @@ export const useWebRecorder = ({
       }
 
       mediaRecorder.onstop = async () => {
-        console.log('[WebRecorder] ========== ONSTOP EVENT FIRED ==========')
         setPhase('uploading')
         onRecordingStop?.()
         
-        console.log('[WebRecorder] Finalizing upload...')
         const shareUrl = await finalizeUpload()
-        console.log('[WebRecorder] Upload finalized, shareUrl:', shareUrl)
         cleanup()
         
         if (shareUrl && uploadStateRef.current.videoId) {
-          console.log('[WebRecorder] Recording complete, opening share URL')
           setPhase('completed')
           onComplete?.(uploadStateRef.current.videoId, shareUrl)
         } else {
-          console.error('[WebRecorder] Upload failed - no shareUrl or videoId')
           setPhase('error')
           onError?.(new Error('Upload failed'))
         }
@@ -422,28 +443,17 @@ export const useWebRecorder = ({
   }, [recordingMode, selectedCameraId, selectedMicId, onRecordingStart, onRecordingStop, onComplete, onError])
 
   const stopRecording = useCallback(() => {
-    console.log('[WebRecorder] ========== STOP RECORDING CALLED ==========')
-    console.log('[WebRecorder] MediaRecorder exists:', !!mediaRecorderRef.current)
-    console.log('[WebRecorder] MediaRecorder state:', mediaRecorderRef.current?.state)
-    console.log('[WebRecorder] Current phase:', phase)
-    
     if (mediaRecorderRef.current) {
       const state = mediaRecorderRef.current.state
       if (state === 'recording' || state === 'paused') {
-        console.log('[WebRecorder] Calling MediaRecorder.stop()...')
         try {
           mediaRecorderRef.current.stop()
-          console.log('[WebRecorder] MediaRecorder.stop() called successfully')
         } catch (err) {
           console.error('[WebRecorder] Error calling stop():', err)
         }
-      } else {
-        console.log('[WebRecorder] MediaRecorder not in recording/paused state, state is:', state)
       }
-    } else {
-      console.error('[WebRecorder] No MediaRecorder instance available!')
     }
-  }, [phase])
+  }, [])
 
   const pauseRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {

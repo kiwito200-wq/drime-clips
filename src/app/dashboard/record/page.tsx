@@ -466,10 +466,7 @@ export default function RecordPage() {
             hasAudioTrack={hasAudioTrack}
             chunkUploads={chunkUploads}
             errorMessage={lastError?.message}
-            onStop={() => {
-              console.log('[RecordPage] onStop called from InProgressRecordingBar')
-              stopRecording()
-            }}
+            onStop={stopRecording}
             onPause={pauseRecording}
             onResume={resumeRecording}
             onRestart={restartRecording}
