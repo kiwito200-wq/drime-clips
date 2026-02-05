@@ -43,7 +43,7 @@ export const InProgressRecordingBar = ({
   const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState({ x: 0, y: 24 })
   const [isDragging, setIsDragging] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
+  // Remove isSaving - use phase from parent instead
   const dragStartRef = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -113,21 +113,24 @@ export const InProgressRecordingBar = ({
   const isUploading = phase === 'uploading'
   const isCreating = phase === 'creating'
   
-  // Show processing state
-  const showProcessing = isSaving || isStopping || isConverting || isUploading || isCreating
+  // Show processing state (NOT recording or paused)
+  const showProcessing = isStopping || isConverting || isUploading || isCreating
 
   const handleStopClick = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+    console.log('[RecordingBar] Stop clicked, phase:', phase)
     
-    if (isSaving) return
-    setIsSaving(true)
+    // Don't allow stop if already processing
+    if (showProcessing) {
+      console.log('[RecordingBar] Already processing, ignoring')
+      return
+    }
     
     try {
       onStop()
     } catch (err) {
       console.error('[RecordingBar] Error calling onStop:', err)
-      setIsSaving(false)
     }
   }
 
@@ -177,7 +180,6 @@ export const InProgressRecordingBar = ({
               {isStopping && 'Arrêt...'}
               {isConverting && `Conversion ${Math.round(conversionProgress)}%`}
               {isUploading && 'Finalisation...'}
-              {isSaving && 'Enregistrement...'}
             </span>
             {hasChunks && (
               <span className="text-xs text-gray-400">{completedChunks}/{totalChunks}</span>
