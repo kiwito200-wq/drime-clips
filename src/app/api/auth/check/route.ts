@@ -7,7 +7,14 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'fallback-secret-change-in-production'
 )
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+// Helper to ensure URL has protocol
+function ensureProtocol(url: string): string {
+  if (!url) return url
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return `https://${url}`
+}
+
+const DRIME_API_URL = ensureProtocol(process.env.DRIME_API_URL || 'https://app.drime.cloud')
 
 /**
  * Check authentication by verifying with Drime

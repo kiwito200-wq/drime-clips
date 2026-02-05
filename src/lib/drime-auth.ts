@@ -3,7 +3,14 @@ import { prisma } from './prisma'
 import { createSession, setSessionCookie } from './auth'
 import { encrypt } from './encryption'
 
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
+// Helper to ensure URL has protocol
+function ensureProtocol(url: string): string {
+  if (!url) return url
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return `https://${url}`
+}
+
+const DRIME_API_URL = ensureProtocol(process.env.DRIME_API_URL || 'https://app.drime.cloud')
 const DRIME_EXTERNAL_TOKEN = process.env.DRIME_EXTERNAL_TOKEN || ''
 
 export interface DrimeUser {

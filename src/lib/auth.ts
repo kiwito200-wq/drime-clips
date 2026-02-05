@@ -17,9 +17,16 @@ const JWT_SECRET = new TextEncoder().encode(
 
 const SESSION_DURATION = 30 * 24 * 60 * 60 * 1000 // 30 days
 
+// Helper to ensure URL has protocol
+function ensureProtocol(url: string): string {
+  if (!url) return url
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return `https://${url}`
+}
+
 // Drime API URL (staging for now, will be app.drime.cloud in production)
-const DRIME_API_URL = process.env.DRIME_API_URL || 'https://app.drime.cloud'
-const DRIME_LOGIN_URL = process.env.DRIME_LOGIN_URL || 'https://app.drime.cloud/login'
+const DRIME_API_URL = ensureProtocol(process.env.DRIME_API_URL || 'https://app.drime.cloud')
+const DRIME_LOGIN_URL = ensureProtocol(process.env.DRIME_LOGIN_URL || 'https://app.drime.cloud/login')
 
 export { DRIME_LOGIN_URL }
 
