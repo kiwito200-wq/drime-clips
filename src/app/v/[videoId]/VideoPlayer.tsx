@@ -146,18 +146,6 @@ function SpeedControl({
   )
 }
 
-// Format seconds to human-readable short duration
-function formatDuration(seconds: number): string {
-  if (!seconds || !isFinite(seconds)) return '0 sec'
-  if (seconds < 60) return `${Math.round(seconds)} sec`
-  const mins = Math.floor(seconds / 60)
-  const secs = Math.round(seconds % 60)
-  if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins} min`
-  const hours = Math.floor(mins / 60)
-  const remainMins = mins % 60
-  return `${hours}h ${remainMins}m`
-}
-
 const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoPlayer(
   { src, poster, title, onTimeUpdate, onDurationChange },
   ref
@@ -182,8 +170,6 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [hoverTime, setHoverTime] = useState(0)
   const [isDraggingProgress, setIsDraggingProgress] = useState(false)
   const controlsTimeout = useRef<NodeJS.Timeout>()
-
-  const effectiveDuration = duration > 0 ? duration / playbackSpeed : 0
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
@@ -351,29 +337,18 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
         </div>
       )}
 
-      {/* ─── Center overlay: Play button + Speed pill + Duration ─── */}
+      {/* ─── Center overlay: Play button only ─── */}
       {!isPlaying && !isLoading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          {/* Play button — clean, no ring */}
-          <button onClick={togglePlay} className="group/play mb-5">
-            <div className="w-[72px] h-[72px] rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-2xl group-hover/play:scale-110 group-active/play:scale-95 transition-all duration-300 ease-out">
-              <svg className="w-7 h-7 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </div>
-          </button>
-
-          {/* Speed pill + Duration — floating below play */}
-          <div className="flex flex-col items-center gap-2">
-            {/* Speed micro-control */}
-            <SpeedControl speed={playbackSpeed} onChangeSpeed={changeSpeed} />
-
-            {/* Duration */}
-            <div className="text-white/50 text-[13px] font-medium tabular-nums tracking-wide">
-              {formatDuration(effectiveDuration)}
-            </div>
+        <button
+          onClick={togglePlay}
+          className="absolute inset-0 flex items-center justify-center group/play"
+        >
+          <div className="w-[72px] h-[72px] rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center shadow-2xl group-hover/play:scale-110 group-active/play:scale-95 transition-all duration-300 ease-out">
+            <svg className="w-7 h-7 text-gray-900 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
           </div>
-        </div>
+        </button>
       )}
 
       {/* ─── Bottom bar ─── */}
