@@ -1,25 +1,14 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-
-type RecordingMode = 'fullscreen' | 'window' | 'tab' | 'camera'
+import { useWebRecorder, type RecordingMode } from './useWebRecorder'
+import { InProgressRecordingBar } from './InProgressRecordingBar'
 
 interface DeviceInfo {
   deviceId: string
   label: string
-}
-
-interface UploadState {
-  videoId: string | null
-  uploadId: string | null
-  userId: string | null
-  partNumber: number
-  parts: { PartNumber: number; ETag: string }[]
-  uploading: boolean
-  uploadedBytes: number
-  totalBytes: number
 }
 
 const RECORDING_MODES = [
@@ -62,53 +51,54 @@ const RECORDING_MODES = [
   },
 ]
 
-const MIN_CHUNK_SIZE = 5 * 1024 * 1024 // 5MB minimum for multipart
-
 export default function RecordPage() {
   const router = useRouter()
-  const [recorderOpen, setRecorderOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [modeSelectOpen, setModeSelectOpen] = useState(false)
   const [recordingMode, setRecordingMode] = useState<RecordingMode>('fullscreen')
   
-  // Devices
   const [cameras, setCameras] = useState<DeviceInfo[]>([])
   const [microphones, setMicrophones] = useState<DeviceInfo[]>([])
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null)
   const [selectedMic, setSelectedMic] = useState<string | null>(null)
   const [cameraSelectOpen, setCameraSelectOpen] = useState(false)
   const [micSelectOpen, setMicSelectOpen] = useState(false)
-
-  // Recording state
-  const [isRecording, setIsRecording] = useState(false)
-  const [recordingTime, setRecordingTime] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
-  const [phase, setPhase] = useState<'idle' | 'recording' | 'uploading' | 'complete' | 'error'>('idle')
-  
-  // Refs
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const pendingChunksRef = useRef<Blob[]>([])
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const streamRef = useRef<MediaStream | null>(null)
-  const uploadStateRef = useRef<UploadState>({
-    videoId: null,
-    uploadId: null,
-    userId: null,
-    partNumber: 1,
-    parts: [],
-    uploading: false,
-    uploadedBytes: 0,
-    totalBytes: 0,
-  })
-
-  // Upload progress
-  const [uploadProgress, setUploadProgress] = useState(0)
-
-  // Settings
   const [rememberDevices, setRememberDevices] = useState(false)
 
-  // Load devices
+  const [openFaq, setOpenFaq] = useState<string | null>(null)
+
+  const handleComplete = useCallback((videoId: string, shareUrl: string) => {
+    window.open(shareUrl, '_blank')
+    router.push('/dashboard/clips')
+  }, [router])
+
+  const handleError = useCallback((error: Error) => {
+    console.error('Recording error:', error)
+  }, [])
+
+  const {
+    phase,
+    durationMs,
+    hasAudioTrack,
+    chunkUploads,
+    isRecording,
+    isBusy,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    restartRecording,
+    resetState,
+  } = useWebRecorder({
+    recordingMode,
+    selectedCameraId: selectedCamera,
+    selectedMicId: selectedMic,
+    onRecordingStart: () => setDialogOpen(false),
+    onComplete: handleComplete,
+    onError: handleError,
+  })
+
   const loadDevices = useCallback(async () => {
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() => {})
@@ -116,7 +106,7 @@ export default function RecordPage() {
       
       const cams = devices.filter(d => d.kind === 'videoinput').map(d => ({
         deviceId: d.deviceId,
-        label: d.label || `Camera ${d.deviceId.slice(0, 5)}`,
+        label: d.label || `Caméra ${d.deviceId.slice(0, 5)}`,
       }))
       const mics = devices.filter(d => d.kind === 'audioinput').map(d => ({
         deviceId: d.deviceId,
@@ -131,343 +121,24 @@ export default function RecordPage() {
   }, [])
 
   useEffect(() => {
-    if (recorderOpen) {
-      loadDevices()
+    if (dialogOpen) loadDevices()
+  }, [dialogOpen, loadDevices])
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && isBusy) return
+    if (!open) {
+      resetState()
+      setSettingsOpen(false)
     }
-  }, [recorderOpen, loadDevices])
-
-  // Initialize upload
-  const initializeUpload = async () => {
-    try {
-      const res = await fetch('/api/upload/simple', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'create' }),
-      })
-      
-      if (!res.ok) throw new Error('Failed to initialize upload')
-      
-      const data = await res.json()
-      uploadStateRef.current = {
-        ...uploadStateRef.current,
-        videoId: data.videoId,
-        uploadId: data.uploadId,
-        userId: data.userId,
-        partNumber: 1,
-        parts: [],
-      }
-      
-      return data
-    } catch (error) {
-      console.error('Error initializing upload:', error)
-      throw error
-    }
+    setDialogOpen(open)
   }
 
-  // Upload chunk
-  const uploadChunk = async (chunk: Blob) => {
-    const state = uploadStateRef.current
-    if (!state.videoId || !state.uploadId || !state.userId) return
-
-    try {
-      // Get presigned URL
-      const presignRes = await fetch('/api/upload/simple', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'presign',
-          videoId: state.videoId,
-          uploadId: state.uploadId,
-          userId: state.userId,
-          partNumber: state.partNumber,
-        }),
-      })
-      
-      if (!presignRes.ok) throw new Error('Failed to get presigned URL')
-      const { presignedUrl } = await presignRes.json()
-
-      // Upload to R2
-      const uploadRes = await fetch(presignedUrl, {
-        method: 'PUT',
-        body: chunk,
-        headers: { 'Content-Type': 'video/webm' },
-      })
-
-      if (!uploadRes.ok) throw new Error('Failed to upload chunk')
-      
-      const etag = uploadRes.headers.get('ETag') || `"part-${state.partNumber}"`
-      
-      state.parts.push({
-        PartNumber: state.partNumber,
-        ETag: etag.replace(/"/g, ''),
-      })
-      state.partNumber++
-      state.uploadedBytes += chunk.size
-      
-      setUploadProgress(Math.round((state.uploadedBytes / Math.max(state.totalBytes, state.uploadedBytes)) * 100))
-    } catch (error) {
-      console.error('Error uploading chunk:', error)
-    }
+  const closeAllSelects = () => {
+    setModeSelectOpen(false)
+    setCameraSelectOpen(false)
+    setMicSelectOpen(false)
   }
 
-  // Process pending chunks
-  const processPendingChunks = async () => {
-    const state = uploadStateRef.current
-    if (state.uploading || pendingChunksRef.current.length === 0) return
-
-    state.uploading = true
-    
-    while (pendingChunksRef.current.length > 0) {
-      const chunk = pendingChunksRef.current.shift()
-      if (chunk && chunk.size >= MIN_CHUNK_SIZE) {
-        await uploadChunk(chunk)
-      } else if (chunk) {
-        // Chunk too small, put it back for later
-        pendingChunksRef.current.unshift(chunk)
-        break
-      }
-    }
-    
-    state.uploading = false
-  }
-
-  // Generate thumbnail from video blob
-  const generateThumbnail = async (videoBlob: Blob): Promise<string | null> => {
-    return new Promise((resolve) => {
-      const video = document.createElement('video')
-      video.preload = 'metadata'
-      video.muted = true
-      video.playsInline = true
-      
-      video.onloadeddata = () => {
-        // Seek to 1 second or 10% of the video
-        const seekTime = Math.min(1, video.duration * 0.1)
-        video.currentTime = seekTime
-      }
-      
-      video.onseeked = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = video.videoWidth
-        canvas.height = video.videoHeight
-        
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-          const thumbnail = canvas.toDataURL('image/jpeg', 0.8)
-          URL.revokeObjectURL(video.src)
-          resolve(thumbnail)
-        } else {
-          resolve(null)
-        }
-      }
-      
-      video.onerror = () => {
-        URL.revokeObjectURL(video.src)
-        resolve(null)
-      }
-      
-      video.src = URL.createObjectURL(videoBlob)
-    })
-  }
-
-  // Finalize upload
-  const finalizeUpload = async () => {
-    const state = uploadStateRef.current
-    if (!state.videoId || !state.uploadId || !state.userId) return null
-
-    try {
-      // Upload any remaining chunks
-      if (pendingChunksRef.current.length > 0) {
-        const remaining = new Blob(pendingChunksRef.current, { type: 'video/webm' })
-        if (remaining.size > 0) {
-          await uploadChunk(remaining)
-        }
-        pendingChunksRef.current = []
-      }
-
-      // Generate thumbnail from recorded chunks
-      let thumbnail: string | null = null
-      if (chunksRef.current.length > 0) {
-        const fullBlob = new Blob(chunksRef.current, { type: 'video/webm' })
-        thumbnail = await generateThumbnail(fullBlob)
-      }
-
-      // Complete multipart upload
-      const res = await fetch('/api/upload/simple', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'complete',
-          videoId: state.videoId,
-          uploadId: state.uploadId,
-          userId: state.userId,
-          parts: state.parts.sort((a, b) => a.PartNumber - b.PartNumber),
-          thumbnail, // Include thumbnail
-        }),
-      })
-
-      if (!res.ok) throw new Error('Failed to finalize upload')
-      
-      return state.videoId
-    } catch (error) {
-      console.error('Error finalizing upload:', error)
-      return null
-    }
-  }
-
-  // Start recording
-  const startRecording = async () => {
-    try {
-      setPhase('recording')
-      
-      // Initialize upload first
-      await initializeUpload()
-      
-      let stream: MediaStream
-
-      if (recordingMode === 'camera') {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: selectedCamera ? { deviceId: selectedCamera } : true,
-          audio: selectedMic ? { deviceId: selectedMic } : true,
-        })
-      } else {
-        const displayMediaOptions: DisplayMediaStreamOptions = {
-          video: true,
-          audio: true,
-        }
-
-        if (recordingMode === 'window') {
-          (displayMediaOptions.video as any) = { displaySurface: 'window' }
-        } else if (recordingMode === 'tab') {
-          (displayMediaOptions.video as any) = { displaySurface: 'browser' }
-        }
-
-        const displayStream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions)
-
-        if (selectedMic) {
-          try {
-            const audioStream = await navigator.mediaDevices.getUserMedia({
-              audio: { deviceId: selectedMic },
-            })
-            audioStream.getAudioTracks().forEach(track => displayStream.addTrack(track))
-          } catch (e) {
-            console.warn('Could not get microphone:', e)
-          }
-        }
-
-        stream = displayStream
-      }
-
-      streamRef.current = stream
-      chunksRef.current = []
-      pendingChunksRef.current = []
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-      })
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunksRef.current.push(e.data)
-          pendingChunksRef.current.push(e.data)
-          uploadStateRef.current.totalBytes += e.data.size
-          processPendingChunks()
-        }
-      }
-
-      mediaRecorder.onstop = async () => {
-        setPhase('uploading')
-        const videoId = await finalizeUpload()
-        cleanup()
-        
-        if (videoId) {
-          setPhase('complete')
-          router.push(`/v/${videoId}`)
-        } else {
-          setPhase('error')
-        }
-      }
-
-      mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start(1000) // Collect data every second
-
-      setIsRecording(true)
-      setRecordingTime(0)
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1)
-      }, 1000)
-
-      // Handle stream end
-      stream.getTracks().forEach(track => {
-        track.onended = () => stopRecording()
-      })
-
-      // Close the dialog when recording starts
-      setRecorderOpen(false)
-    } catch (error) {
-      console.error('Error starting recording:', error)
-      setPhase('error')
-    }
-  }
-
-  // Stop recording
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-  }
-
-  // Pause/Resume
-  const togglePause = () => {
-    if (!mediaRecorderRef.current) return
-    
-    if (isPaused) {
-      mediaRecorderRef.current.resume()
-      timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1)
-      }, 1000)
-    } else {
-      mediaRecorderRef.current.pause()
-      if (timerRef.current) clearInterval(timerRef.current)
-    }
-    setIsPaused(!isPaused)
-  }
-
-  // Cleanup
-  const cleanup = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-    }
-    setIsRecording(false)
-    setIsPaused(false)
-    setRecordingTime(0)
-    uploadStateRef.current = {
-      videoId: null,
-      uploadId: null,
-      userId: null,
-      partNumber: 1,
-      parts: [],
-      uploading: false,
-      uploadedBytes: 0,
-      totalBytes: 0,
-    }
-  }
-
-  // Cancel recording
-  const cancelRecording = () => {
-    cleanup()
-    setPhase('idle')
-  }
-
-  // Format time
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // Open Desktop
   const openDesktop = () => {
     window.location.href = 'drime://'
     setTimeout(() => {
@@ -477,28 +148,26 @@ export default function RecordPage() {
     }, 1500)
   }
 
-  // FAQ Items
+  const currentMode = RECORDING_MODES.find(m => m.id === recordingMode)
+
   const faqItems = [
-    { q: "Qu'est-ce qu'un Clip ?", a: "Un Clip est un enregistrement vidéo rapide de votre écran, caméra ou les deux que vous pouvez partager instantanément avec un lien." },
-    { q: "Comment ça marche ?", a: "L'enregistrement se fait directement dans votre navigateur et s'upload en temps réel. Une fois terminé, vous êtes redirigé vers votre vidéo." },
-    { q: "Quels navigateurs sont recommandés ?", a: "Nous recommandons Google Chrome ou d'autres navigateurs basés sur Chromium pour la meilleure expérience." },
-    { q: "Comment garder ma webcam visible ?", a: "En mode plein écran, votre webcam s'affiche dans une fenêtre picture-in-picture qui reste visible pendant l'enregistrement." },
+    { q: "Qu'est-ce qu'un Clip ?", a: "Un Clip est un enregistrement vidéo rapide de votre écran, caméra ou les deux que vous pouvez partager instantanément." },
+    { q: "Comment ça marche ?", a: "L'enregistrement se fait dans votre navigateur et s'upload en temps réel. Une fois terminé, vous êtes redirigé vers votre vidéo." },
+    { q: "Quels navigateurs sont recommandés ?", a: "Nous recommandons Google Chrome ou d'autres navigateurs basés sur Chromium." },
+    { q: "Comment garder ma webcam visible ?", a: "En mode plein écran, votre webcam s'affiche en picture-in-picture pendant l'enregistrement." },
     { q: "Que puis-je enregistrer ?", a: "Vous pouvez enregistrer votre écran entier, une fenêtre spécifique, un onglet ou juste votre caméra." },
     { q: "Puis-je enregistrer l'audio système ?", a: "L'audio système est limité dans les navigateurs. Pour de meilleurs résultats, utilisez Drime Desktop." },
   ]
 
-  const [openFaq, setOpenFaq] = useState<string | null>(null)
-  const currentMode = RECORDING_MODES.find(m => m.id === recordingMode)
+  const showRecordingBar = isRecording || phase === 'uploading' || phase === 'creating' || phase === 'error'
 
   return (
     <div className="h-full flex flex-col items-center justify-center p-8">
       <div className="w-full max-w-xl">
-        {/* Title */}
         <div className="text-center mb-8">
           <p className="text-gray-500">Choisissez comment enregistrer votre Clip</p>
         </div>
 
-        {/* Action buttons */}
         <div className="flex items-center justify-center gap-3 flex-wrap">
           <button
             onClick={openDesktop}
@@ -513,7 +182,7 @@ export default function RecordPage() {
           <span className="text-gray-400 text-sm">ou</span>
           
           <button
-            onClick={() => setRecorderOpen(true)}
+            onClick={() => setDialogOpen(true)}
             className="flex items-center gap-2 px-5 py-3 bg-[#08CF65] text-white rounded-xl hover:bg-[#07B859] transition-colors font-medium"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -523,7 +192,6 @@ export default function RecordPage() {
           </button>
         </div>
 
-        {/* FAQ */}
         <div className="mt-10">
           <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
             {faqItems.map((item, i) => (
@@ -559,25 +227,25 @@ export default function RecordPage() {
         </div>
       </div>
 
-      {/* Web Recorder Dialog */}
       <AnimatePresence>
-        {recorderOpen && !isRecording && (
+        {dialogOpen && !isRecording && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-              onClick={() => setRecorderOpen(false)}
+              onClick={() => handleOpenChange(false)}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-[320px]"
-            >
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                {/* Header */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                className="w-[320px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between p-4 pb-2">
                   <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs font-medium rounded">Free</span>
                   <button
@@ -607,7 +275,7 @@ export default function RecordPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium text-gray-900">Mémoriser les appareils</p>
-                          <p className="text-xs text-gray-500 mt-0.5">Sélection automatique au prochain enregistrement</p>
+                          <p className="text-xs text-gray-500 mt-0.5">Sélection automatique</p>
                         </div>
                         <button
                           onClick={() => setRememberDevices(!rememberDevices)}
@@ -623,10 +291,9 @@ export default function RecordPage() {
                   </div>
                 ) : (
                   <div className="p-4 pt-2 space-y-3">
-                    {/* Mode selector */}
                     <div className="relative">
                       <button
-                        onClick={() => { setModeSelectOpen(!modeSelectOpen); setCameraSelectOpen(false); setMicSelectOpen(false) }}
+                        onClick={() => { closeAllSelects(); setModeSelectOpen(!modeSelectOpen) }}
                         className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center gap-3">
@@ -669,17 +336,16 @@ export default function RecordPage() {
                       </AnimatePresence>
                     </div>
 
-                    {/* Camera selector */}
                     <div className="relative">
                       <button
-                        onClick={() => { setCameraSelectOpen(!cameraSelectOpen); setModeSelectOpen(false); setMicSelectOpen(false) }}
+                        onClick={() => { closeAllSelects(); setCameraSelectOpen(!cameraSelectOpen) }}
                         className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" />
                           </svg>
-                          <span className="text-sm text-gray-700">
+                          <span className="text-sm text-gray-700 truncate">
                             {selectedCamera ? cameras.find(c => c.deviceId === selectedCamera)?.label || 'Caméra' : 'Pas de caméra'}
                           </span>
                         </div>
@@ -718,17 +384,16 @@ export default function RecordPage() {
                       </AnimatePresence>
                     </div>
 
-                    {/* Mic selector */}
                     <div className="relative">
                       <button
-                        onClick={() => { setMicSelectOpen(!micSelectOpen); setModeSelectOpen(false); setCameraSelectOpen(false) }}
+                        onClick={() => { closeAllSelects(); setMicSelectOpen(!micSelectOpen) }}
                         className="w-full flex items-center justify-between p-3 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
                           </svg>
-                          <span className="text-sm text-gray-700">
+                          <span className="text-sm text-gray-700 truncate">
                             {selectedMic ? microphones.find(m => m.deviceId === selectedMic)?.label || 'Micro' : 'Pas de micro'}
                           </span>
                         </div>
@@ -767,10 +432,10 @@ export default function RecordPage() {
                       </AnimatePresence>
                     </div>
 
-                    {/* Start button */}
                     <button
                       onClick={startRecording}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-[#08CF65] text-white rounded-xl hover:bg-[#07B859] transition-colors font-medium"
+                      disabled={isBusy}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-[#08CF65] text-white rounded-xl hover:bg-[#07B859] transition-colors font-medium disabled:opacity-50"
                     >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -778,7 +443,6 @@ export default function RecordPage() {
                       Démarrer l&apos;enregistrement
                     </button>
 
-                    {/* How it works */}
                     <button className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -787,111 +451,24 @@ export default function RecordPage() {
                     </button>
                   </div>
                 )}
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Recording bar - like drimeclient-main */}
       <AnimatePresence>
-        {(isRecording || phase === 'uploading') && (
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50"
-          >
-            <div className="flex items-center gap-3 px-4 py-3 bg-[#1a1a1a] rounded-2xl shadow-2xl border border-gray-700">
-              {/* Recording indicator */}
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${phase === 'uploading' ? 'bg-blue-500 animate-pulse' : isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
-                <span className="text-white font-mono text-base min-w-[52px]">{formatTime(recordingTime)}</span>
-              </div>
-
-              <div className="w-px h-6 bg-gray-600" />
-
-              {/* Mic indicator */}
-              <button className={`p-2 rounded-lg transition-colors ${selectedMic ? 'text-white hover:bg-gray-700' : 'text-gray-500'}`}>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  {selectedMic ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 19L5 5m14 0v6a2 2 0 01-2 2H7m0 0v4a6 6 0 006 6m0 0a6 6 0 006-6v-1.5" />
-                  )}
-                </svg>
-              </button>
-
-              {/* Pause/Resume */}
-              {phase === 'recording' && (
-                <button
-                  onClick={togglePause}
-                  className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  {isPaused ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                    </svg>
-                  )}
-                </button>
-              )}
-
-              {/* Restart */}
-              {phase === 'recording' && (
-                <button
-                  onClick={cancelRecording}
-                  className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Annuler"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-                  </svg>
-                </button>
-              )}
-
-              <div className="w-px h-6 bg-gray-600" />
-
-              {/* Stop / Upload status */}
-              {phase === 'uploading' ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 rounded-lg">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-white text-sm font-medium">Upload {uploadProgress}%</span>
-                </div>
-              ) : (
-                <button
-                  onClick={stopRecording}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="1" />
-                  </svg>
-                  Terminer
-                </button>
-              )}
-
-              {/* Menu */}
-              <button className="p-2 text-white hover:bg-gray-700 rounded-lg transition-colors">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Upload progress bar */}
-            {phase === 'uploading' && (
-              <div className="mt-2 w-full bg-gray-700 rounded-full h-1 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  className="h-full bg-[#08CF65]"
-                />
-              </div>
-            )}
-          </motion.div>
+        {showRecordingBar && (
+          <InProgressRecordingBar
+            phase={phase}
+            durationMs={durationMs}
+            hasAudioTrack={hasAudioTrack}
+            chunkUploads={chunkUploads}
+            onStop={stopRecording}
+            onPause={pauseRecording}
+            onResume={resumeRecording}
+            onRestart={restartRecording}
+          />
         )}
       </AnimatePresence>
     </div>
