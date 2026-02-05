@@ -14,7 +14,7 @@ binding = "AI"
 # R2 bucket binding (same bucket as your videos)
 [[r2_buckets]]
 binding = "BUCKET"
-bucket_name = "drime-clips"   # ← Change if your bucket has a different name
+bucket_name = "drimesign"
 
 # Secret (set via: npx wrangler secret put TRANSCRIBE_SECRET)
 # Don't put the actual value here — use `wrangler secret put`
