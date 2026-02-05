@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 interface User {
   id: string
@@ -19,7 +19,6 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
-  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -27,17 +26,20 @@ export default function DashboardLayout({
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch('/api/auth/me')
+        const res = await fetch('/api/auth/me', { credentials: 'include' })
         const data = await res.json()
-        if (data.authenticated && data.user) {
+        
+        // Fix: check data.user instead of data.authenticated
+        if (data.user) {
           setUser(data.user)
+          setLoading(false)
         } else {
+          // Not authenticated - redirect to login
           window.location.href = DRIME_LOGIN_URL
         }
-      } catch {
+      } catch (error) {
+        console.error('Auth check failed:', error)
         window.location.href = DRIME_LOGIN_URL
-      } finally {
-        setLoading(false)
       }
     }
     checkAuth()
@@ -46,7 +48,10 @@ export default function DashboardLayout({
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+          <span className="text-gray-600">Chargement...</span>
+        </div>
       </div>
     )
   }
@@ -74,25 +79,23 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-200 flex flex-col transition-all duration-200`}>
+      {/* Sidebar - Style like Drime Sign/Notes */}
+      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-52'} bg-white border-r border-gray-200 flex flex-col transition-all duration-200 relative`}>
         {/* Logo */}
         <div className="h-16 flex items-center px-4 border-b border-gray-100">
           <Link href="/dashboard/clips" className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-[#08CF65] rounded-lg flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <div className="w-8 h-8 bg-[#08CF65] rounded-lg flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
             {!sidebarCollapsed && (
-              <span className="font-semibold text-xl text-gray-900">
-                <span className="text-[#08CF65]">Drime</span> Clips
-              </span>
+              <span className="font-semibold text-lg text-gray-900">Clips</span>
             )}
           </Link>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation - Style like Drime Sign (gray active, black text) */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + '/')
@@ -100,17 +103,17 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-[#E0F5EA] text-[#08CF65]'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-[#ECEEF0] text-gray-900'
+                    : 'text-gray-900 hover:bg-[#ECEEF0]'
                 }`}
               >
-                <span className={isActive ? 'text-[#08CF65]' : 'text-gray-400'}>
+                <span className="text-gray-600">
                   {item.icon}
                 </span>
                 {!sidebarCollapsed && (
-                  <span className="font-medium text-sm">{item.name}</span>
+                  <span>{item.name}</span>
                 )}
               </Link>
             )
@@ -120,9 +123,9 @@ export default function DashboardLayout({
         {/* User section */}
         <div className="p-4 border-t border-gray-100">
           <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
               {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full" />
+                <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
               ) : (
                 (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
               )}
@@ -141,8 +144,7 @@ export default function DashboardLayout({
         {/* Collapse toggle */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="absolute top-20 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors"
-          style={{ left: sidebarCollapsed ? '67px' : '253px' }}
+          className="absolute top-20 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors z-10"
         >
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
