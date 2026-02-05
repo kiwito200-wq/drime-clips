@@ -32,7 +32,7 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState<AnalyticsRange>('7d')
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<AnalyticsData | null>(null)
-  const [selectedMetrics, setSelectedMetrics] = useState<Set<'views' | 'comments'>>(new Set(['views', 'comments']))
+  const [selectedMetrics, setSelectedMetrics] = useState<Set<'views' | 'comments'>>(() => new Set(['views', 'comments'] as const))
 
   useEffect(() => {
     const fetchAnalytics = async () => {

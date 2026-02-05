@@ -127,8 +127,8 @@ export default async function VideoPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      {/* Main content - Give more space like Cap.so */}
+      <main className="flex-1 px-4 lg:px-6 py-6" style={{ minHeight: 'calc(100vh - 180px)' }}>
         {isUploading ? (
           <div className="max-w-5xl mx-auto">
             <div className="bg-black rounded-xl overflow-hidden shadow-lg">
@@ -136,32 +136,33 @@ export default async function VideoPage({ params }: Props) {
             </div>
           </div>
         ) : (
-          <VideoPageClient
-            video={{
-              id: video.id,
-              name: video.name,
-              duration: video.duration,
-              width: video.width,
-              height: video.height,
-              owner: video.owner,
-              createdAt: video.createdAt,
-            }}
-            videoUrl={videoUrl}
-            thumbnailUrl={thumbnailUrl}
-            canEdit={canEdit}
-          />
+          <div className="max-w-[1600px] mx-auto h-full">
+            <VideoPageClient
+              video={{
+                id: video.id,
+                name: video.name,
+                duration: video.duration,
+                width: video.width,
+                height: video.height,
+                owner: video.owner,
+                createdAt: video.createdAt,
+              }}
+              videoUrl={videoUrl}
+              thumbnailUrl={thumbnailUrl}
+              canEdit={canEdit}
+            />
+          </div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="mt-16 py-8 border-t border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 text-center">
-          <p className="text-gray-500 text-sm">
+      {/* Minimal footer */}
+      <footer className="py-4 border-t border-gray-200">
+        <div className="max-w-[1600px] mx-auto px-4 lg:px-6 text-center">
+          <p className="text-gray-400 text-xs">
             Partagé avec{' '}
             <a href="https://drime.cloud" className="text-[#08CF65] hover:underline">
               Drime Clips
             </a>
-            {' '}— L&apos;outil d&apos;enregistrement d&apos;écran le plus simple
           </p>
         </div>
       </footer>

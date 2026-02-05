@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import VideoPlayer, { VideoPlayerRef } from './VideoPlayer';
 import CommentsPanel from './CommentsPanel';
 
@@ -23,7 +23,6 @@ interface VideoPageClientProps {
   thumbnailUrl: string;
   canEdit?: boolean;
 }
-
 
 export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit = false }: VideoPageClientProps) {
   const playerRef = useRef<VideoPlayerRef>(null);
@@ -85,15 +84,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
-  // Format date
-  const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
   // Format relative time
   const formatRelativeDate = (date: Date): string => {
     const now = new Date();
@@ -104,105 +94,106 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     if (hours < 1) return "À l'instant";
     if (hours < 24) return `Il y a ${hours}h`;
     if (days < 7) return `Il y a ${days}j`;
-    return formatDate(date);
+    return new Date(date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* Header with title */}
-      <div className="mb-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            {/* Editable title */}
-            {isEditingTitle ? (
-              <input
-                ref={titleInputRef}
-                type="text"
-                value={tempTitle}
-                onChange={(e) => setTempTitle(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') saveTitle();
-                  if (e.key === 'Escape') cancelEditing();
-                }}
-                className="text-2xl font-semibold text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none w-full"
-              />
-            ) : (
-              <h1 
-                className={`text-2xl font-semibold text-gray-900 ${canEdit ? 'cursor-pointer hover:text-[#08CF65] transition-colors' : ''}`}
-                onClick={startEditing}
-                title={canEdit ? 'Cliquer pour modifier' : undefined}
-              >
-                {title}
-              </h1>
-            )}
+    <div className="flex flex-col lg:flex-row gap-4 h-full">
+      {/* LEFT: Video section - Takes most of the space */}
+      <div className="flex-1 min-w-0 flex flex-col">
+        {/* Title bar - like Cap.so */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Avatar */}
+            <div className="w-10 h-10 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-bold text-[#08CF65] flex-shrink-0 overflow-hidden">
+              {video.owner?.avatarUrl ? (
+                <img src={video.owner.avatarUrl} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                (video.owner?.name || video.owner?.email || 'U').slice(0, 2).toUpperCase()
+              )}
+            </div>
             
-            {/* Meta info */}
-            <div className="flex items-center gap-3 mt-2 text-gray-500 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#E0F5EA] flex items-center justify-center text-xs font-semibold text-[#08CF65]">
-                  {video.owner?.avatarUrl ? (
-                    <img src={video.owner.avatarUrl} alt="" className="w-7 h-7 rounded-full" />
-                  ) : (
-                    (video.owner?.name || video.owner?.email || 'U').slice(0, 2).toUpperCase()
-                  )}
-                </div>
-                <span className="font-medium text-gray-700">{video.owner?.name || video.owner?.email?.split('@')[0]}</span>
+            <div className="min-w-0">
+              {/* Editable title */}
+              {isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveTitle();
+                    if (e.key === 'Escape') cancelEditing();
+                  }}
+                  className="text-lg font-semibold text-gray-900 bg-transparent border-b-2 border-[#08CF65] outline-none w-full"
+                />
+              ) : (
+                <h1 
+                  className={`text-lg font-semibold text-gray-900 truncate ${canEdit ? 'cursor-pointer hover:text-[#08CF65] transition-colors' : ''}`}
+                  onClick={startEditing}
+                  title={canEdit ? 'Cliquer pour modifier' : title}
+                >
+                  {title}
+                </h1>
+              )}
+              
+              {/* Meta info */}
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span className="font-medium">{video.owner?.name || video.owner?.email?.split('@')[0]}</span>
+                <span>•</span>
+                <span>{formatRelativeDate(video.createdAt)}</span>
               </div>
-              <span className="text-gray-300">•</span>
-              <span>{formatRelativeDate(video.createdAt)}</span>
             </div>
           </div>
 
-          {/* Actions */}
+          {/* Actions - like Cap.so */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Short link badge */}
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-lg text-sm text-gray-600">
+              <span className="font-mono">clips.drime.cloud/v/{video.id.slice(0, 8)}</span>
+              <button
+                onClick={copyLink}
+                className="p-0.5 hover:bg-gray-200 rounded transition-colors"
+                title="Copier le lien"
+              >
+                {linkCopied ? (
+                  <svg className="w-4 h-4 text-[#08CF65]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            
+            {/* Copy link button (mobile) */}
             <button
               onClick={copyLink}
-              className="flex items-center gap-2 px-4 py-2 bg-[#08CF65] text-white rounded-full hover:bg-[#07B859] transition-colors text-sm font-medium"
+              className="sm:hidden flex items-center gap-2 px-3 py-2 bg-[#08CF65] text-white rounded-lg hover:bg-[#07B859] transition-colors text-sm font-medium"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              {linkCopied ? 'Copié !' : 'Copier le lien'}
+              {linkCopied ? 'Copié !' : 'Copier'}
             </button>
           </div>
         </div>
-      </div>
 
-      {/* Main content: Video + Comments side by side */}
-      <div className="flex gap-4 items-stretch">
-        {/* Video section */}
-        <div className="flex-1 min-w-0">
-          <div className="bg-white rounded-2xl border border-gray-200 p-3 shadow-sm h-full">
-            <div className="rounded-xl overflow-hidden aspect-video">
-              <VideoPlayer
-                ref={playerRef}
-                src={videoUrl}
-                poster={thumbnailUrl}
-                title={title}
-                onTimeUpdate={handleTimeUpdate}
-                onDurationChange={handleDurationChange}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Comments panel - stretches to match video height */}
-        <div className="hidden lg:flex w-[340px] flex-shrink-0">
-          <div className="w-full">
-            <CommentsPanel
-              videoId={video.id}
-              currentTime={currentTime}
-              duration={videoDuration}
-              onSeek={handleSeek}
-            />
-          </div>
+        {/* Video player - full width, no extra card wrapper */}
+        <div className="flex-1 rounded-xl overflow-hidden bg-black">
+          <VideoPlayer
+            ref={playerRef}
+            src={videoUrl}
+            poster={thumbnailUrl}
+            title={title}
+            onTimeUpdate={handleTimeUpdate}
+            onDurationChange={handleDurationChange}
+          />
         </div>
       </div>
 
-
-      {/* Video details (mobile) */}
-      <div className="lg:hidden mt-4">
+      {/* RIGHT: Comments panel - Fixed width like Cap.so */}
+      <div className="lg:w-[320px] xl:w-[360px] flex-shrink-0">
         <CommentsPanel
           videoId={video.id}
           currentTime={currentTime}
