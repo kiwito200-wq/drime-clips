@@ -66,6 +66,11 @@ export async function GET(
       }
     });
 
+    // Get view count
+    const viewCount = await prisma.videoView.count({
+      where: { videoId },
+    });
+
     return NextResponse.json({
       comments: textComments.map(c => ({
         id: c.id,
@@ -87,6 +92,7 @@ export async function GET(
       reactions: reactionCounts,
       totalComments: textComments.length,
       totalReactions: reactions.length,
+      viewCount,
     });
   } catch (error) {
     console.error('Error fetching comments:', error);

@@ -19,6 +19,7 @@ interface CommentsPanelProps {
   currentTime: number;
   duration: number;
   onSeek: (time: number) => void;
+  refreshTrigger?: number;
 }
 
 const EMOJI_CATEGORIES = [
@@ -63,7 +64,6 @@ function FloatingEmojiPicker({
       left: Math.max(8, Math.min(rect.left - 120, window.innerWidth - 296)),
     };
     setPos(newPos);
-    // Wait for position to be applied, then animate in
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setVisible(true));
     });
@@ -84,7 +84,6 @@ function FloatingEmojiPicker({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose, anchorRef]);
 
-  // Don't render until position is calculated
   if (!pos) return null;
 
   return createPortal(
@@ -126,7 +125,7 @@ function FloatingEmojiPicker({
   );
 }
 
-export default function CommentsPanel({ videoId, currentTime, duration, onSeek }: CommentsPanelProps) {
+export default function CommentsPanel({ videoId, currentTime, duration, onSeek, refreshTrigger = 0 }: CommentsPanelProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'summary' | 'transcript'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,24 +140,38 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const replyEmojiButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Stats
+  const [viewCount, setViewCount] = useState(0);
+  const [totalReactions, setTotalReactions] = useState(0);
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(`/api/videos/${videoId}/comments`);
+      const data = await response.json();
+      const commentsWithReplies = (data.comments || []).map((c: Comment) => ({
+        ...c,
+        replies: c.replies || [],
+      }));
+      setComments(commentsWithReplies);
+      setViewCount(data.viewCount || 0);
+      setTotalReactions(data.totalReactions || 0);
+    } catch (error) {
+      console.error('Failed to fetch comments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchComments = async () => {
-      try {
-        const response = await fetch(`/api/videos/${videoId}/comments`);
-        const data = await response.json();
-        const commentsWithReplies = (data.comments || []).map((c: Comment) => ({
-          ...c,
-          replies: c.replies || [],
-        }));
-        setComments(commentsWithReplies);
-      } catch (error) {
-        console.error('Failed to fetch comments:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchComments();
   }, [videoId]);
+
+  // Re-fetch when refreshTrigger changes (reaction added from toolbar)
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchComments();
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     if (replyingTo && replyInputRef.current) {
@@ -334,12 +347,26 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
       {/* Comments Tab */}
       {activeTab === 'comments' && (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Stats bar — views, comments, reactions */}
           <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500 flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <span>{viewCount}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              {totalComments}
+              <span>{totalComments}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>{totalReactions}</span>
             </span>
           </div>
 
