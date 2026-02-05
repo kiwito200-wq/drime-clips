@@ -37,7 +37,11 @@ export async function POST(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    // Skip if already processing or complete
+    // Check for force re-transcription (e.g. when timestamps are wrong)
+    const body = await request.json().catch(() => ({}));
+    const force = body?.force === true;
+
+    // Skip if already processing
     if (video.transcriptionStatus === 'PROCESSING') {
       return NextResponse.json({
         success: true,
@@ -45,7 +49,8 @@ export async function POST(
         status: 'PROCESSING',
       });
     }
-    if (video.transcriptionStatus === 'COMPLETE') {
+    // Skip if complete (unless forced)
+    if (video.transcriptionStatus === 'COMPLETE' && !force) {
       return NextResponse.json({
         success: true,
         message: 'Transcription already complete',

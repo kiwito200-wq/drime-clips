@@ -53,16 +53,20 @@ export default {
         audio: [...new Uint8Array(audioData)],
       });
 
-      console.log(`[Transcribe] Done: ${result.word_count || 0} words`);
+      console.log(`[Transcribe] Done: ${result.word_count || 0} words, has words array: ${!!(result.words && result.words.length)}`);
 
-      // ── Build VTT from words if the built-in VTT is missing ──
-      let vtt = result.vtt || '';
+      // ── Build VTT — prefer word-level timestamps (accurate) over built-in VTT (often broken timestamps) ──
+      let vtt = '';
 
-      if (!vtt && result.words && result.words.length > 0) {
+      if (result.words && result.words.length > 0) {
+        // Best path: build from word-level timestamps for accurate seek
         vtt = buildVttFromWords(result.words);
+      } else if (result.vtt) {
+        // Fallback: use built-in VTT from Whisper
+        vtt = result.vtt;
       }
 
-      // If still no VTT but we have text, make a single-cue VTT
+      // Last resort: single-cue VTT from full text
       if (!vtt && result.text) {
         vtt = `WEBVTT\n\n1\n00:00:00.000 --> 99:59:59.000\n${result.text}\n\n`;
       }

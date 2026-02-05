@@ -341,10 +341,16 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
     fetchTranscript();
   }, [videoId]);
 
-  // If status is PROCESSING, start polling automatically
+  // Auto-trigger transcription if status is null/PENDING (never started)
+  // and auto-poll if PROCESSING
+  const autoTriggeredRef = useRef(false);
   useEffect(() => {
-    if (transcriptStatus === 'PROCESSING' || transcriptStatus === 'PENDING') {
+    if (transcriptStatus === 'PROCESSING') {
       pollTranscript();
+    } else if (transcriptStatus === 'PENDING' && !autoTriggeredRef.current && !transcribing) {
+      // Auto-trigger transcription from client (server fire-and-forget is unreliable)
+      autoTriggeredRef.current = true;
+      handleTriggerTranscription();
     }
   }, [transcriptStatus]);
 
@@ -363,11 +369,13 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
   }, [currentTime, activeTab, transcriptEntries]);
 
   // Trigger transcription
-  const handleTriggerTranscription = async () => {
+  const handleTriggerTranscription = async (force = false) => {
     setTranscribing(true);
     try {
       const response = await fetch(`/api/videos/${videoId}/transcribe`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ force }),
       });
       const data = await response.json();
       if (data.status === 'COMPLETE') {
@@ -856,7 +864,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
                   : 'Générez automatiquement la transcription de cette vidéo.'}
               </p>
               <button
-                onClick={handleTriggerTranscription}
+                onClick={() => handleTriggerTranscription(transcriptStatus === 'FAILED')}
                 disabled={transcribing}
                 className="mt-4 px-5 py-2 bg-[#08CF65] text-white text-sm font-medium rounded-lg hover:bg-[#07B859] transition-colors disabled:opacity-50 flex items-center gap-2"
               >
