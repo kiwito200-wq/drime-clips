@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Initiate multipart upload in R2
-      const key = `${user.id}/${video.id}/video.mp4`;
+      const key = `${user.id}/${video.id}/result.mp4`;
       const r2UploadId = await initiateMultipartUpload(key, 'video/mp4');
 
       console.log(`[SimpleUpload] Created video ${video.id} for ${email}`);
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'presign' && videoId && uploadId && partNumber) {
       // Get presigned URL for part upload
-      const key = `${user.id}/${videoId}/video.mp4`;
+      const key = `${user.id}/${videoId}/result.mp4`;
       const presignedUrl = await getPresignedPartUrl(key, uploadId, partNumber);
 
       return NextResponse.json({
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     if (action === 'complete' && videoId && uploadId && parts) {
       // Complete multipart upload
-      const key = `${user.id}/${videoId}/video.mp4`;
+      const key = `${user.id}/${videoId}/result.mp4`;
       await completeMultipartUpload(key, uploadId, parts);
 
       // Update video as uploaded
