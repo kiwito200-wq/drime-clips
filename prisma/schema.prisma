@@ -1,5 +1,5 @@
-// Drime Sign - Clean Prisma Schema
-// Electronic signature service
+// Drime Clips - Video Sharing Platform
+// Screen recording & video sharing service
 
 generator client {
   provider = "prisma-client-js"
@@ -48,6 +48,7 @@ model User {
   sessions      Session[]
   notifications Notification[]
   templates     Template[]
+  videos        Video[]
 
   @@index([email])
   @@index([drimeUserId])
@@ -270,4 +271,115 @@ model Template {
   @@index([userId])
   @@index([slug])
   @@index([userId, archivedAt])
+}
+
+// ============================================
+// VIDEO CLIPS
+// ============================================
+
+model Video {
+  id      String @id @default(cuid())
+  ownerId String
+
+  name        String
+  description String?
+
+  // Storage (Cloudflare R2)
+  bucket     String? // Custom bucket ID if using own S3
+  awsRegion  String?
+  awsBucket  String?
+
+  // Video metadata
+  duration Float? // Duration in seconds
+  width    Int?
+  height   Int?
+  fps      Int?
+
+  // Source type
+  source Json? // { type: "desktopMP4" | "webMP4" | "local" | "hls" }
+
+  // Timestamps for segments
+  videoStartTime String?
+  audioStartTime String?
+
+  // Processing
+  jobId        String?
+  jobStatus    String? // pending, processing, complete, failed
+  xStreamInfo  String?
+  skipProcessing Boolean @default(false)
+
+  // Transcription
+  transcriptionStatus String? // PENDING, PROCESSING, COMPLETE, FAILED, NO_AUDIO, SKIPPED
+
+  // AI generated content
+  metadata Json? // { aiTitle, summary, chapters, customCreatedAt, etc. }
+
+  // Sharing settings
+  public   Boolean @default(true)
+  password String? // Encrypted password for protected videos
+
+  // Video settings (comments, captions, etc.)
+  settings Json? // { disableComments, disableSummary, etc. }
+
+  // Screenshot mode
+  isScreenshot Boolean @default(false)
+
+  // Effective dates
+  effectiveCreatedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  owner  User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  upload VideoUpload?
+  views  VideoView[]
+
+  @@index([ownerId])
+  @@index([public])
+  @@index([createdAt])
+}
+
+model VideoUpload {
+  id      String @id @default(cuid())
+  videoId String @unique
+
+  // Upload progress tracking
+  uploaded Int? // Bytes uploaded
+  total    Int? // Total bytes
+
+  // Upload mode
+  mode String? // "singlepart" | "multipart"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+}
+
+model VideoView {
+  id      String @id @default(cuid())
+  videoId String
+
+  // Viewer info
+  viewerId  String? // User ID if logged in
+  ipAddress String?
+  userAgent String?
+  country   String?
+  city      String?
+
+  // Watch stats
+  watchDuration Float? // Seconds watched
+  completed     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  // Relations
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId])
+  @@index([createdAt])
 }
