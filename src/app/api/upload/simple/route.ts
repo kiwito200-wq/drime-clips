@@ -1,10 +1,11 @@
-// Simple Upload API - No complex auth needed
+// Simple Upload API - Works for both desktop app (email) and browser (session)
 // The desktop app knows the user's email (they're logged into Drime)
-// We just need to associate the video with that email
+// The browser uses session cookies from Drime login
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { nanoid } from 'nanoid';
+import { getCurrentUser } from '@/lib/auth';
 import { 
   initiateMultipartUpload, 
   getPresignedPartUrl, 
@@ -18,29 +19,42 @@ import {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, name, action, videoId, uploadId, partNumber, parts } = body;
+    const { email, name, action, videoId, uploadId, userId, partNumber, parts } = body;
 
-    console.log('[SimpleUpload] Request:', { action, email, videoId, partNumber });
+    console.log('[SimpleUpload] Request:', { action, email, videoId, partNumber, userId });
 
-    // Validate email is provided
-    if (!email) {
-      return NextResponse.json({ error: 'Email required' }, { status: 400 });
+    // Try to get user from session first (browser recording)
+    // or from email (desktop app)
+    let user = await getCurrentUser().catch(() => null);
+    
+    if (!user && email) {
+      // Desktop app path - find/create user by email
+      user = await prisma.user.findUnique({
+        where: { email: email.toLowerCase() },
+      });
+
+      if (!user) {
+        // Create user if they don't exist (they're authenticated via Drime desktop app)
+        user = await prisma.user.create({
+          data: {
+            email: email.toLowerCase(),
+            name: email.split('@')[0], // Use email prefix as name
+          },
+        });
+        console.log(`[SimpleUpload] Created user for email: ${email}`);
+      }
+    }
+    
+    // For presign and complete actions, we can use userId from request body
+    // (the client already has this from the create response)
+    if (!user && userId && (action === 'presign' || action === 'complete')) {
+      user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
     }
 
-    // Find or create user by email
-    let user = await prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
-    });
-
     if (!user) {
-      // Create user if they don't exist (they're authenticated via Drime desktop app)
-      user = await prisma.user.create({
-        data: {
-          email: email.toLowerCase(),
-          name: email.split('@')[0], // Use email prefix as name
-        },
-      });
-      console.log(`[SimpleUpload] Created user for email: ${email}`);
+      return NextResponse.json({ error: 'Not authenticated. Please log in.' }, { status: 401 });
     }
 
     // Handle different actions
