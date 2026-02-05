@@ -207,13 +207,22 @@ export const useWebRecorder = ({
 
       // Setup MediaRecorder
       const mimeType = getSupportedMimeType()
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType,
-        videoBitsPerSecond: 5000000, // 5 Mbps
-      })
+      console.log('[WebRecorder] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })))
+      console.log('[WebRecorder] Using mimeType:', mimeType || 'default')
+      
+      let mediaRecorder: MediaRecorder
+      try {
+        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      } catch (e) {
+        console.warn('[WebRecorder] MediaRecorder with mimeType failed, trying without:', e)
+        mediaRecorder = new MediaRecorder(stream)
+      }
+      
+      console.log('[WebRecorder] MediaRecorder created, actual mimeType:', mediaRecorder.mimeType)
 
       mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        console.log('[WebRecorder] ondataavailable fired, size:', e.data?.size || 0)
+        if (e.data && e.data.size > 0) {
           chunksRef.current.push(e.data)
           totalBytesRef.current += e.data.size
           uploader.handleChunk(e.data, totalBytesRef.current)
@@ -257,7 +266,16 @@ export const useWebRecorder = ({
       }
 
       mediaRecorderRef.current = mediaRecorder
-      mediaRecorder.start(1000) // Chunk every second
+      
+      // Start recording - try with timeslice, fall back to no timeslice
+      try {
+        mediaRecorder.start(1000) // Chunk every second
+        console.log('[WebRecorder] MediaRecorder started with timeslice=1000, state:', mediaRecorder.state)
+      } catch (startErr) {
+        console.warn('[WebRecorder] start(1000) failed, trying start():', startErr)
+        mediaRecorder.start()
+        console.log('[WebRecorder] MediaRecorder started without timeslice, state:', mediaRecorder.state)
+      }
 
       // Start timer
       startTimeRef.current = Date.now()
@@ -267,6 +285,17 @@ export const useWebRecorder = ({
       timerRef.current = setInterval(() => {
         const elapsed = Date.now() - startTimeRef.current - pausedDurationRef.current
         setDurationMs(elapsed)
+        
+        // Manual data request as fallback (some browsers need this)
+        const rec = mediaRecorderRef.current
+        if (rec && rec.state === 'recording' && chunksRef.current.length === 0 && elapsed > 2000) {
+          console.log('[WebRecorder] No chunks yet, requesting data manually...')
+          try {
+            rec.requestData()
+          } catch (e) {
+            // Ignore
+          }
+        }
       }, 100)
 
       // Handle stream ending (user stops sharing)
