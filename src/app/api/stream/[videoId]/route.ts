@@ -44,6 +44,12 @@ export async function GET(
 
     // Get file metadata for Content-Length
     const metadata = await getFileMetadata(foundKey);
+    if (!metadata) {
+      return NextResponse.json({ 
+        error: 'Could not get video metadata',
+        videoId: video.id,
+      }, { status: 500 });
+    }
     const fileSize = metadata.size;
     const contentType = foundFormat?.endsWith('.webm') ? 'video/webm' : 'video/mp4';
 
