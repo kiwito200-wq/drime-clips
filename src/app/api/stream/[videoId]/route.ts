@@ -50,9 +50,29 @@ export async function GET(
       }, { status: 404 });
     }
 
-    console.log(`[Stream] Redirecting to signed URL for ${foundFormat}`);
-    // Redirect to the signed URL
-    return NextResponse.redirect(signedUrl);
+    console.log(`[Stream] Proxying video for ${foundFormat}`);
+    
+    // Proxy the video content instead of redirecting (better browser compatibility)
+    const videoResponse = await fetch(signedUrl);
+    
+    if (!videoResponse.ok) {
+      console.error(`[Stream] Failed to fetch video from R2: ${videoResponse.status}`);
+      return NextResponse.json({ error: 'Failed to fetch video' }, { status: 502 });
+    }
+
+    // Get content type based on format
+    const contentType = foundFormat?.endsWith('.webm') ? 'video/webm' : 'video/mp4';
+    
+    // Stream the video with proper headers
+    return new NextResponse(videoResponse.body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Length': videoResponse.headers.get('Content-Length') || '',
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
   } catch (error) {
     console.error('[Stream] Error:', error);
     return NextResponse.json({ error: 'Failed to stream video' }, { status: 500 });
