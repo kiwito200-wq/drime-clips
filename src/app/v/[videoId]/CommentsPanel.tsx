@@ -52,19 +52,21 @@ function FloatingEmojiPicker({
 }) {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [category, setCategory] = useState(0);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     if (!anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    setPos({
+    const newPos = {
       top: Math.max(8, rect.top - 220),
       left: Math.max(8, Math.min(rect.left - 120, window.innerWidth - 296)),
+    };
+    setPos(newPos);
+    // Wait for position to be applied, then animate in
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setVisible(true));
     });
-    // Trigger animation after mount
-    requestAnimationFrame(() => setVisible(true));
   }, [anchorRef]);
 
   useEffect(() => {
@@ -82,11 +84,14 @@ function FloatingEmojiPicker({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [onClose, anchorRef]);
 
+  // Don't render until position is calculated
+  if (!pos) return null;
+
   return createPortal(
     <div
       ref={pickerRef}
-      className={`fixed bg-white rounded-xl border border-gray-200 shadow-xl z-[9999] w-[288px] transition-all duration-200 ease-out ${
-        visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 translate-y-2'
+      className={`fixed bg-white rounded-xl border border-gray-200 shadow-xl z-[9999] w-[288px] transition-all duration-150 ease-out ${
+        visible ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] translate-y-1'
       }`}
       style={{ top: pos.top, left: pos.left, transformOrigin: 'bottom center' }}
     >

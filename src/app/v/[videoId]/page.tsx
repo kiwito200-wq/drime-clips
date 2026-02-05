@@ -128,15 +128,15 @@ export default async function VideoPage({ params }: Props) {
       </header>
 
       {/* Main content - Give more space like Cap.so */}
-      <main className="flex-1 px-4 lg:px-6 py-6" style={{ minHeight: 'calc(100vh - 180px)' }}>
+      <main className="flex-1 py-6" style={{ minHeight: 'calc(100vh - 180px)' }}>
         {isUploading ? (
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-5xl mx-auto px-4 lg:px-6">
             <div className="bg-black rounded-xl overflow-hidden shadow-lg">
               <UploadingStatus videoId={video.id} />
             </div>
           </div>
         ) : (
-          <div className="max-w-[1600px] mx-auto h-full">
+          <div className="max-w-[1600px] mx-auto px-4 lg:px-6 h-full">
             <VideoPageClient
               video={{
                 id: video.id,

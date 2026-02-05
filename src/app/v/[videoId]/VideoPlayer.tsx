@@ -108,10 +108,10 @@ function SpeedControl({
               <button
                 key={s}
                 onClick={() => { onChangeSpeed(s); setOpen(false) }}
-                className={`w-full flex items-center gap-2 px-3 py-[6px] text-[13px] tabular-nums transition-all duration-100 ${
+                className={`w-full flex items-center gap-2 px-3 py-[6px] text-[13px] tabular-nums transition-all duration-100 rounded-lg mx-0.5 ${
                   isActive
-                    ? 'text-white font-semibold'
-                    : 'text-white/50 font-normal hover:text-white/80'
+                    ? 'text-white font-semibold bg-white/[0.08]'
+                    : 'text-white/50 font-normal hover:text-white/80 hover:bg-white/[0.06]'
                 }`}
               >
                 {isActive && (
