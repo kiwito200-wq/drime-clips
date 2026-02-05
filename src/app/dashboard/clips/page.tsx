@@ -451,7 +451,7 @@ export default function ClipsDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <h3 className="text-lg font-medium text-gray-900">Aucun résultat</h3>
-            <p className="text-gray-500 mt-1">Essayez avec d'autres termes de recherche</p>
+            <p className="text-gray-500 mt-1">Essayez avec d&apos;autres termes de recherche</p>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-16">
@@ -462,7 +462,7 @@ export default function ClipsDashboard() {
             </div>
             <h3 className="text-lg font-medium text-gray-900">Aucune vidéo</h3>
             <p className="text-gray-500 mt-1 text-center max-w-sm">
-              Enregistrez votre premier clip avec l'application Drime Desktop pour le voir ici.
+              Enregistrez votre premier clip avec l&apos;application Drime Desktop pour le voir ici.
             </p>
             <a
               href="https://drime.cloud/download"

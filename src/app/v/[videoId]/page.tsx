@@ -109,7 +109,7 @@ export default async function VideoPage({ params }: Props) {
               href="https://drime.cloud/download"
               className="text-sm text-gray-600 hover:text-gray-900"
             >
-              Télécharger l'app
+              Télécharger l&apos;app
             </a>
             <a
               href="https://app.drime.cloud/login"
@@ -220,7 +220,7 @@ export default async function VideoPage({ params }: Props) {
             <a href="https://drime.cloud" className="text-[#08CF65] hover:underline">
               Drime Clips
             </a>
-            {' '}— L'outil d'enregistrement d'écran le plus simple
+            {' '}— L&apos;outil d&apos;enregistrement d&apos;écran le plus simple
           </p>
         </div>
       </footer>
