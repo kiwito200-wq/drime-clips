@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { nanoid } from 'nanoid';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, checkDrimeSession, getOrCreateUserFromDrime } from '@/lib/auth';
 import { 
   initiateMultipartUpload, 
   getPresignedPartUrl, 
@@ -24,21 +24,40 @@ export async function POST(request: NextRequest) {
     console.log('[SimpleUpload] Request:', { action, email, videoId, partNumber, userId });
 
     // Try to get user from session first (browser recording)
-    // or from email (desktop app)
-    let user = await getCurrentUser().catch(() => null);
+    let user = await getCurrentUser().catch((e) => {
+      console.log('[SimpleUpload] getCurrentUser failed:', e);
+      return null;
+    });
     
+    console.log('[SimpleUpload] User from session:', user?.id || 'null');
+    
+    // If no session, try to check Drime session directly
+    if (!user) {
+      const cookieHeader = request.headers.get('cookie');
+      console.log('[SimpleUpload] No local session, checking Drime cookies...');
+      
+      if (cookieHeader?.includes('drime_session')) {
+        console.log('[SimpleUpload] Found drime_session cookie, checking with Drime API...');
+        const drimeUser = await checkDrimeSession(cookieHeader);
+        
+        if (drimeUser) {
+          console.log('[SimpleUpload] Drime user found:', drimeUser.email);
+          user = await getOrCreateUserFromDrime(drimeUser);
+        }
+      }
+    }
+    
+    // Desktop app path - find/create user by email
     if (!user && email) {
-      // Desktop app path - find/create user by email
       user = await prisma.user.findUnique({
         where: { email: email.toLowerCase() },
       });
 
       if (!user) {
-        // Create user if they don't exist (they're authenticated via Drime desktop app)
         user = await prisma.user.create({
           data: {
             email: email.toLowerCase(),
-            name: email.split('@')[0], // Use email prefix as name
+            name: email.split('@')[0],
           },
         });
         console.log(`[SimpleUpload] Created user for email: ${email}`);
@@ -46,7 +65,6 @@ export async function POST(request: NextRequest) {
     }
     
     // For presign and complete actions, we can use userId from request body
-    // (the client already has this from the create response)
     if (!user && userId && (action === 'presign' || action === 'complete')) {
       user = await prisma.user.findUnique({
         where: { id: userId },
@@ -54,8 +72,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
-      return NextResponse.json({ error: 'Not authenticated. Please log in.' }, { status: 401 });
+      console.log('[SimpleUpload] No user found, returning 401');
+      return NextResponse.json({ error: 'Session expirée. Veuillez vous reconnecter.' }, { status: 401 });
     }
+    
+    console.log('[SimpleUpload] Authenticated user:', user.id, user.email);
 
     // Handle different actions
     if (action === 'create' || !action) {

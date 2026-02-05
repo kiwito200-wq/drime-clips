@@ -35,6 +35,11 @@ interface UseWebRecorderOptions {
   onError?: (error: Error) => void
 }
 
+export interface RecorderError {
+  message: string
+  code?: string
+}
+
 const MIN_CHUNK_SIZE = 5 * 1024 * 1024
 
 export const useWebRecorder = ({
@@ -50,6 +55,7 @@ export const useWebRecorder = ({
   const [durationMs, setDurationMs] = useState(0)
   const [hasAudioTrack, setHasAudioTrack] = useState(false)
   const [chunkUploads, setChunkUploads] = useState<ChunkUploadState[]>([])
+  const [lastError, setLastError] = useState<RecorderError | null>(null)
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -76,12 +82,22 @@ export const useWebRecorder = ({
     const res = await fetch('/api/upload/simple', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ action: 'create' }),
     })
     
-    if (!res.ok) throw new Error('Failed to initialize upload')
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}))
+      console.error('[WebRecorder] Upload init failed:', res.status, errorData)
+      if (res.status === 401) {
+        throw new Error('Session expirée. Veuillez vous reconnecter.')
+      }
+      throw new Error(errorData.error || 'Failed to initialize upload')
+    }
     
     const data = await res.json()
+    console.log('[WebRecorder] Upload initialized:', data.videoId)
+    
     const state: UploadState = {
       videoId: data.videoId,
       uploadId: data.uploadId,
@@ -119,6 +135,7 @@ export const useWebRecorder = ({
       const presignRes = await fetch('/api/upload/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           action: 'presign',
           videoId: state.videoId,
@@ -240,6 +257,7 @@ export const useWebRecorder = ({
       const res = await fetch('/api/upload/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           action: 'complete',
           videoId: state.videoId,
@@ -355,6 +373,8 @@ export const useWebRecorder = ({
 
     } catch (error) {
       console.error('Error starting recording:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Une erreur est survenue'
+      setLastError({ message: errorMessage })
       setPhase('error')
       onError?.(error as Error)
     }
@@ -411,6 +431,7 @@ export const useWebRecorder = ({
     setDurationMs(0)
     setHasAudioTrack(false)
     setChunkUploads([])
+    setLastError(null)
     uploadStateRef.current = {
       videoId: null,
       uploadId: null,
@@ -438,6 +459,7 @@ export const useWebRecorder = ({
     chunkUploads,
     isRecording,
     isBusy,
+    lastError,
     videoId: uploadStateRef.current.videoId,
     shareUrl: uploadStateRef.current.shareUrl,
     startRecording,

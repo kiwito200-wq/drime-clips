@@ -84,6 +84,7 @@ export default function RecordPage() {
     chunkUploads,
     isRecording,
     isBusy,
+    lastError,
     startRecording,
     stopRecording,
     pauseRecording,
@@ -464,6 +465,7 @@ export default function RecordPage() {
             durationMs={durationMs}
             hasAudioTrack={hasAudioTrack}
             chunkUploads={chunkUploads}
+            errorMessage={lastError?.message}
             onStop={stopRecording}
             onPause={pauseRecording}
             onResume={resumeRecording}

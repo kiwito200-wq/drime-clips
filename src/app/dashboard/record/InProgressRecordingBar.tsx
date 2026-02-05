@@ -33,6 +33,7 @@ interface InProgressRecordingBarProps {
   durationMs: number
   hasAudioTrack: boolean
   chunkUploads: ChunkUploadState[]
+  errorMessage?: string | null
   onStop: () => void
   onPause?: () => void
   onResume?: () => void
@@ -44,6 +45,7 @@ export const InProgressRecordingBar = ({
   durationMs,
   hasAudioTrack,
   chunkUploads,
+  errorMessage,
   onStop,
   onPause,
   onResume,
@@ -180,7 +182,7 @@ export const InProgressRecordingBar = ({
           <div className="flex flex-1 items-center justify-between gap-3 p-3" data-no-drag>
             <div className="flex flex-col text-left">
               <span className="text-sm font-semibold text-red-400">Enregistrement échoué</span>
-              <span className="text-xs text-gray-400">Une erreur est survenue</span>
+              <span className="text-xs text-gray-400">{errorMessage || 'Une erreur est survenue'}</span>
             </div>
             {onRestart && (
               <button
