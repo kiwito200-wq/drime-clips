@@ -270,13 +270,27 @@ export const useWebRecorder = ({
       }, 100)
 
       // Handle stream ending (user stops sharing)
-      stream.getTracks().forEach(track => {
-        track.onended = () => {
-          if (mediaRecorderRef.current?.state === 'recording') {
-            stopRecording()
+      const videoTrack = stream.getVideoTracks()[0]
+      if (videoTrack) {
+        videoTrack.addEventListener('ended', () => {
+          console.log('[WebRecorder] Video track ended by user')
+          const rec = mediaRecorderRef.current
+          if (rec && rec.state === 'recording' && !isStoppingRef.current) {
+            // Don't call stopRecording directly - just stop the recorder
+            // The onstop handler will take care of the rest
+            try {
+              rec.requestData()
+              setTimeout(() => {
+                if (rec.state === 'recording') {
+                  rec.stop()
+                }
+              }, 100)
+            } catch (e) {
+              console.warn('[WebRecorder] Error handling track end:', e)
+            }
           }
-        }
-      })
+        }, { once: true })
+      }
 
       setPhase('recording')
       onRecordingStart?.()
@@ -297,8 +311,16 @@ export const useWebRecorder = ({
 
   const stopRecording = useCallback(async () => {
     const recorder = mediaRecorderRef.current
-    if (!recorder || recorder.state === 'inactive') {
-      console.log('[WebRecorder] No recorder or already inactive')
+    if (!recorder) {
+      console.log('[WebRecorder] No recorder')
+      return
+    }
+    
+    const state = recorder.state
+    console.log('[WebRecorder] Stopping, current state:', state)
+    
+    if (state === 'inactive') {
+      console.log('[WebRecorder] Already inactive')
       return
     }
     if (isStoppingRef.current) {
@@ -306,7 +328,6 @@ export const useWebRecorder = ({
       return
     }
 
-    console.log('[WebRecorder] Stopping recording...')
     isStoppingRef.current = true
     setPhase('stopping')
     onRecordingStop?.()
@@ -317,32 +338,63 @@ export const useWebRecorder = ({
       timerRef.current = null
     }
 
-    // Create promise that resolves when onstop fires
+    // Create promise that resolves when onstop fires (with timeout)
     const stopPromise = new Promise<Blob>((resolve, reject) => {
       stopResolverRef.current = resolve
       stopRejecterRef.current = reject
+      
+      // Timeout after 10s
+      setTimeout(() => {
+        if (stopResolverRef.current) {
+          console.error('[WebRecorder] onstop timeout - creating blob manually')
+          // Try to create blob from what we have
+          if (chunksRef.current.length > 0) {
+            const blob = new Blob(chunksRef.current, { type: 'video/webm' })
+            stopResolverRef.current = null
+            stopRejecterRef.current = null
+            isStoppingRef.current = false
+            resolve(blob)
+          } else {
+            stopResolverRef.current = null
+            stopRejecterRef.current = null
+            isStoppingRef.current = false
+            reject(new Error('Timeout: aucune donnée'))
+          }
+        }
+      }, 10000)
     })
+
+    // Request final data before stopping
+    try {
+      if (state === 'recording') {
+        recorder.requestData()
+      }
+    } catch (e) {
+      console.warn('[WebRecorder] requestData failed:', e)
+    }
+
+    // Small delay to let requestData complete
+    await new Promise(r => setTimeout(r, 100))
 
     // Stop the recorder
     try {
       recorder.stop()
+      console.log('[WebRecorder] recorder.stop() called')
     } catch (err) {
       console.error('[WebRecorder] Error calling stop():', err)
-      isStoppingRef.current = false
-      handleError(new Error('Erreur arrêt enregistrement'))
-      return
-    }
-
-    // Stop streams
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
-      streamRef.current = null
     }
 
     try {
       // Wait for the blob
+      console.log('[WebRecorder] Waiting for onstop...')
       const recordedBlob = await stopPromise
-      console.log('[WebRecorder] Got blob:', recordedBlob.size)
+      console.log('[WebRecorder] Got blob:', recordedBlob.size, 'bytes')
+
+      // NOW stop streams (after we have the blob)
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
 
       if (recordedBlob.size === 0) {
         throw new Error('Enregistrement vide')
@@ -383,6 +435,11 @@ export const useWebRecorder = ({
       }
     } catch (error) {
       console.error('[WebRecorder] Stop error:', error)
+      // Clean up streams on error too
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current = null
+      }
       handleError(error as Error)
     }
   }, [cleanup, handleError, onComplete, onRecordingStop])
