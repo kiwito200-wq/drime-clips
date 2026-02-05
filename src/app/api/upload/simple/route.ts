@@ -106,6 +106,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'complete' && videoId && uploadId && parts) {
+      console.log(`[SimpleUpload] Completing multipart upload for video ${videoId}`);
+      console.log(`[SimpleUpload] Upload ID: ${uploadId}`);
+      console.log(`[SimpleUpload] Parts:`, JSON.stringify(parts));
+      
       // Get video to find owner
       const video = await prisma.video.findUnique({
         where: { id: videoId },
@@ -113,17 +117,29 @@ export async function POST(request: NextRequest) {
       });
 
       if (!video) {
+        console.error(`[SimpleUpload] Video ${videoId} not found for complete`);
         return NextResponse.json({ error: 'Video not found' }, { status: 404 });
       }
 
+      console.log(`[SimpleUpload] Video owner: ${video.ownerId}`);
+
       // Complete multipart upload
       const key = getVideoKey(video.ownerId, videoId, 'result.webm');
-      await completeMultipartUpload(key, uploadId, parts);
+      console.log(`[SimpleUpload] R2 key: ${key}`);
+      
+      try {
+        await completeMultipartUpload(key, uploadId, parts);
+        console.log(`[SimpleUpload] R2 multipart complete SUCCESS for key: ${key}`);
+      } catch (r2Error) {
+        console.error(`[SimpleUpload] R2 multipart complete FAILED:`, r2Error);
+        throw r2Error;
+      }
 
       // Remove upload tracking (video is now ready)
-      await prisma.videoUpload.deleteMany({
+      const deleteResult = await prisma.videoUpload.deleteMany({
         where: { videoId },
       });
+      console.log(`[SimpleUpload] Deleted ${deleteResult.count} VideoUpload records`);
 
       // Update video timestamp
       await prisma.video.update({
@@ -135,7 +151,7 @@ export async function POST(request: NextRequest) {
 
       const shareUrl = `https://clips.drime.cloud/v/${videoId}`;
 
-      console.log(`[SimpleUpload] Completed upload for video ${videoId}`);
+      console.log(`[SimpleUpload] Completed upload for video ${videoId} - SUCCESS`);
 
       return NextResponse.json({
         success: true,
