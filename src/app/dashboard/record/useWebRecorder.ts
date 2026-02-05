@@ -40,17 +40,16 @@ interface UseWebRecorderOptions {
   onError?: (error: Error) => void
 }
 
+// Order matters - try most compatible first
 const SUPPORTED_MIME_TYPES = [
-  'video/webm;codecs=vp9,opus',
-  'video/webm;codecs=vp9',
-  'video/webm;codecs=vp8,opus',
+  'video/webm',  // Most basic, usually works
   'video/webm;codecs=vp8',
-  'video/webm;codecs=h264,opus',
-  'video/webm;codecs=h264',
-  'video/webm',
-  'video/mp4;codecs=h264,aac',
-  'video/mp4;codecs=h264',
+  'video/webm;codecs=vp8,opus',
+  'video/webm;codecs=vp9',
+  'video/webm;codecs=vp9,opus',
   'video/mp4',
+  'video/mp4;codecs=avc1',
+  'video/mp4;codecs=avc1.42E01E',
 ]
 
 function getSupportedMimeType(): string | undefined {
@@ -205,20 +204,44 @@ export const useWebRecorder = ({
       })
       uploaderRef.current = uploader
 
-      // Setup MediaRecorder
-      const mimeType = getSupportedMimeType()
-      console.log('[WebRecorder] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })))
-      console.log('[WebRecorder] Using mimeType:', mimeType || 'default')
-      
-      let mediaRecorder: MediaRecorder
-      try {
-        mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-      } catch (e) {
-        console.warn('[WebRecorder] MediaRecorder with mimeType failed, trying without:', e)
-        mediaRecorder = new MediaRecorder(stream)
+      // Setup MediaRecorder - let browser choose codec first, then try specific ones
+      const videoTrack = stream.getVideoTracks()[0]
+      console.log('[WebRecorder] Stream active:', stream.active)
+      console.log('[WebRecorder] Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState, muted: t.muted })))
+      if (videoTrack) {
+        const settings = videoTrack.getSettings()
+        console.log('[WebRecorder] Video settings:', { width: settings.width, height: settings.height, frameRate: settings.frameRate, displaySurface: settings.displaySurface })
       }
       
-      console.log('[WebRecorder] MediaRecorder created, actual mimeType:', mediaRecorder.mimeType)
+      let mediaRecorder: MediaRecorder
+      let usedMimeType = ''
+      
+      // First try without specifying mimeType - let browser choose
+      try {
+        mediaRecorder = new MediaRecorder(stream)
+        usedMimeType = mediaRecorder.mimeType || 'browser-default'
+        console.log('[WebRecorder] MediaRecorder created with browser default, mimeType:', usedMimeType)
+      } catch (e) {
+        console.warn('[WebRecorder] Browser default failed, trying specific mimeTypes:', e)
+        
+        // Fall back to trying specific mime types
+        const mimeType = getSupportedMimeType()
+        console.log('[WebRecorder] Trying mimeType:', mimeType)
+        
+        if (mimeType) {
+          try {
+            mediaRecorder = new MediaRecorder(stream, { mimeType })
+            usedMimeType = mimeType
+          } catch (e2) {
+            console.error('[WebRecorder] All mimeTypes failed:', e2)
+            throw new Error('Navigateur incompatible avec l\'enregistrement')
+          }
+        } else {
+          throw new Error('Aucun codec supporté')
+        }
+      }
+      
+      console.log('[WebRecorder] Final mimeType:', mediaRecorder.mimeType)
 
       mediaRecorder.ondataavailable = (e) => {
         console.log('[WebRecorder] ondataavailable fired, size:', e.data?.size || 0)
