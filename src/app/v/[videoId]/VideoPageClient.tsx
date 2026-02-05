@@ -45,8 +45,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Toolbar state
-  const [commentBoxOpen, setCommentBoxOpen] = useState(false);
-  const [toolbarComment, setToolbarComment] = useState('');
   const [sendingReaction, setSendingReaction] = useState<string | null>(null);
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({});
 
@@ -140,23 +138,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     }
   }, [refreshTrigger, fetchReactionCounts]);
 
-  // Keyboard shortcut "C" to open comment box
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      if (
-        e.key.toLowerCase() === 'c' &&
-        !commentBoxOpen &&
-        !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey &&
-        !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
-      ) {
-        e.preventDefault();
-        setCommentBoxOpen(true);
-      }
-    };
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [commentBoxOpen]);
-
   // Post emoji reaction
   const handleEmojiReaction = useCallback(async (emoji: string) => {
     setSendingReaction(emoji);
@@ -175,25 +156,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
       setSendingReaction(null);
     }
   }, [video.id, currentTime]);
-
-  // Post toolbar text comment
-  const handleToolbarComment = useCallback(async () => {
-    if (!toolbarComment.trim()) return;
-    try {
-      const response = await fetch(`/api/videos/${video.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'text', content: toolbarComment, timestamp: currentTime }),
-      });
-      if (response.ok) {
-        setRefreshTrigger(prev => prev + 1);
-        setToolbarComment('');
-        setCommentBoxOpen(false);
-      }
-    } catch (error) {
-      console.error('Failed to post comment:', error);
-    }
-  }, [video.id, toolbarComment, currentTime]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-full">
@@ -292,82 +254,30 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         {/* ─── Reaction Toolbar (Cap-style) ─── */}
         <div className="mt-4">
           <div className="inline-flex p-2 mx-auto bg-white rounded-full border border-gray-200 shadow-sm w-full md:w-auto justify-center">
-            {commentBoxOpen ? (
-              <div className="flex items-center w-full gap-2">
-                <input
-                  autoFocus
-                  type="text"
-                  value={toolbarComment}
-                  onChange={(e) => setToolbarComment(e.target.value)}
-                  placeholder="Ajouter un commentaire..."
-                  className="flex-grow px-3 h-9 outline-none text-sm min-w-[180px]"
-                  maxLength={255}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleToolbarComment();
-                    }
-                    if (e.key === 'Escape') {
-                      setCommentBoxOpen(false);
-                      setToolbarComment('');
-                    }
-                  }}
-                />
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    disabled={!toolbarComment.trim()}
-                    onClick={handleToolbarComment}
-                    className="px-4 py-1.5 bg-[#08CF65] text-white text-sm font-medium rounded-full hover:bg-[#07B859] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Commenter
-                  </button>
-                  <button
-                    onClick={() => { setCommentBoxOpen(false); setToolbarComment(''); }}
-                    className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    Annuler
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
-                {/* Emoji reactions */}
-                {REACTIONS.map((reaction) => {
-                  const count = reactionCounts[reaction.emoji] || 0;
-                  return (
-                    <div key={reaction.emoji} className="relative group">
-                      <button
-                        onClick={() => handleEmojiReaction(reaction.emoji)}
-                        disabled={sendingReaction === reaction.emoji}
-                        className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 hover:bg-gray-100 active:bg-[#E0F5EA] active:scale-90 ${
-                          sendingReaction === reaction.emoji ? 'opacity-50 scale-90' : ''
-                        }`}
-                      >
-                        <span className="select-none">{reaction.emoji}</span>
-                      </button>
-                      {/* Tooltip with label + count */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
-                        <div className="bg-gray-900 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
-                          {reaction.label}{count > 0 ? ` · ${count}` : ''}
-                        </div>
+            <div className="flex items-center gap-1">
+              {REACTIONS.map((reaction) => {
+                const count = reactionCounts[reaction.emoji] || 0;
+                return (
+                  <div key={reaction.emoji} className="relative group">
+                    <button
+                      onClick={() => handleEmojiReaction(reaction.emoji)}
+                      disabled={sendingReaction === reaction.emoji}
+                      className={`relative inline-flex justify-center items-center w-10 h-10 text-xl rounded-full transition-all duration-150 hover:bg-gray-100 active:bg-[#E0F5EA] active:scale-90 ${
+                        sendingReaction === reaction.emoji ? 'opacity-50 scale-90' : ''
+                      }`}
+                    >
+                      <span className="select-none">{reaction.emoji}</span>
+                    </button>
+                    {/* Tooltip with label + count */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
+                      <div className="bg-gray-900 text-white text-xs font-medium px-2.5 py-1.5 rounded-lg shadow-lg whitespace-nowrap">
+                        {reaction.label}{count > 0 ? ` · ${count}` : ''}
                       </div>
                     </div>
-                  );
-                })}
-
-                {/* Separator */}
-                <div className="w-px bg-gray-200 h-5 mx-2 flex-shrink-0" />
-
-                {/* Comment button */}
-                <button
-                  onClick={() => setCommentBoxOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full hover:bg-gray-800 transition-colors flex-shrink-0"
-                >
-                  <span>Commenter</span>
-                  <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono bg-white/20 rounded text-white/70">c</kbd>
-                </button>
-              </div>
-            )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
