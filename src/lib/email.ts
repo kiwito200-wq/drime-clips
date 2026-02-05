@@ -1,7 +1,17 @@
 import { Resend } from 'resend'
 
-// Initialize Resend
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Initialize Resend lazily to avoid build errors when API key is not set
+let resend: Resend | null = null
+
+function getResend(): Resend {
+  if (!resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not configured')
+    }
+    resend = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resend
+}
 
 const FROM_EMAIL = process.env.EMAIL_FROM || 'noreply@sign.drime.cloud'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sign.drime.cloud'
@@ -327,7 +337,7 @@ ${t.footer}
 `
 
   try {
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       reply_to: senderEmail,
@@ -504,7 +514,7 @@ ${t.regards}
 `
 
   try {
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: t.subject,
@@ -612,7 +622,7 @@ ${t.regards}
 `
 
   try {
-    const result = await resend.emails.send({
+    const result = await getResend().emails.send({
       from: `${COMPANY_NAME} <${FROM_EMAIL}>`,
       to: [to],
       subject: t.subject,
