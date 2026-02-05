@@ -170,6 +170,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   const [hoverTime, setHoverTime] = useState(0)
   const [isDraggingProgress, setIsDraggingProgress] = useState(false)
   const controlsTimeout = useRef<NodeJS.Timeout>()
+  const isPlayingRef = useRef(false)
+
+  // Keep ref in sync with state
+  useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
 
   useImperativeHandle(ref, () => ({
     seek: (time: number) => {
@@ -260,13 +264,13 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
     if (videoRef.current) videoRef.current.playbackRate = speed
   }, [])
 
-  const handleMouseMove = () => {
+  const handleMouseMove = useCallback(() => {
     setShowControls(true)
     if (controlsTimeout.current) clearTimeout(controlsTimeout.current)
     controlsTimeout.current = setTimeout(() => {
-      if (isPlaying) setShowControls(false)
+      if (isPlayingRef.current) setShowControls(false)
     }, 3000)
-  }
+  }, [])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -299,7 +303,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
       ref={containerRef}
       className="relative aspect-video bg-black group select-none overflow-hidden"
       onMouseMove={handleMouseMove}
-      onMouseLeave={() => { if (isPlaying) setShowControls(false) }}
+      onMouseLeave={() => { if (isPlayingRef.current) setShowControls(false) }}
     >
       <video
         ref={videoRef}
@@ -399,10 +403,10 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
             </div>
           </div>
 
-          {/* Full controls row — always visible (auto-hides on mouse inactivity during playback) */}
+          {/* Full controls row — auto-hides on mouse inactivity during playback */}
           <div
             className={`px-4 pb-3 transition-all duration-300 ${
-              controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 pb-0 overflow-hidden'
+              controlsVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
             }`}
           >
             <div className="flex items-center gap-0.5">

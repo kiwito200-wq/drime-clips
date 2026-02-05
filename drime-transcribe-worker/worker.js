@@ -29,21 +29,24 @@ export default {
     }
 
     try {
-      const { key } = await request.json();
+      const { url } = await request.json();
 
-      if (!key) {
-        return Response.json({ error: 'Missing "key" in request body' }, { status: 400 });
+      if (!url) {
+        return Response.json({ error: 'Missing "url" in request body' }, { status: 400 });
       }
 
-      // ── Read video from R2 ──
-      const object = await env.BUCKET.get(key);
-      if (!object) {
-        return Response.json({ error: `File not found in R2: ${key}` }, { status: 404 });
+      // ── Fetch video via presigned URL ──
+      console.log(`[Transcribe] Fetching video from presigned URL...`);
+      const videoResponse = await fetch(url);
+      if (!videoResponse.ok) {
+        return Response.json(
+          { error: `Failed to fetch video: HTTP ${videoResponse.status}` },
+          { status: 502 }
+        );
       }
 
-      console.log(`[Transcribe] Processing ${key} (${(object.size / 1024 / 1024).toFixed(1)} MB)`);
-
-      const audioData = await object.arrayBuffer();
+      const audioData = await videoResponse.arrayBuffer();
+      console.log(`[Transcribe] Processing video (${(audioData.byteLength / 1024 / 1024).toFixed(1)} MB)`);
 
       // ── Run Whisper via Workers AI ──
       const result = await env.AI.run('@cf/openai/whisper', {

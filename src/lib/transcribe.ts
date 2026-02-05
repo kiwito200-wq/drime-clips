@@ -25,7 +25,7 @@ interface WorkerResponse {
 
 // ─── Call the Cloudflare Worker ──────────────────────────────────
 
-export async function transcribeViaWorker(videoKey: string): Promise<string> {
+export async function transcribeViaWorker(videoUrl: string): Promise<string> {
   const workerUrl = process.env.TRANSCRIBE_WORKER_URL;
   const workerSecret = process.env.TRANSCRIBE_WORKER_SECRET;
 
@@ -35,7 +35,7 @@ export async function transcribeViaWorker(videoKey: string): Promise<string> {
     );
   }
 
-  console.log(`[Transcribe] Calling CF Worker for key: ${videoKey}`);
+  console.log(`[Transcribe] Calling CF Worker with presigned URL`);
 
   const response = await fetch(workerUrl, {
     method: 'POST',
@@ -43,7 +43,7 @@ export async function transcribeViaWorker(videoKey: string): Promise<string> {
       Authorization: `Bearer ${workerSecret}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ key: videoKey }),
+    body: JSON.stringify({ url: videoUrl }),
   });
 
   if (!response.ok) {

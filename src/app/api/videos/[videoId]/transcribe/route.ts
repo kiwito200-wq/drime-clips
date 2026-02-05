@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getVideoKey, fileExists, uploadFile } from '@/lib/r2';
+import { getVideoKey, fileExists, uploadFile, getPresignedDownloadUrl } from '@/lib/r2';
 import { transcribeViaWorker, isTranscriptionConfigured } from '@/lib/transcribe';
 
 export const maxDuration = 300; // 5 minutes (Vercel Pro)
@@ -76,11 +76,14 @@ export async function POST(
       return NextResponse.json({ error: 'Video file not found on storage' }, { status: 404 });
     }
 
-    // Call the Cloudflare Worker (which reads from R2 directly and runs Whisper)
+    // Generate a presigned URL so the Worker can download the video via HTTP
+    const presignedUrl = await getPresignedDownloadUrl(videoKey, 3600); // 1 hour
+    console.log(`[Transcribe] Triggering CF Worker for ${videoId} (key: ${videoKey})`);
+
+    // Call the Cloudflare Worker with the presigned URL
     let vttContent: string;
     try {
-      console.log(`[Transcribe] Triggering CF Worker for ${videoId} (key: ${videoKey})`);
-      vttContent = await transcribeViaWorker(videoKey);
+      vttContent = await transcribeViaWorker(presignedUrl);
     } catch (err) {
       console.error(`[Transcribe] Error for ${videoId}:`, err);
       await prisma.video.update({
