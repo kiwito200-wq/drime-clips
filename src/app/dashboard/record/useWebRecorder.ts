@@ -42,6 +42,33 @@ export interface RecorderError {
 
 const MIN_CHUNK_SIZE = 5 * 1024 * 1024
 
+const SUPPORTED_MIME_TYPES = [
+  'video/webm;codecs=vp9,opus',
+  'video/webm;codecs=vp9',
+  'video/webm;codecs=vp8,opus',
+  'video/webm;codecs=vp8',
+  'video/webm;codecs=h264,opus',
+  'video/webm;codecs=h264',
+  'video/webm',
+  'video/mp4;codecs=h264,aac',
+  'video/mp4;codecs=h264',
+  'video/mp4',
+]
+
+function getSupportedMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined') return undefined
+  
+  for (const mimeType of SUPPORTED_MIME_TYPES) {
+    if (MediaRecorder.isTypeSupported(mimeType)) {
+      console.log('[WebRecorder] Using MIME type:', mimeType)
+      return mimeType
+    }
+  }
+  
+  console.warn('[WebRecorder] No supported MIME type found, using default')
+  return undefined
+}
+
 export const useWebRecorder = ({
   recordingMode,
   selectedCameraId,
@@ -65,6 +92,7 @@ export const useWebRecorder = ({
   const startTimeRef = useRef<number>(0)
   const pausedDurationRef = useRef<number>(0)
   const pauseStartRef = useRef<number | null>(null)
+  const actualMimeTypeRef = useRef<string>('video/webm')
   
   const uploadStateRef = useRef<UploadState>({
     videoId: null,
@@ -148,10 +176,11 @@ export const useWebRecorder = ({
       if (!presignRes.ok) throw new Error('Failed to get presigned URL')
       const { presignedUrl } = await presignRes.json()
 
+      const contentType = actualMimeTypeRef.current.split(';')[0] || 'video/webm'
       const uploadRes = await fetch(presignedUrl, {
         method: 'PUT',
         body: chunk,
-        headers: { 'Content-Type': 'video/webm' },
+        headers: { 'Content-Type': contentType },
       })
 
       if (!uploadRes.ok) throw new Error('Failed to upload chunk')
@@ -185,7 +214,8 @@ export const useWebRecorder = ({
     
     while (pendingChunksRef.current.length > 0) {
       const chunks = pendingChunksRef.current
-      let combined = new Blob(chunks, { type: 'video/webm' })
+      const blobType = actualMimeTypeRef.current.split(';')[0] || 'video/webm'
+      let combined = new Blob(chunks, { type: blobType })
       
       if (combined.size >= MIN_CHUNK_SIZE) {
         pendingChunksRef.current = []
@@ -323,9 +353,15 @@ export const useWebRecorder = ({
       const hasAudio = stream.getAudioTracks().length > 0
       setHasAudioTrack(hasAudio)
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/webm;codecs=vp9',
-      })
+      const mimeType = getSupportedMimeType()
+      const recorderOptions: MediaRecorderOptions = {}
+      if (mimeType) {
+        recorderOptions.mimeType = mimeType
+      }
+      
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions)
+      actualMimeTypeRef.current = mediaRecorder.mimeType || mimeType || 'video/webm'
+      console.log('[WebRecorder] MediaRecorder created with mimeType:', actualMimeTypeRef.current)
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
