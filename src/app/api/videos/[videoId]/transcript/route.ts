@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getPresignedDownloadUrl, fileExists } from '@/lib/r2';
+import { parseWebVTT } from '@/lib/transcribe';
 
 export async function GET(
   request: NextRequest,
@@ -26,42 +27,45 @@ export async function GET(
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    // Return status info
+    // Return status if not complete
     if (video.transcriptionStatus !== 'COMPLETE') {
       return NextResponse.json({
-        status: video.transcriptionStatus || 'PENDING',
-        content: null,
+        status: video.transcriptionStatus || null,
+        transcript: null,
       });
     }
 
     // Fetch VTT from R2
     const vttKey = `${video.ownerId}/${videoId}/transcription.vtt`;
     const exists = await fileExists(vttKey);
-    
+
     if (!exists) {
       return NextResponse.json({
         status: 'FAILED',
-        content: null,
+        transcript: null,
         error: 'Transcript file not found',
       });
     }
 
     const vttUrl = await getPresignedDownloadUrl(vttKey, 3600);
     const vttResponse = await fetch(vttUrl);
-    
+
     if (!vttResponse.ok) {
       return NextResponse.json({
         status: 'FAILED',
-        content: null,
+        transcript: null,
         error: 'Failed to fetch transcript file',
       });
     }
 
     const vttContent = await vttResponse.text();
 
+    // Parse VTT into structured entries for the frontend
+    const entries = parseWebVTT(vttContent);
+
     return NextResponse.json({
       status: 'COMPLETE',
-      content: vttContent,
+      transcript: entries,
     });
   } catch (error) {
     console.error('[Transcript] Error:', error);

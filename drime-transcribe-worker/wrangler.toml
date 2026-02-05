@@ -1,0 +1,20 @@
+# ─────────────────────────────────────────────────────────
+# Drime Transcribe Worker
+# Cloudflare Worker + Workers AI (Whisper) + R2
+# ─────────────────────────────────────────────────────────
+
+name = "drime-transcribe"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+# Workers AI binding (built-in Whisper)
+[ai]
+binding = "AI"
+
+# R2 bucket binding (same bucket as your videos)
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "drime-clips"   # ← Change if your bucket has a different name
+
+# Secret (set via: npx wrangler secret put TRANSCRIBE_SECRET)
+# Don't put the actual value here — use `wrangler secret put`

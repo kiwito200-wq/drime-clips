@@ -1,12 +1,12 @@
 // POST /api/videos/[videoId]/transcribe
-// Local transcription: FFmpeg + Whisper — no external API
+// Triggers transcription via Cloudflare Worker (Workers AI Whisper)
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getVideoKey, getPresignedDownloadUrl, uploadFile, fileExists } from '@/lib/r2';
-import { transcribeVideo, checkFFmpeg } from '@/lib/transcribe';
+import { getVideoKey, fileExists, uploadFile } from '@/lib/r2';
+import { transcribeViaWorker, isTranscriptionConfigured } from '@/lib/transcribe';
 
-export const maxDuration = 300; // 5 minutes (for Vercel Pro / self-hosted)
+export const maxDuration = 300; // 5 minutes (Vercel Pro)
 
 export async function POST(
   request: NextRequest,
@@ -15,6 +15,14 @@ export async function POST(
   try {
     const { videoId } = params;
 
+    // Check transcription is configured
+    if (!isTranscriptionConfigured()) {
+      return NextResponse.json(
+        { error: 'Transcription not configured. Set TRANSCRIBE_WORKER_URL and TRANSCRIBE_WORKER_SECRET.' },
+        { status: 503 }
+      );
+    }
+
     // Find the video
     const video = await prisma.video.findUnique({
       where: { id: videoId },
@@ -22,7 +30,6 @@ export async function POST(
         id: true,
         ownerId: true,
         transcriptionStatus: true,
-        duration: true,
       },
     });
 
@@ -44,18 +51,6 @@ export async function POST(
         message: 'Transcription already complete',
         status: 'COMPLETE',
       });
-    }
-
-    // Check FFmpeg is available
-    const hasFFmpeg = await checkFFmpeg();
-    if (!hasFFmpeg) {
-      return NextResponse.json(
-        {
-          error: 'FFmpeg non trouvé. Installez FFmpeg sur votre machine.',
-          details: 'https://ffmpeg.org/download.html',
-        },
-        { status: 503 }
-      );
     }
 
     // Mark as processing
@@ -81,26 +76,11 @@ export async function POST(
       return NextResponse.json({ error: 'Video file not found on storage' }, { status: 404 });
     }
 
-    // Download the video
-    const videoUrl = await getPresignedDownloadUrl(videoKey, 3600);
-    console.log(`[Transcribe] Downloading video ${videoId}…`);
-    const videoResponse = await fetch(videoUrl);
-
-    if (!videoResponse.ok) {
-      await prisma.video.update({
-        where: { id: videoId },
-        data: { transcriptionStatus: 'FAILED' },
-      });
-      return NextResponse.json({ error: 'Failed to download video' }, { status: 500 });
-    }
-
-    const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
-    console.log(`[Transcribe] Downloaded: ${(videoBuffer.length / 1024 / 1024).toFixed(1)} MB`);
-
-    // Run local transcription (FFmpeg → Whisper)
+    // Call the Cloudflare Worker (which reads from R2 directly and runs Whisper)
     let vttContent: string;
     try {
-      vttContent = await transcribeVideo(videoBuffer);
+      console.log(`[Transcribe] Triggering CF Worker for ${videoId} (key: ${videoKey})`);
+      vttContent = await transcribeViaWorker(videoKey);
     } catch (err) {
       console.error(`[Transcribe] Error for ${videoId}:`, err);
       await prisma.video.update({
