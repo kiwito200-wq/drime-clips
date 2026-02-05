@@ -2,15 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import Tooltip from '@/components/Tooltip'
-
-interface User {
-  id: string
-  email: string
-  name: string | null
-  avatarUrl: string | null
-}
 
 interface Video {
   id: string
@@ -25,9 +16,6 @@ interface Video {
   uploadProgress: number | null
 }
 
-const DRIME_LOGIN_URL = 'https://app.drime.cloud/login'
-
-// Format duration
 function formatDuration(seconds: number | null): string {
   if (!seconds) return '0:00'
   const mins = Math.floor(seconds / 60)
@@ -35,7 +23,6 @@ function formatDuration(seconds: number | null): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-// Format date
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
   const now = new Date()
@@ -53,7 +40,6 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
-// Video Card Component
 function VideoCard({ video, onDelete, onCopyLink }: { 
   video: Video
   onDelete: (id: string) => void
@@ -67,7 +53,6 @@ function VideoCard({ video, onDelete, onCopyLink }: {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -78,10 +63,8 @@ function VideoCard({ video, onDelete, onCopyLink }: {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  // Handle hover preview with delay
   const handleMouseEnter = () => {
     setIsHovering(true)
-    // Start video preview after a small delay
     if (!video.hasActiveUpload) {
       hoverTimeoutRef.current = setTimeout(() => {
         setShowPreview(true)
@@ -96,14 +79,12 @@ function VideoCard({ video, onDelete, onCopyLink }: {
       clearTimeout(hoverTimeoutRef.current)
       hoverTimeoutRef.current = null
     }
-    // Pause and reset video
     if (videoRef.current) {
       videoRef.current.pause()
       videoRef.current.currentTime = 0
     }
   }
 
-  // Play video when preview is shown
   useEffect(() => {
     if (showPreview && videoRef.current) {
       videoRef.current.play().catch(() => {})
@@ -118,15 +99,12 @@ function VideoCard({ video, onDelete, onCopyLink }: {
     onCopyLink(video.id)
   }
 
-  const shareUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/v/${video.id}`
-
   return (
     <div 
-      className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#08CF65] transition-all duration-200"
+      className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#08CF65] transition-all duration-200 hover:shadow-md"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Thumbnail / Video Preview */}
       <Link href={`/v/${video.id}`} className="block relative aspect-video bg-gray-100">
         {video.hasActiveUpload ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/60">
@@ -137,7 +115,6 @@ function VideoCard({ video, onDelete, onCopyLink }: {
           </div>
         ) : (
           <>
-            {/* Thumbnail image */}
             {video.thumbnailUrl ? (
               <img 
                 src={video.thumbnailUrl} 
@@ -152,7 +129,6 @@ function VideoCard({ video, onDelete, onCopyLink }: {
               </div>
             )}
             
-            {/* Video preview on hover */}
             {(showPreview || isHovering) && (
               <video
                 ref={videoRef}
@@ -167,16 +143,13 @@ function VideoCard({ video, onDelete, onCopyLink }: {
           </>
         )}
         
-        {/* Duration badge */}
         {video.duration && !video.hasActiveUpload && (
           <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/70 text-white text-xs font-medium rounded">
             {formatDuration(video.duration)}
           </div>
         )}
 
-        {/* Hover overlay with actions */}
         <div className={`absolute inset-0 bg-black/40 flex items-center justify-center gap-3 transition-opacity duration-200 ${isHovering && !video.hasActiveUpload ? 'opacity-100' : 'opacity-0'}`}>
-          {/* Copy link button */}
           <button
             onClick={(e) => { e.preventDefault(); handleCopyLink() }}
             className="p-2.5 bg-white rounded-lg hover:bg-gray-100 transition-colors"
@@ -192,7 +165,6 @@ function VideoCard({ video, onDelete, onCopyLink }: {
             )}
           </button>
           
-          {/* Menu button */}
           <div className="relative" ref={menuRef}>
             <button
               onClick={(e) => { e.preventDefault(); setShowMenu(!showMenu) }}
@@ -203,9 +175,8 @@ function VideoCard({ video, onDelete, onCopyLink }: {
               </svg>
             </button>
 
-            {/* Dropdown menu */}
             {showMenu && (
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg border border-gray-200 shadow-lg py-1 min-w-[160px] z-20">
+              <div className="absolute right-0 top-full mt-2 w-44 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
                 <Link
                   href={`/v/${video.id}`}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -217,35 +188,17 @@ function VideoCard({ video, onDelete, onCopyLink }: {
                   Voir
                 </Link>
                 <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    handleCopyLink()
-                    setShowMenu(false)
-                  }}
+                  onClick={(e) => { e.preventDefault(); handleCopyLink(); setShowMenu(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                   </svg>
-                  Copier le lien
+                  Partager
                 </button>
-                <a
-                  href={video.thumbnailUrl?.replace('thumbnail.jpg', 'result.mp4') || '#'}
-                  download={`${video.name}.mp4`}
-                  className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  Télécharger
-                </a>
-                <div className="border-t border-gray-100 my-1" />
+                <hr className="my-1 border-gray-100" />
                 <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    onDelete(video.id)
-                    setShowMenu(false)
-                  }}
+                  onClick={(e) => { e.preventDefault(); onDelete(video.id); setShowMenu(false) }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -259,7 +212,6 @@ function VideoCard({ video, onDelete, onCopyLink }: {
         </div>
       </Link>
 
-      {/* Info */}
       <div className="p-3">
         <h3 className="font-medium text-gray-900 truncate">{video.name}</h3>
         <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
@@ -277,26 +229,10 @@ function VideoCard({ video, onDelete, onCopyLink }: {
 }
 
 export default function ClipsDashboard() {
-  const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
   const [videos, setVideos] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const profileMenuRef = useRef<HTMLDivElement>(null)
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  // Fetch videos
   const fetchVideos = useCallback(async () => {
     try {
       const res = await fetch('/api/videos', { credentials: 'include' })
@@ -306,34 +242,15 @@ export default function ClipsDashboard() {
       }
     } catch (error) {
       console.error('Error fetching videos:', error)
+    } finally {
+      setLoading(false)
     }
   }, [])
 
-  // Auth check
-  const checkAuth = useCallback(async () => {
-    try {
-      const authRes = await fetch('/api/auth/check', { credentials: 'include' })
-      if (authRes.ok) {
-        const data = await authRes.json()
-        if (data.user) {
-          setUser(data.user)
-          await fetchVideos()
-          setLoading(false)
-          return
-        }
-      }
-      window.location.href = DRIME_LOGIN_URL
-    } catch (error) {
-      console.error('[Dashboard] Auth error:', error)
-      window.location.href = DRIME_LOGIN_URL
-    }
+  useEffect(() => {
+    fetchVideos()
   }, [fetchVideos])
 
-  useEffect(() => {
-    checkAuth()
-  }, [checkAuth])
-
-  // Poll for upload progress
   useEffect(() => {
     const interval = setInterval(() => {
       if (videos.some(v => v.hasActiveUpload)) {
@@ -360,30 +277,21 @@ export default function ClipsDashboard() {
   }
 
   const handleCopyLink = (videoId: string) => {
-    // Analytics or any other tracking
     console.log(`Copied link for video ${videoId}`)
   }
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    window.location.href = DRIME_LOGIN_URL
-  }
-
-  // Filter videos by search
   const filteredVideos = videos.filter(v => 
     v.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  // Stats
   const stats = {
     total: videos.length,
     uploading: videos.filter(v => v.hasActiveUpload).length,
-    public: videos.filter(v => v.public).length,
   }
 
   if (loading) {
     return (
-      <div className="h-screen bg-[#F3F4F6] flex items-center justify-center">
+      <div className="h-full flex items-center justify-center p-8">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 border-3 border-[#08CF65] border-t-transparent rounded-full animate-spin" />
           <span className="text-gray-600">Chargement...</span>
@@ -393,102 +301,38 @@ export default function ClipsDashboard() {
   }
 
   return (
-    <div className="h-screen bg-[#F3F4F6] flex flex-col overflow-hidden">
-      {/* Top bar */}
+    <div className="h-full flex flex-col overflow-hidden bg-gray-50">
+      {/* Top bar with search */}
       <div className="flex-shrink-0 px-6 py-4 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
-            <Tooltip content="Retour à Drime" position="right">
-              <a href="https://app.drime.cloud/drive" className="block">
-                <img 
-                  src="/drime-logo.png" 
-                  alt="Drime" 
-                  className="h-8 w-auto hover:opacity-80 transition-opacity"
-                />
-              </a>
-            </Tooltip>
-            <div className="h-6 w-px bg-gray-300" />
-            <span className="text-lg font-semibold text-gray-900">Clips</span>
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">Mes Clips</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {stats.total} vidéo{stats.total !== 1 ? 's' : ''}{stats.uploading > 0 && ` • ${stats.uploading} en cours d'upload`}
+            </p>
           </div>
 
-          {/* Search */}
-          <div className="flex-1 max-w-md mx-8">
+          <div className="w-72">
             <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
                 type="text"
-                placeholder="Rechercher des clips..."
+                placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-[#08CF65] focus:ring-2 focus:ring-[#08CF65]/20 transition-all"
+                className="w-full pl-9 pr-4 py-2 bg-gray-100 border border-transparent rounded-lg text-sm focus:bg-white focus:border-[#08CF65] focus:ring-2 focus:ring-[#08CF65]/20 transition-all"
               />
             </div>
-          </div>
-
-          {/* Profile */}
-          <div className="relative" ref={profileMenuRef}>
-            <button
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-9 h-9 rounded-full bg-[#E0F5EA] flex items-center justify-center text-sm font-semibold text-[#08CF65] hover:ring-2 hover:ring-[#08CF65]/30 transition-all overflow-hidden"
-            >
-              {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
-              ) : (
-                (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
-              )}
-            </button>
-
-            {showProfileMenu && (
-              <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl border border-gray-200 shadow-lg overflow-hidden z-50">
-                <div className="p-4 border-b border-gray-100">
-                  <p className="font-semibold text-gray-900">{user?.name || 'Utilisateur'}</p>
-                  <p className="text-sm text-gray-500">{user?.email}</p>
-                </div>
-                <div className="py-2">
-                  <a
-                    href="https://app.drime.cloud/account-settings"
-                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.505-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Paramètres
-                  </a>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-                    </svg>
-                    Déconnexion
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* Main content */}
+      {/* Video grid */}
       <div className="flex-1 overflow-auto p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Mes Clips
-          </h1>
-          <p className="text-gray-500 mt-1">
-            {stats.total} vidéo{stats.total !== 1 ? 's' : ''} • {stats.uploading > 0 && `${stats.uploading} en cours d'upload`}
-          </p>
-        </div>
-
-        {/* Video grid */}
         {filteredVideos.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredVideos.map(video => (
               <VideoCard 
                 key={video.id} 

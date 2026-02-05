@@ -13,12 +13,6 @@ interface Comment {
   replies?: Comment[];
 }
 
-interface ReactionCounts {
-  [emoji: string]: {
-    count: number;
-    users: string[];
-  };
-}
 
 interface CommentsPanelProps {
   videoId: string;
@@ -27,12 +21,10 @@ interface CommentsPanelProps {
   onSeek: (time: number) => void;
 }
 
-const REACTIONS = ['😂', '😍', '🤔', '👏', '👍'];
 
 export default function CommentsPanel({ videoId, currentTime, duration, onSeek }: CommentsPanelProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'summary' | 'transcript'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
-  const [reactions, setReactions] = useState<ReactionCounts>({});
   const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -50,7 +42,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
           replies: c.replies || [],
         }));
         setComments(commentsWithReplies);
-        setReactions(data.reactions || {});
       } catch (error) {
         console.error('Failed to fetch comments:', error);
       } finally {
@@ -99,31 +90,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
     }
   };
 
-  // Submit reaction
-  const handleReaction = async (emoji: string) => {
-    try {
-      await fetch(`/api/videos/${videoId}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'emoji',
-          content: emoji,
-          timestamp: currentTime,
-        }),
-      });
-
-      setReactions(prev => ({
-        ...prev,
-        [emoji]: {
-          count: (prev[emoji]?.count || 0) + 1,
-          users: [...(prev[emoji]?.users || []), 'You'],
-        },
-      }));
-    } catch (error) {
-      console.error('Failed to post reaction:', error);
-    }
-  };
-
   // Format timestamp
   const formatTimestamp = (seconds: number) => {
     if (!seconds || !isFinite(seconds)) return '0:00';
@@ -149,7 +115,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
 
   // Count all comments including replies
   const totalComments = comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
-  const totalReactions = Object.values(reactions).reduce((sum, r) => sum + r.count, 0);
 
   return (
     <div className="w-full bg-white rounded-2xl border border-gray-200 flex flex-col h-full min-h-[400px] shadow-sm">
@@ -187,12 +152,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               {totalComments}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {totalReactions}
             </span>
             <a href="#" className="ml-auto text-blue-500 hover:underline text-xs font-medium">View analytics</a>
           </div>
@@ -301,22 +260,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek }
             )}
           </div>
 
-          {/* Reactions bar - Like Cap.so style */}
-          <div className="px-4 py-3 border-t border-gray-100">
-            <div className="flex items-center justify-center gap-1 bg-gray-50 rounded-full py-2 px-3">
-              {REACTIONS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => handleReaction(emoji)}
-                  className="relative p-2 hover:bg-white rounded-full transition-all hover:scale-110 active:scale-95"
-                >
-                  <span className="text-2xl">{emoji}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Comment input - Like Cap.so */}
+          {/* Comment input */}
           <div className="px-4 pb-4">
             {replyingTo && (
               <div className="flex items-center justify-between text-xs text-gray-500 mb-2 bg-blue-50 px-2 py-1 rounded">

@@ -373,6 +373,8 @@ model VideoView {
   userAgent String?
   country   String?
   city      String?
+  browser   String?
+  device    String? // desktop, mobile, tablet
 
   // Watch stats
   watchDuration Float? // Seconds watched

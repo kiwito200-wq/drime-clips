@@ -24,7 +24,6 @@ interface VideoPageClientProps {
   canEdit?: boolean;
 }
 
-const REACTIONS = ['😂', '😍', '🤔', '👏', '👍', '💡'];
 
 export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit = false }: VideoPageClientProps) {
   const playerRef = useRef<VideoPlayerRef>(null);
@@ -84,23 +83,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
     navigator.clipboard.writeText(`https://clips.drime.cloud/v/${video.id}`);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
-  };
-
-  // Add reaction
-  const handleReaction = async (emoji: string) => {
-    try {
-      await fetch(`/api/videos/${video.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'emoji',
-          content: emoji,
-          timestamp: currentTime,
-        }),
-      });
-    } catch (e) {
-      console.error('Failed to add reaction:', e);
-    }
   };
 
   // Format date
@@ -183,17 +165,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
               </svg>
               {linkCopied ? 'Copié !' : 'Copier le lien'}
             </button>
-            
-            <a
-              href={videoUrl}
-              download={`${title}.mp4`}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-full hover:bg-gray-50 transition-colors text-sm font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              Télécharger
-            </a>
           </div>
         </div>
       </div>
@@ -229,30 +200,6 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         </div>
       </div>
 
-      {/* Reactions toolbar - bottom like Cap.so */}
-      <div className="mt-4">
-        <div className="flex items-center justify-center gap-2 py-4">
-          <div className="flex items-center gap-1 bg-gray-100 rounded-full px-4 py-2">
-            {REACTIONS.map((emoji) => (
-              <button
-                key={emoji}
-                onClick={() => handleReaction(emoji)}
-                className="p-2 hover:bg-white rounded-full transition-all hover:scale-110 active:scale-95"
-              >
-                <span className="text-2xl">{emoji}</span>
-              </button>
-            ))}
-          </div>
-          
-          <button
-            onClick={copyLink}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors text-sm font-medium"
-          >
-            Comment
-            <span className="text-gray-400 text-xs">⌘</span>
-          </button>
-        </div>
-      </div>
 
       {/* Video details (mobile) */}
       <div className="lg:hidden mt-4">
