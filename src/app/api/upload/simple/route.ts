@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { nanoid } from 'nanoid';
-import { createMultipartUpload, getPresignedUploadPartUrl, completeMultipartUpload } from '@/lib/r2';
+import { initiateMultipartUpload, getPresignedPartUrl, completeMultipartUpload } from '@/lib/r2';
 
 // POST /api/upload/simple - Create video entry for upload
 export async function POST(request: NextRequest) {
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
       // Initiate multipart upload in R2
       const key = `${user.id}/${video.id}/video.mp4`;
-      const r2UploadId = await createMultipartUpload(key, 'video/mp4');
+      const r2UploadId = await initiateMultipartUpload(key, 'video/mp4');
 
       console.log(`[SimpleUpload] Created video ${video.id} for ${email}`);
 
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
     if (action === 'presign' && videoId && uploadId && partNumber) {
       // Get presigned URL for part upload
       const key = `${user.id}/${videoId}/video.mp4`;
-      const presignedUrl = await getPresignedUploadPartUrl(key, uploadId, partNumber);
+      const presignedUrl = await getPresignedPartUrl(key, uploadId, partNumber);
 
       return NextResponse.json({
         success: true,
