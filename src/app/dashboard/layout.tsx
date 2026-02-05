@@ -21,7 +21,6 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -78,20 +77,18 @@ export default function DashboardLayout({
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen flex">
       {/* Sidebar - Style like Drime Sign/Notes */}
-      <aside className={`${sidebarCollapsed ? 'w-20' : 'w-52'} bg-white border-r border-gray-200 flex flex-col transition-all duration-200 relative`}>
+      <aside className="w-52 bg-[#F3F4F6] border-r border-gray-200 flex flex-col flex-shrink-0">
         {/* Logo */}
-        <div className="h-16 flex items-center px-4 border-b border-gray-100">
+        <div className="h-16 flex items-center px-4">
           <Link href="/dashboard/clips" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[#08CF65] rounded-lg flex items-center justify-center flex-shrink-0">
               <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            {!sidebarCollapsed && (
-              <span className="font-semibold text-lg text-gray-900">Clips</span>
-            )}
+            <span className="font-semibold text-lg text-gray-900">Clips</span>
           </Link>
         </div>
 
@@ -112,54 +109,34 @@ export default function DashboardLayout({
                 <span className="text-gray-600">
                   {item.icon}
                 </span>
-                {!sidebarCollapsed && (
-                  <span>{item.name}</span>
-                )}
+                <span>{item.name}</span>
               </Link>
             )
           })}
         </nav>
 
         {/* User section */}
-        <div className="p-4 border-t border-gray-100">
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-sm font-semibold text-gray-600 flex-shrink-0 overflow-hidden">
               {user?.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-9 h-9 rounded-full object-cover" />
               ) : (
                 (user?.name || user?.email || 'U').slice(0, 2).toUpperCase()
               )}
             </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user?.name || user?.email?.split('@')[0]}
-                </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-              </div>
-            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {user?.name || user?.email?.split('@')[0]}
+              </p>
+              <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+            </div>
           </div>
         </div>
-
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="absolute top-20 -right-3 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm hover:bg-gray-50 transition-colors z-10"
-        >
-          <svg
-            className={`w-4 h-4 text-gray-400 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      {/* Main content - White background */}
+      <main className="flex-1 overflow-auto bg-white">
         {children}
       </main>
     </div>
