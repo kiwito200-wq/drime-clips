@@ -69,12 +69,16 @@ export default function RecordPage() {
   const [openFaq, setOpenFaq] = useState<string | null>(null)
 
   const handleComplete = useCallback((videoId: string, shareUrl: string) => {
-    window.open(shareUrl, '_blank')
+    console.log('[RecordPage] Recording complete, opening share URL:', shareUrl)
+    // Open share URL in new tab
+    window.open(shareUrl, '_blank', 'noopener,noreferrer')
+    // Close dialog and redirect
+    setDialogOpen(false)
     router.push('/dashboard/clips')
   }, [router])
 
   const handleError = useCallback((error: Error) => {
-    console.error('Recording error:', error)
+    console.error('[RecordPage] Recording error:', error)
   }, [])
 
   const {
@@ -97,7 +101,10 @@ export default function RecordPage() {
     recordingMode,
     selectedCameraId: selectedCamera,
     selectedMicId: selectedMic,
-    onRecordingStart: () => setDialogOpen(false),
+    onRecordingStart: () => {
+      // Keep dialog open during recording - just log
+      console.log('[RecordPage] Recording started')
+    },
     onComplete: handleComplete,
     onError: handleError,
   })
@@ -230,15 +237,27 @@ export default function RecordPage() {
         </div>
       </div>
 
+      {/* Gray backdrop during recording */}
       <AnimatePresence>
-        {dialogOpen && !isRecording && (
+        {(isRecording || isBusy) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {dialogOpen && !isRecording && !isBusy && (
           <>
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
-              onClick={() => handleOpenChange(false)}
+              onClick={() => !isBusy && handleOpenChange(false)}
             />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div

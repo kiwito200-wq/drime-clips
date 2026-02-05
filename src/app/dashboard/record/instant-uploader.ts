@@ -254,22 +254,39 @@ export class InstantUploader {
   }
 
   async finalize(finalBlob: Blob, thumbnail?: string): Promise<string | null> {
-    if (this.finished || this.aborted) return null
+    console.log('[Uploader] Finalize called, blob size:', finalBlob.size)
+    console.log('[Uploader] finished:', this.finished, 'aborted:', this.aborted)
+    
+    if (this.finished || this.aborted) {
+      console.log('[Uploader] Already finished or aborted, returning null')
+      return null
+    }
 
     this.finalTotalBytes = finalBlob.size
+    console.log('[Uploader] Flushing buffer, bufferedBytes:', this.bufferedBytes)
     this.flushBuffer(true)
 
     // Wait for all pending uploads
+    console.log('[Uploader] Waiting for pending uploads...')
     await this.uploadQueue
+    console.log('[Uploader] Pending uploads complete, parts:', this.parts.length)
 
     // If no parts were uploaded, upload the entire blob as one part
     if (this.parts.length === 0) {
+      console.log('[Uploader] No parts uploaded yet, uploading entire blob')
       this.enqueueUpload(finalBlob)
       await this.uploadQueue
+      console.log('[Uploader] Full blob upload complete, parts:', this.parts.length)
     }
 
     // Complete multipart upload
     try {
+      console.log('[Uploader] Completing multipart upload...')
+      console.log('[Uploader] VideoId:', this.videoId)
+      console.log('[Uploader] UploadId:', this.uploadId)
+      console.log('[Uploader] Parts:', JSON.stringify(this.parts))
+      console.log('[Uploader] Has thumbnail:', !!thumbnail)
+      
       const res = await fetch('/api/upload/simple', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -284,15 +301,22 @@ export class InstantUploader {
         }),
       })
 
+      console.log('[Uploader] Complete response status:', res.status)
+      
       if (!res.ok) {
         const errorText = await res.text()
+        console.error('[Uploader] Complete failed:', errorText)
         throw new Error(`Failed to complete upload: ${errorText}`)
       }
+
+      const responseData = await res.json()
+      console.log('[Uploader] Complete response:', responseData)
 
       this.finished = true
       this.uploadedBytes = this.finalTotalBytes ?? this.uploadedBytes
       this.emitProgress()
 
+      console.log('[Uploader] Finalize SUCCESS, shareUrl:', this.shareUrl)
       return this.shareUrl
     } catch (error) {
       console.error('[Uploader] Failed to finalize:', error)

@@ -218,42 +218,62 @@ export const useWebRecorder = ({
       }
 
       mediaRecorder.onstop = async () => {
+        console.log('[WebRecorder] MediaRecorder stopped')
         setPhase('stopping')
         onRecordingStop?.()
 
         try {
           // Create final blob
-          const mimeType = mediaRecorder.mimeType || 'video/webm'
-          const recordedBlob = new Blob(chunksRef.current, { type: mimeType })
+          const actualMimeType = mediaRecorder.mimeType || 'video/webm'
+          console.log('[WebRecorder] Creating blob with mimeType:', actualMimeType)
+          console.log('[WebRecorder] Total chunks:', chunksRef.current.length)
+          console.log('[WebRecorder] Total bytes:', totalBytesRef.current)
+          
+          const recordedBlob = new Blob(chunksRef.current, { type: actualMimeType })
+          console.log('[WebRecorder] Blob size:', recordedBlob.size)
           
           if (recordedBlob.size === 0) {
-            throw new Error('Enregistrement vide')
+            throw new Error('Enregistrement vide - aucune donnée capturée')
           }
 
           // Generate thumbnail
           setPhase('uploading')
+          console.log('[WebRecorder] Generating thumbnail...')
           let thumbnailDataUrl: string | undefined
           
           try {
             const thumbResult = await captureThumbnail(recordedBlob)
             if (thumbResult) {
               thumbnailDataUrl = thumbResult.dataUrl
+              console.log('[WebRecorder] Thumbnail generated, size:', thumbnailDataUrl.length)
+            } else {
+              console.warn('[WebRecorder] Thumbnail generation returned null')
             }
           } catch (thumbError) {
-            console.warn('[WebRecorder] Thumbnail generation failed:', thumbError)
+            console.error('[WebRecorder] Thumbnail generation failed:', thumbError)
           }
 
           // Finalize upload
-          const finalShareUrl = await uploader.finalize(recordedBlob, thumbnailDataUrl)
+          console.log('[WebRecorder] Finalizing upload...')
+          const currentUploader = uploaderRef.current
+          if (!currentUploader) {
+            throw new Error('Uploader not available')
+          }
+          
+          const finalShareUrl = await currentUploader.finalize(recordedBlob, thumbnailDataUrl)
+          console.log('[WebRecorder] Upload finalized, shareUrl:', finalShareUrl)
+          
           cleanup()
 
           if (finalShareUrl && videoIdRef.current) {
+            console.log('[WebRecorder] Recording complete!')
             setPhase('completed')
             onComplete?.(videoIdRef.current, finalShareUrl)
           } else {
-            throw new Error('Upload échoué')
+            throw new Error('Upload échoué - pas de shareUrl')
           }
         } catch (error) {
+          console.error('[WebRecorder] Error in onstop:', error)
           handleError(error as Error)
         }
       }
