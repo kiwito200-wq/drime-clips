@@ -188,7 +188,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
   }, [video.id, currentTime, visitorId, fetchReactionCounts]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-full">
+    <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-10rem)]">
       {/* LEFT: Video section - Takes most of the space */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* Title bar - like Cap.so */}
@@ -313,14 +313,15 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         </div>
       </div>
 
-      {/* RIGHT: Comments panel - Fixed width like Cap.so */}
-      <div className="lg:w-[320px] xl:w-[360px] flex-shrink-0">
+      {/* RIGHT: Comments panel - Fixed width, stops at player height */}
+      <div className="lg:w-[320px] xl:w-[360px] flex-shrink-0 lg:h-full lg:min-h-0">
         <CommentsPanel
           videoId={video.id}
           currentTime={currentTime}
           duration={videoDuration}
           onSeek={handleSeek}
           refreshTrigger={refreshTrigger}
+          visitorId={visitorId}
         />
       </div>
     </div>

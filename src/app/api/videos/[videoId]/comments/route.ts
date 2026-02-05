@@ -91,6 +91,7 @@ export async function GET(
         authorName: c.authorName || c.author?.name || c.author?.email?.split('@')[0] || 'Anonymous',
         authorAvatar: c.author?.avatarUrl,
         createdAt: c.createdAt,
+        isOwner: visitorId ? c.visitorId === visitorId : false,
         replies: c.replies.map(r => ({
           id: r.id,
           content: r.content,
@@ -98,6 +99,7 @@ export async function GET(
           authorName: r.authorName || r.author?.name || r.author?.email?.split('@')[0] || 'Anonymous',
           authorAvatar: r.author?.avatarUrl,
           createdAt: r.createdAt,
+          isOwner: visitorId ? (r as any).visitorId === visitorId : false,
         })),
       })),
       reactions: reactionCounts,

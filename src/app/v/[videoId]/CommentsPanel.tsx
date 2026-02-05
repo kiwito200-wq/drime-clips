@@ -11,6 +11,7 @@ interface Comment {
   authorName: string;
   authorAvatar: string | null;
   createdAt: string;
+  isOwner?: boolean;
   replies?: Comment[];
 }
 
@@ -20,6 +21,7 @@ interface CommentsPanelProps {
   duration: number;
   onSeek: (time: number) => void;
   refreshTrigger?: number;
+  visitorId?: string;
 }
 
 const EMOJI_CATEGORIES = [
@@ -40,6 +42,8 @@ const EMOJI_CATEGORIES = [
     emojis: ['🎬', '📹', '🎮', '🎧', '💻', '📱', '🎯', '🏆', '⭐', '🌟', '💡', '🚀', '🎵', '🎶', '📸', '🖥️'],
   },
 ];
+
+const QUICK_REACTIONS = ['😂', '🔥', '🙌', '😍', '👍', '👎'];
 
 // Floating emoji picker rendered via portal
 function FloatingEmojiPicker({
@@ -125,7 +129,70 @@ function FloatingEmojiPicker({
   );
 }
 
-export default function CommentsPanel({ videoId, currentTime, duration, onSeek, refreshTrigger = 0 }: CommentsPanelProps) {
+// Hover action bar for a comment
+function CommentActions({
+  comment,
+  isOwner,
+  onReply,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  comment: Comment;
+  isOwner: boolean;
+  onReply?: () => void;
+  onEdit?: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <div className="absolute -top-3 right-2 flex items-center gap-0.5 bg-white border border-gray-200 rounded-lg shadow-sm px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+      {/* Reply */}
+      {onReply && (
+        <button
+          onClick={onReply}
+          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+          title="Répondre"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+        </button>
+      )}
+      {/* Edit (owner only) */}
+      {isOwner && onEdit && (
+        <button
+          onClick={onEdit}
+          className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+          title="Modifier"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+      )}
+      {/* Delete (owner only) */}
+      {isOwner && (
+        <button
+          onClick={onDelete}
+          disabled={deleting}
+          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+          title="Supprimer"
+        >
+          {deleting ? (
+            <div className="w-3.5 h-3.5 border border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function CommentsPanel({ videoId, currentTime, duration, onSeek, refreshTrigger = 0, visitorId }: CommentsPanelProps) {
   const [activeTab, setActiveTab] = useState<'comments' | 'summary' | 'transcript'>('comments');
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,8 +202,11 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showReplyEmojiPicker, setShowReplyEmojiPicker] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
   const mainInputRef = useRef<HTMLTextAreaElement>(null);
   const replyInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const replyEmojiButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -146,7 +216,10 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
 
   const fetchComments = async () => {
     try {
-      const response = await fetch(`/api/videos/${videoId}/comments`);
+      const url = visitorId
+        ? `/api/videos/${videoId}/comments?visitorId=${encodeURIComponent(visitorId)}`
+        : `/api/videos/${videoId}/comments`;
+      const response = await fetch(url);
       const data = await response.json();
       const commentsWithReplies = (data.comments || []).map((c: Comment) => ({
         ...c,
@@ -166,7 +239,6 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
     fetchComments();
   }, [videoId]);
 
-  // Re-fetch when refreshTrigger changes (reaction added from toolbar)
   useEffect(() => {
     if (refreshTrigger > 0) {
       fetchComments();
@@ -178,6 +250,12 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
       replyInputRef.current.focus();
     }
   }, [replyingTo]);
+
+  useEffect(() => {
+    if (editingId && editInputRef.current) {
+      editInputRef.current.focus();
+    }
+  }, [editingId]);
 
   const insertEmoji = (emoji: string, isReply: boolean) => {
     if (isReply) {
@@ -195,11 +273,11 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
       const response = await fetch(`/api/videos/${videoId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'text', content: newComment, timestamp: currentTime }),
+        body: JSON.stringify({ type: 'text', content: newComment, timestamp: currentTime, visitorId }),
       });
       if (response.ok) {
         const data = await response.json();
-        setComments(prev => [{ ...data.comment, replies: [] }, ...prev]);
+        setComments(prev => [{ ...data.comment, replies: [], isOwner: true }, ...prev]);
         setNewComment('');
         setShowEmojiPicker(false);
       }
@@ -214,12 +292,12 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
       const response = await fetch(`/api/videos/${videoId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'text', content: replyContent, timestamp: currentTime, parentCommentId: parentId }),
+        body: JSON.stringify({ type: 'text', content: replyContent, timestamp: currentTime, parentCommentId: parentId, visitorId }),
       });
       if (response.ok) {
         const data = await response.json();
         setComments(prev => prev.map(c =>
-          c.id === parentId ? { ...c, replies: [...(c.replies || []), { ...data.comment, replies: [] }] } : c
+          c.id === parentId ? { ...c, replies: [...(c.replies || []), { ...data.comment, replies: [], isOwner: true }] } : c
         ));
         setReplyContent('');
         setReplyingTo(null);
@@ -233,7 +311,10 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
   const handleDeleteComment = async (commentId: string, parentId?: string) => {
     setDeleting(commentId);
     try {
-      const response = await fetch(`/api/videos/${videoId}/comments/${commentId}`, { method: 'DELETE' });
+      const url = visitorId
+        ? `/api/videos/${videoId}/comments/${commentId}?visitorId=${encodeURIComponent(visitorId)}`
+        : `/api/videos/${videoId}/comments/${commentId}`;
+      const response = await fetch(url, { method: 'DELETE' });
       if (response.ok) {
         if (parentId) {
           setComments(prev => prev.map(c => c.id === parentId ? { ...c, replies: (c.replies || []).filter(r => r.id !== commentId) } : c));
@@ -246,6 +327,41 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
     } finally {
       setDeleting(null);
     }
+  };
+
+  const handleStartEdit = (comment: Comment) => {
+    setEditingId(comment.id);
+    setEditContent(comment.content);
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editContent.trim()) return;
+    try {
+      const response = await fetch(`/api/videos/${videoId}/comments/${commentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent, visitorId }),
+      });
+      if (response.ok) {
+        // Update locally
+        setComments(prev => prev.map(c => {
+          if (c.id === commentId) return { ...c, content: editContent.trim() };
+          if (c.replies) {
+            return { ...c, replies: c.replies.map(r => r.id === commentId ? { ...r, content: editContent.trim() } : r) };
+          }
+          return c;
+        }));
+        setEditingId(null);
+        setEditContent('');
+      }
+    } catch (error) {
+      console.error('Failed to edit comment:', error);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditContent('');
   };
 
   const formatTimestamp = (seconds: number) => {
@@ -268,65 +384,91 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
 
   const totalComments = comments.reduce((sum, c) => sum + 1 + (c.replies?.length || 0), 0);
 
-  const renderComment = (comment: Comment, isReply = false, parentId?: string) => (
-    <div key={comment.id} className={`flex gap-3 ${isReply ? '' : 'px-4 py-3'}`}>
-      <div className={`${isReply ? 'w-7 h-7' : 'w-9 h-9'} rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 flex-shrink-0 overflow-hidden`}>
-        {comment.authorAvatar ? (
-          <img src={comment.authorAvatar} alt="" className="w-full h-full object-cover" />
-        ) : (
-          comment.authorName?.slice(0, 2).toUpperCase() || 'AN'
-        )}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`font-semibold text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
-            {comment.authorName || 'Anonymous'}
-          </span>
-          <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
-          {comment.timestamp !== null && (
-            <button
-              onClick={() => onSeek(comment.timestamp!)}
-              className="text-xs text-[#08CF65] hover:text-[#07B859] font-medium bg-[#E0F5EA] hover:bg-[#D0F0E0] px-1.5 py-0.5 rounded transition-colors"
-            >
-              {formatTimestamp(comment.timestamp)}
-            </button>
-          )}
-        </div>
-        <p className={`text-gray-700 mt-1 leading-relaxed ${isReply ? 'text-xs' : 'text-sm'}`}>{comment.content}</p>
-        <div className="flex items-center gap-3 mt-2">
-          {!isReply && (
-            <button
-              onClick={() => { setReplyingTo(replyingTo === comment.id ? null : comment.id); setReplyContent(''); setShowReplyEmojiPicker(false); }}
-              className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1 transition-colors"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              <span>Répondre</span>
-            </button>
-          )}
-          <button
-            onClick={() => handleDeleteComment(comment.id, parentId)}
-            disabled={deleting === comment.id}
-            className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors disabled:opacity-50"
-          >
-            {deleting === comment.id ? (
-              <div className="w-3.5 h-3.5 border border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+  const renderComment = (comment: Comment, isReply = false, parentId?: string) => {
+    const isOwner = !!comment.isOwner;
+    const isEditing = editingId === comment.id;
+
+    return (
+      <div key={comment.id} className={`relative group ${isReply ? '' : 'px-4 py-3'}`}>
+        {/* Hover action bar */}
+        <CommentActions
+          comment={comment}
+          isOwner={isOwner}
+          onReply={!isReply ? () => {
+            setReplyingTo(replyingTo === comment.id ? null : comment.id);
+            setReplyContent('');
+            setShowReplyEmojiPicker(false);
+          } : undefined}
+          onEdit={isOwner ? () => handleStartEdit(comment) : undefined}
+          onDelete={() => handleDeleteComment(comment.id, parentId)}
+          deleting={deleting === comment.id}
+        />
+
+        <div className="flex gap-3">
+          <div className={`${isReply ? 'w-7 h-7' : 'w-9 h-9'} rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold text-gray-600 flex-shrink-0 overflow-hidden`}>
+            {comment.authorAvatar ? (
+              <img src={comment.authorAvatar} alt="" className="w-full h-full object-cover" />
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
+              comment.authorName?.slice(0, 2).toUpperCase() || 'AN'
             )}
-          </button>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={`font-semibold text-gray-900 ${isReply ? 'text-xs' : 'text-sm'}`}>
+                {comment.authorName || 'Anonymous'}
+              </span>
+              <span className="text-xs text-gray-400">{formatRelativeTime(comment.createdAt)}</span>
+              {comment.timestamp !== null && (
+                <button
+                  onClick={() => onSeek(comment.timestamp!)}
+                  className="text-xs text-[#08CF65] hover:text-[#07B859] font-medium bg-[#E0F5EA] hover:bg-[#D0F0E0] px-1.5 py-0.5 rounded transition-colors"
+                >
+                  {formatTimestamp(comment.timestamp)}
+                </button>
+              )}
+            </div>
+            {isEditing ? (
+              <div className="mt-1">
+                <textarea
+                  ref={editInputRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEdit(comment.id); }
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:border-[#08CF65] focus:ring-1 focus:ring-[#08CF65]/20 focus:outline-none resize-none bg-white"
+                  rows={2}
+                />
+                <div className="flex items-center gap-2 mt-1.5">
+                  <button
+                    onClick={() => handleSaveEdit(comment.id)}
+                    disabled={!editContent.trim()}
+                    className="px-2.5 py-1 bg-[#08CF65] text-white text-xs font-medium rounded-md hover:bg-[#07B859] transition-colors disabled:opacity-40"
+                  >
+                    Enregistrer
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className={`text-gray-700 mt-1 leading-relaxed ${isReply ? 'text-xs' : 'text-sm'}`}>{comment.content}</p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="w-full bg-white rounded-2xl border border-gray-200 flex flex-col h-full min-h-[400px] shadow-sm">
+    <div className="w-full bg-white rounded-2xl border border-gray-200 flex flex-col h-full shadow-sm overflow-hidden">
       {/* Tabs */}
-      <div className="flex border-b border-gray-100">
+      <div className="flex border-b border-gray-100 flex-shrink-0">
         {[
           { key: 'comments', label: 'Commentaires' },
           { key: 'summary', label: 'Résumé' },
@@ -346,9 +488,9 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
 
       {/* Comments Tab */}
       {activeTab === 'comments' && (
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Stats bar — views, comments, reactions */}
-          <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500 flex items-center gap-4">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+          {/* Stats bar */}
+          <div className="px-4 py-2.5 border-b border-gray-100 text-sm text-gray-500 flex items-center gap-4 flex-shrink-0">
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -370,7 +512,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
             </span>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
@@ -458,7 +600,7 @@ export default function CommentsPanel({ videoId, currentTime, duration, onSeek, 
           </div>
 
           {/* Main comment input */}
-          <div className="px-4 py-3 border-t border-gray-100">
+          <div className="px-4 py-3 border-t border-gray-100 flex-shrink-0">
             <div className="border border-gray-200 rounded-xl focus-within:border-[#08CF65] focus-within:ring-1 focus-within:ring-[#08CF65]/20 transition-all">
               <textarea
                 ref={mainInputRef}
