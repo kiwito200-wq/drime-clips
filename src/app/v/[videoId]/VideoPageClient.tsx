@@ -136,7 +136,7 @@ function SharedDropdown({
           </label>
           <div
             onClick={!copied ? handleCopy : undefined}
-            className={`flex items-center rounded-[10px] overflow-hidden transition-all duration-300 border-2 cursor-pointer ${
+            className={`flex items-center rounded-xl overflow-hidden transition-all duration-300 border cursor-pointer ${
               copied
                 ? 'border-[#08CF65] bg-[#08CF65]/5'
                 : 'border-gray-200 bg-white hover:border-gray-300'
@@ -479,7 +479,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
           {/* Quick copy link — exact Transfr style */}
           <div
             onClick={!linkCopied ? copyLink : undefined}
-            className={`hidden sm:flex items-center rounded-[10px] overflow-hidden transition-all duration-300 border-2 cursor-pointer ${
+            className={`hidden sm:flex items-center rounded-xl overflow-hidden transition-all duration-300 border cursor-pointer ${
               linkCopied
                 ? 'border-[#08CF65] bg-[#08CF65]/5'
                 : 'border-gray-200 bg-white hover:border-gray-300'
@@ -526,7 +526,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
           {/* Mobile copy link — same Transfr style */}
           <div
             onClick={!linkCopied ? copyLink : undefined}
-            className={`sm:hidden flex items-center rounded-[10px] overflow-hidden transition-all duration-300 border-2 cursor-pointer ${
+            className={`sm:hidden flex items-center rounded-xl overflow-hidden transition-all duration-300 border cursor-pointer ${
               linkCopied
                 ? 'border-[#08CF65] bg-[#08CF65]/5'
                 : 'border-gray-200 bg-white hover:border-gray-300'
