@@ -270,7 +270,7 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
         </div>
 
         {/* Video player - full width, no extra card wrapper */}
-        <div className="flex-1 rounded-xl overflow-hidden bg-black">
+        <div className="flex-1 min-h-0 rounded-xl overflow-hidden bg-black">
           <VideoPlayer
             ref={playerRef}
             src={videoUrl}

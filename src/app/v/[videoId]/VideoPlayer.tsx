@@ -301,7 +301,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
   return (
     <div
       ref={containerRef}
-      className="relative aspect-video bg-black group select-none overflow-hidden"
+      className="relative aspect-video max-h-full bg-black group select-none overflow-hidden"
       onMouseMove={handleMouseMove}
       onMouseLeave={() => { if (isPlayingRef.current) setShowControls(false) }}
     >
@@ -336,14 +336,14 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
 
       {/* Loading spinner */}
       {isLoading && hasStarted && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <div className="w-12 h-12 border-[3px] border-white/30 border-t-white rounded-full animate-spin" />
         </div>
       )}
 
       {/* ─── Center overlay: Play button only ─── */}
       {!isPlaying && !isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
           <button
             onClick={togglePlay}
             className="pointer-events-auto group/play"
@@ -358,7 +358,7 @@ const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(function VideoP
       )}
 
       {/* ─── Bottom bar ─── */}
-      <div className="absolute inset-x-0 bottom-0 transition-all duration-300">
+      <div className="absolute inset-x-0 bottom-0 z-20 transition-all duration-300">
         {/* Gradient backdrop */}
         <div
           className={`absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none transition-opacity duration-300 ${
