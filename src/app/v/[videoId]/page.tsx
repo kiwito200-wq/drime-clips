@@ -127,8 +127,8 @@ export default async function VideoPage({ params }: Props) {
         </div>
       </header>
 
-      {/* Main content - Give more space like Cap.so */}
-      <main className="flex-1 py-6" style={{ minHeight: 'calc(100vh - 180px)' }}>
+      {/* Main content */}
+      <main className="flex-1 py-5 pb-3">
         {isUploading ? (
           <div className="max-w-5xl mx-auto px-4 lg:px-6">
             <div className="bg-black rounded-xl overflow-hidden shadow-lg">
@@ -136,7 +136,7 @@ export default async function VideoPage({ params }: Props) {
             </div>
           </div>
         ) : (
-          <div className="max-w-[1600px] mx-auto px-4 lg:px-6 h-full">
+          <div className="max-w-[1600px] mx-auto px-4 lg:px-6">
             <VideoPageClient
               video={{
                 id: video.id,
@@ -156,7 +156,7 @@ export default async function VideoPage({ params }: Props) {
       </main>
 
       {/* Minimal footer */}
-      <footer className="py-3 border-t border-gray-200">
+      <footer className="py-2">
         <div className="max-w-[1600px] mx-auto px-4 lg:px-6 text-center">
           <p className="text-gray-400 text-xs">
             Partagé avec{' '}
