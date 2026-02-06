@@ -117,7 +117,7 @@ function SharedDropdown({
           </div>
         </div>
 
-        {/* Copy link section — Transfr style (input + button) */}
+        {/* Copy link — exact Transfr style */}
         <div className="p-4">
           <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 block">
             Lien de partage
@@ -125,19 +125,15 @@ function SharedDropdown({
           <div className="flex gap-2">
             <input
               type="text"
-              value={`clips.drime.cloud/v/${videoId}`}
+              value={`https://clips.drime.cloud/v/${videoId}`}
               readOnly
-              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none bg-white text-gray-600 font-mono min-w-0"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
             />
             <button
               onClick={handleCopy}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 min-w-[76px] text-center ${
-                copied
-                  ? 'bg-[#08CF65] text-white'
-                  : 'bg-[#08CF65] text-white hover:bg-[#08CF65]/90'
-              }`}
+              className="bg-[#08CF65] text-white px-4 py-2 rounded-lg hover:bg-[#08CF65]/90"
             >
-              {copied ? '✓' : 'Copier'}
+              {copied ? '✓' : 'Copy'}
             </button>
           </div>
         </div>
@@ -428,42 +424,28 @@ export default function VideoPageClient({ video, videoUrl, thumbnailUrl, canEdit
 
         {/* Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
-          {/* Quick copy link (Transfr style — input + button) */}
+          {/* Quick copy link — exact Transfr style */}
           <div className="hidden sm:flex gap-2">
             <input
               type="text"
-              value={`clips.drime.cloud/v/${video.id.slice(0, 8)}`}
+              value={`https://clips.drime.cloud/v/${video.id}`}
               readOnly
-              className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none bg-white text-gray-500 font-mono w-[220px]"
+              className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none"
             />
             <button
               onClick={copyLink}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 min-w-[76px] text-center ${
-                linkCopied
-                  ? 'bg-[#08CF65] text-white'
-                  : 'bg-[#08CF65] text-white hover:bg-[#08CF65]/90'
-              }`}
+              className="bg-[#08CF65] text-white px-4 py-2 rounded-lg hover:bg-[#08CF65]/90"
             >
-              {linkCopied ? '✓' : 'Copier'}
+              {linkCopied ? '✓' : 'Copy'}
             </button>
           </div>
 
-          {/* Mobile copy button */}
+          {/* Mobile copy button — same Transfr button */}
           <button
             onClick={copyLink}
-            className={`sm:hidden flex items-center justify-center w-10 h-10 rounded-lg text-sm font-medium transition-colors duration-200 border ${
-              linkCopied
-                ? 'bg-[#08CF65] border-[#08CF65] text-white'
-                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-            }`}
+            className="sm:hidden bg-[#08CF65] text-white px-4 py-2 rounded-lg hover:bg-[#08CF65]/90"
           >
-            {linkCopied ? (
-              <span className="text-base">✓</span>
-            ) : (
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-            )}
+            {linkCopied ? '✓' : 'Copy'}
           </button>
 
           {/* Shared dropdown (owner only) */}
